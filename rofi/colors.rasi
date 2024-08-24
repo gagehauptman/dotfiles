@@ -1,0 +1,7 @@
+* {
+  invis:  #ffffff00;
+  bg:  #1e1e2e;
+  sel:  #1a1826;
+  fg:  #d9e0ee;
+  top: #161320;
+}

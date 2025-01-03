@@ -1,0 +1,1 @@
+rofi -theme select.rasi -modi drun -show drun

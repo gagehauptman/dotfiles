@@ -5,8 +5,8 @@ echo $(hyprctl monitors | head -n 1 | cut -d ' ' -f 2) > $XDG_RUNTIME_DIR/hypr/$
 
 function handle {
 	case $1 in
-		focusedmon*)
-			new="${1:12}"
+		focusedmonv2*)
+			new="${1:14}"
 			len=${#new}
 			new="${new::length-3}"
 			echo $new > $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/active_monitor_2

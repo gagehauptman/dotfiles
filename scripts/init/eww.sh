@@ -1,5 +1,4 @@
 mon_count=$1
-
 bar_format="
 
 (defvar workspaceMP1 \"active_workspace\")

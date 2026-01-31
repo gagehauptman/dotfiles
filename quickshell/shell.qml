@@ -13,9 +13,18 @@ import Quickshell.Io
 
 PanelWindow {
   id: root
+  
+  // Widget data properties
+  property string tempValue: "0"
+  property string batteryPercent: "0"
+  property string batteryIcon: ""
+  property string cpuLoad: "0"
+  property string volumePercent: "0"
+  property string volumeIcon: "󰕾"
+  
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
-  WlrLayershell.keyboardFocus: (bar.state === "wallpaper_selector" || bar.state === "app_selector")
+  WlrLayershell.keyboardFocus: (bar.state === "wallpaper_selector" || bar.state === "app_selector" || bar.state === "power_menu")
         ? WlrKeyboardFocus.Exclusive 
         : WlrKeyboardFocus.None
   mask: Region {}
@@ -129,7 +138,7 @@ PanelWindow {
           PropertyChanges {
             target: bar;
             dropdownWidth: 40 * parent.width / 100;
-            dropdownHeight: 30 * parent.height / 100;
+            dropdownHeight: 33 * parent.height / 100;
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20
           }
@@ -153,6 +162,16 @@ PanelWindow {
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20;
           }
+        },
+        State {
+          name: "power_menu"
+          PropertyChanges {
+            target: bar;
+            dropdownWidth: 35 * parent.width / 100;
+            dropdownHeight: 12 * parent.height / 100;
+            dropdownFilletRadius: 20;
+            dropdownCornerRadius: 20;
+          }
         }
       ]
 
@@ -169,6 +188,23 @@ PanelWindow {
       width: parent.width
       height: bar.barHeight
 
+      // Workspaces on the left
+      Workspaces {
+        anchors {
+          left: parent.left
+          verticalCenter: parent.verticalCenter
+          leftMargin: 15
+        }
+      }
+
+      // Music/Weather widget in center
+      MusicWidget {
+        anchors {
+          horizontalCenter: parent.horizontalCenter
+          verticalCenter: parent.verticalCenter
+        }
+      }
+
       // Clock widget
       Text {
         id: timeDisplay
@@ -178,11 +214,10 @@ PanelWindow {
           rightMargin: 20
         }
 
-        color: "white"
-        font.pixelSize: parent.height * 0.5
+        color: "#cdd6f4"
+        font.pixelSize: 14
         font.family: "Noto Sans"
         font.bold: true
-
 
         // Function to format the time
         function updateTime() {
@@ -200,6 +235,137 @@ PanelWindow {
         repeat: true
         onTriggered: timeDisplay.updateTime()
       }
+
+      // System widgets (battery, temp, cpu)
+      RowLayout {
+        anchors {
+          right: timeDisplay.left
+          verticalCenter: parent.verticalCenter
+          rightMargin: 15
+        }
+        spacing: 8
+
+        // Volume widget
+        RowLayout {
+          spacing: 5
+
+          Text {
+            text: root.volumeIcon
+            color: "#cba6f7"  // Mauve
+            font.pixelSize: 14
+            font.family: "monospace"
+            font.bold: true
+          }
+          
+          Text {
+            text: root.volumePercent + "%"
+            color: "#cba6f7"  // Mauve
+            font.pixelSize: 14
+            font.bold: true
+          }
+        }
+
+        // Separator
+        Rectangle {
+          implicitWidth: 2
+          implicitHeight: parent.parent.height * 0.6
+          color: "#6c7086"
+        }
+
+        // CPU widget
+        RowLayout {
+          spacing: 5
+
+          Text {
+            text: "󰘚"
+            color: "#89b4fa"  // Blue
+            font.pixelSize: 14
+            font.family: "monospace"
+            font.bold: true
+          }
+          
+          Text {
+            text: parseFloat(root.cpuLoad).toFixed(0) + "%"
+            color: "#89b4fa"  // Blue
+            font.pixelSize: 14
+            font.bold: true
+          }
+        }
+
+        // Separator
+        Rectangle {
+          implicitWidth: 2
+          implicitHeight: parent.parent.height * 0.6
+          color: "#6c7086"
+        }
+
+        // Temperature widget
+        RowLayout {
+          spacing: 5
+
+          Text {
+            text: ""
+            color: {
+              let temp = parseFloat(root.tempValue);
+              if (temp > 80) return "#f38ba8";  // Red (hot)
+              if (temp > 60) return "#fab387";  // Peach (warm)
+              return "#94e2d5";  // Teal (cool)
+            }
+            font.pixelSize: 14
+            font.family: "monospace"
+            font.bold: true
+          }
+          
+          Text {
+            text: parseFloat(root.tempValue).toFixed(0) + "°C"
+            color: {
+              let temp = parseFloat(root.tempValue);
+              if (temp > 80) return "#f38ba8";  // Red
+              if (temp > 60) return "#fab387";  // Peach
+              return "#94e2d5";  // Teal
+            }
+            font.pixelSize: 14
+            font.bold: true
+          }
+        }
+
+        // Separator
+        Rectangle {
+          implicitWidth: 2
+          implicitHeight: parent.parent.height * 0.6
+          color: "#6c7086"
+        }
+
+        // Battery widget
+        RowLayout {
+          spacing: 5
+
+          Text {
+            text: root.batteryIcon
+            color: {
+              let level = parseInt(root.batteryPercent);
+              if (level > 60) return "#a6e3a1";  // Green
+              if (level > 30) return "#f9e2af";  // Yellow
+              return "#f38ba8";  // Red
+            }
+            font.pixelSize: 14
+            font.family: "monospace"
+            font.bold: true
+          }
+          
+          Text {
+            text: root.batteryPercent + "%"
+            color: {
+              let level = parseInt(root.batteryPercent);
+              if (level > 60) return "#a6e3a1";  // Green
+              if (level > 30) return "#f9e2af";  // Yellow
+              return "#f38ba8";  // Red
+            }
+            font.pixelSize: 14
+            font.bold: true
+          }
+        }
+      }
     }
 
     // Container for the 'dynamic island' dropdown widgets
@@ -216,6 +382,55 @@ PanelWindow {
       WallpaperSelectorWidget {}
 
       AppSelectorWidget {}
+
+      PowerMenuWidget {}
+      
+      // Dashboard grid container
+      ColumnLayout {
+        id: dashboardGrid
+        visible: bar.state === "dashboard"
+        
+        anchors {
+          top: parent.top
+          topMargin: bar.barHeight + 10
+          horizontalCenter: parent.horizontalCenter
+        }
+        
+        width: parent.width - 40
+        spacing: 15
+        
+        // Tailscale widget (full width, top row)
+        TailscaleWidget {
+          id: tailscaleWidget
+          Layout.fillWidth: true
+          Layout.preferredHeight: implicitHeight
+        }
+        
+        // Bottom row - three columns
+        RowLayout {
+          Layout.fillWidth: true
+          Layout.bottomMargin: 20
+          spacing: 10
+          
+          SystemStatsWidget {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: implicitHeight
+          }
+          
+          MiscStatsWidget {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: implicitHeight
+          }
+          
+          NetworkStatsWidget {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: implicitHeight
+          }
+        }
+      }
     }
   }
 
@@ -255,6 +470,18 @@ PanelWindow {
     }
   }
 
+  // Switch the 'dynamic island' to the power menu
+  GlobalShortcut {
+    name: "togglePowerMenu"
+    onPressed: {
+      if (bar.state !== "power_menu") {
+        bar.state = "power_menu"
+      } else {
+        bar.state = "normal"
+      }
+    }
+  }
+
   MultiEffect {
     source: main
     anchors.fill: main
@@ -266,6 +493,110 @@ PanelWindow {
       anchors.top: true
       implicitWidth: 0
       implicitHeight: bar.barHeight
+    }
+  }
+
+  // Temperature updater
+  Process {
+    id: tempProc
+    command: ["bash", "/storage/git/dotfiles/scripts/polls/temppoll.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: root.tempValue = this.text.trim()
+    }
+  }
+
+  Timer {
+    interval: 2000
+    running: true
+    repeat: true
+    onTriggered: tempProc.running = true
+  }
+
+  // Battery percent updater
+  Process {
+    id: batteryPercentProc
+    command: ["bash", "/storage/git/dotfiles/scripts/polls/batterypoll1.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: root.batteryPercent = this.text.trim()
+    }
+  }
+
+  Timer {
+    interval: 5000
+    running: true
+    repeat: true
+    onTriggered: batteryPercentProc.running = true
+  }
+
+  // Battery icon updater
+  Process {
+    id: batteryIconProc
+    command: ["bash", "/storage/git/dotfiles/scripts/polls/batterypoll2.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: root.batteryIcon = this.text.trim()
+    }
+  }
+
+  Timer {
+    interval: 5000
+    running: true
+    repeat: true
+    onTriggered: batteryIconProc.running = true
+  }
+
+  // CPU load updater
+  Process {
+    id: cpuProc
+    command: ["bash", "/storage/git/dotfiles/scripts/polls/cpupoll.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: root.cpuLoad = this.text.trim()
+    }
+  }
+
+  Timer {
+    interval: 2000
+    running: true
+    repeat: true
+    onTriggered: cpuProc.running = true
+  }
+
+  // Volume listener
+  Process {
+    id: volumeProc
+    command: ["bash", "-c", "/storage/git/dotfiles/scripts/listeners/volumelisten.sh"]
+    running: true
+
+    stdout: SplitParser {
+      onRead: data => {
+        let lines = data.split('\n').filter(l => l.trim())
+        if (lines.length > 0) {
+          root.volumePercent = lines[lines.length - 1].trim()
+        }
+      }
+    }
+  }
+
+  // Mute listener
+  Process {
+    id: muteProc
+    command: ["bash", "-c", "/storage/git/dotfiles/scripts/listeners/mutedlisten.sh"]
+    running: true
+
+    stdout: SplitParser {
+      onRead: data => {
+        let lines = data.split('\n').filter(l => l.trim())
+        if (lines.length > 0) {
+          root.volumeIcon = lines[lines.length - 1].trim() || "󰕾"
+        }
+      }
     }
   }
 }

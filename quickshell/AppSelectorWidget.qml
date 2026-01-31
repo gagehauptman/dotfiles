@@ -10,13 +10,27 @@ import Quickshell.Wayland
 import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
-// 1. Import Models for DelegateModel
 import QtQml.Models 
 
 Item {
     id: appSelectorWidget
     visible: bar.state === "app_selector"
-    anchors.fill: parent
+    
+    anchors {
+        top: parent.top
+        topMargin: bar.dropdownWidgetPadding
+        horizontalCenter: parent.horizontalCenter
+    }
+    
+    width: parent.width - (bar.dropdownWidgetPadding * 2)
+    height: parent.height - (bar.dropdownWidgetPadding * 2)  // Fill available space like power menu
+
+    // Layout constants
+    readonly property int searchBarHeight: 32
+    readonly property int separatorY: searchBarHeight + 8  // 8px below search bar
+    readonly property int gridY: separatorY + 2 + 8  // 8px below separator
+    readonly property int gridHeight: bar.appSelectorRowsPerPage * bar.appSelectorCellHeightConst
+    readonly property int pageIndicatorHeight: 20
 
     onVisibleChanged: {
         currentPage = 0;
@@ -24,11 +38,9 @@ Item {
         resultsGrid.contentY = 0; 
         searchBox.text = "";
         searchBox.forceActiveFocus();
-        // Ensure filter resets when opening
         filteredAppModel.search("");
     }
 
-    // 2. Wrap the source model in a DelegateModel for filtering
     DelegateModel {
         id: filteredAppModel
         model: DesktopEntries.applications
@@ -46,10 +58,8 @@ Item {
         function search(text) {
             var lowerText = text.toLowerCase();
             
-            // Iterate over all items in the base model
             for (var i = 0; i < items.count; ++i) {
                 var item = items.get(i);
-                
                 var data = item.model.modelData
                 var appName = data.name ? data.name : "";
                 
@@ -64,45 +74,66 @@ Item {
         }
     }
 
-    // --- Pagination Logic ---
     property int currentPage: 0
     property int columns: 3
     property int itemsPerPage: columns * bar.appSelectorRowsPerPage
-    // 3. Update appModel to use the filtered model
     property var appModel: filteredAppModel 
-    // Calculate total pages based on the FILTERED count
     property int totalPages: Math.ceil(appModel.count / itemsPerPage)
 
     onTotalPagesChanged: if (currentPage >= totalPages) currentPage = 0
 
-    // --- Search Bar ---
+    // Background
     Rectangle {
-        id: searchBarContainer
-        y: 0
-        width: parent.width
-        height: bar.barHeight
-        color: "transparent"
+        anchors.fill: parent
+        color: "#181825"
+        radius: 15
+    }
+
+    // Search bar
+    Rectangle {
+        id: searchBar
+        x: 15
+        y: 15
+        width: parent.width - 30
+        height: appSelectorWidget.searchBarHeight
+        color: "#313244"
+        radius: 8
+
+        Text {
+            id: searchIcon
+            x: 12
+            anchors.verticalCenter: parent.verticalCenter
+            text: "󰍉"
+            color: "#89b4fa"
+            font.pixelSize: 14
+            font.family: "monospace"
+        }
+
+        Text {
+            x: searchIcon.x + searchIcon.width + 8
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Search applications..."
+            color: "#6c7086"
+            font.pixelSize: 14
+            font.family: "monospace"
+            visible: !searchBox.text && !searchBox.activeFocus
+        }
 
         TextInput {
             id: searchBox
-            anchors.fill: parent
-            anchors.leftMargin: 20
-            anchors.rightMargin: 20
-            verticalAlignment: TextInput.AlignVCenter
+            x: searchIcon.x + searchIcon.width + 8
+            width: parent.width - x - 12
+            anchors.verticalCenter: parent.verticalCenter
             
-            color: "white"
+            color: "#cdd6f4"
             font.pixelSize: 14
+            font.family: "monospace"
             clip: true
             
-            // 4. Trigger filter on text change
-            onTextChanged: filteredAppModel.search(text)
-
-            Text {
-                text: "Search..."
-                color: "#888"
-                visible: !searchBox.text && !searchBox.activeFocus
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+            onTextChanged: {
+                filteredAppModel.search(text)
+                resultsGrid.currentIndex = 0
+                resultsGrid.contentY = 0
             }
 
             focus: true 
@@ -125,15 +156,9 @@ Item {
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (resultsGrid.currentItem) {
-                        // FIX: Use 'visibleItems.get()' instead of 'appModel.items.get()'
-                        // 'visibleItems' contains only the currently filtered results matching the view.
                         var item = visibleItems.get(resultsGrid.currentIndex);
-                        
-                        // Handle the specific data structure (DelegateModel wraps data)
                         var app = item.model.modelData || item.model;
-
                         if (app.execute) app.execute();
-                        
                         bar.state = "normal";
                     }
                     event.accepted = true;
@@ -142,16 +167,27 @@ Item {
         }
     }
 
+    // Separator
+    Rectangle {
+        x: 15
+        y: 15 + appSelectorWidget.separatorY
+        width: parent.width - 30
+        height: 2
+        color: "#45475a"
+    }
+
+    // Grid
     GridView {
         id: resultsGrid
-        width: parent.width
-        height: bar.appSelectorRowsPerPage * bar.appSelectorCellHeightConst
-        y: bar.barHeight + bar.appSelectorOffsetFromBar
+        x: 15
+        y: 15 + appSelectorWidget.gridY
+        width: parent.width - 30
+        height: appSelectorWidget.gridHeight
 
-        cellWidth: width / columns 
+        cellWidth: width / appSelectorWidget.columns
         cellHeight: bar.appSelectorCellHeightConst
 
-        model: appModel // Uses filteredAppModel
+        model: appSelectorWidget.appModel
         
         interactive: false 
         clip: true
@@ -162,37 +198,39 @@ Item {
         }
 
         onCurrentIndexChanged: {
-            if (itemsPerPage > 0) {
-                var newPage = Math.floor(currentIndex / itemsPerPage)
-                if (newPage !== currentPage) {
+            if (appSelectorWidget.itemsPerPage > 0) {
+                var newPage = Math.floor(currentIndex / appSelectorWidget.itemsPerPage)
+                if (newPage !== appSelectorWidget.currentPage) {
                     appSelectorWidget.currentPage = newPage
                     appSelectorWidget.updateGridPosition()
                 }
             }
         }
 
-        highlight: Rectangle { color: "lightsteelblue"; radius: bar.dropdownCornerRadius; clip: true }
+        highlight: Rectangle { 
+            color: "#313244"
+            radius: 10
+            border.width: 2
+            border.color: "#89b4fa"
+        }
+        highlightFollowsCurrentItem: true
 
         delegate: Item {
             width: resultsGrid.cellWidth
             height: resultsGrid.cellHeight
 
-            // 6. Data Access in Delegate
-            // In DelegateModel, roles are exposed directly. 
-            // We create a helper property to access the data object cleanly
             property var appData: model.modelData || model 
+            property bool isSelected: GridView.isCurrentItem
 
             Column {
                 anchors.centerIn: parent
-                spacing: 8
+                spacing: 6
                 
                 Image {
-                    id: img
-                    width: parent.width / 6
-                    height: width
+                    width: 32
+                    height: 32
                     anchors.horizontalCenter: parent.horizontalCenter
                     source: {
-                        // Access via appData or direct roles (name, icon)
                         var icon = appData.icon || "";
                         var name = appData.name || "";
 
@@ -214,12 +252,14 @@ Item {
                 }
 
                 Text {
-                    text: appData.name // Access via helper or direct 'name' role
-                    color: "white"
-                    font.pointSize: 10
+                    text: appData.name
+                    color: "#cdd6f4"
+                    font.pixelSize: 11
+                    font.bold: isSelected
+                    font.family: "monospace"
                     anchors.horizontalCenter: parent.horizontalCenter
                     elide: Text.ElideRight
-                    width: parent.parent.width - 10
+                    width: resultsGrid.cellWidth - 16
                     horizontalAlignment: Text.AlignHCenter
                 }
             }
@@ -244,8 +284,20 @@ Item {
         }
     }
 
-    // --- Navigation Functions ---
-    // (Unchanged logic, but now works on filtered count)
+    // Page indicator
+    Text {
+        anchors {
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+            bottomMargin: 10
+        }
+        text: (appSelectorWidget.currentPage + 1) + " / " + appSelectorWidget.totalPages
+        color: "#6c7086"
+        font.pixelSize: 11
+        font.family: "monospace"
+        visible: appSelectorWidget.totalPages > 1
+    }
+
     function nextPage() {
         var nextIndex = (currentPage + 1) * itemsPerPage;
         if (nextIndex < appModel.count) {
@@ -267,17 +319,5 @@ Item {
     function updateGridPosition() {
         var startRow = Math.floor((currentPage * itemsPerPage) / columns);
         resultsGrid.contentY = startRow * resultsGrid.cellHeight - resultsGrid.topMargin;
-    }
-
-    Text {
-        anchors {
-            bottom: parent.bottom
-            horizontalCenter: parent.horizontalCenter
-            bottomMargin: 5
-        }
-        text: (currentPage + 1) + " / " + totalPages
-        color: "white"
-        font.pixelSize: 12
-        visible: totalPages > 1
     }
 }

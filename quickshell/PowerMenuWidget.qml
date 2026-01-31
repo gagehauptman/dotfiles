@@ -12,12 +12,12 @@ Item {
 
     anchors {
         top: parent.top
-        topMargin: 10
+        topMargin: bar.dropdownWidgetPadding
         horizontalCenter: parent.horizontalCenter
     }
 
-    width: parent.width - 40
-    height: parent.height - 20
+    width: parent.width - (bar.dropdownWidgetPadding * 2)
+    height: parent.height - (bar.dropdownWidgetPadding * 2)
 
     property int selectedIndex: 0
 

@@ -139,6 +139,7 @@ PanelWindow {
       property real dropdownHeight: 10 * parent.height / 100
       property real dropdownFilletRadius: 10
       property real dropdownCornerRadius: 25
+      property int dropdownWidgetPadding: 20  // spacing between widget and dropdown edge
 
       width: parent.width
       height: barHeight + dropdownHeight
@@ -244,7 +245,8 @@ PanelWindow {
           PropertyChanges {
             target: bar;
             dropdownWidth: 30 * parent.width / 100;
-            dropdownHeight: bar.appSelectorCellHeightConst * bar.appSelectorRowsPerPage + bar.appSelectorOffsetFromBar;
+            // Widget needs grid + 100 internal, plus padding on all sides
+            dropdownHeight: bar.appSelectorCellHeightConst * bar.appSelectorRowsPerPage + 100 + (bar.dropdownWidgetPadding * 2);
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20;
           }

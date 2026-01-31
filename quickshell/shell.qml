@@ -22,6 +22,10 @@ PanelWindow {
   property string volumePercent: "0"
   property string volumeIcon: "󰕾"
   
+  // Low battery warning state
+  property int lowBatteryThreshold: 15
+  property bool lowBatteryWarningShown: false
+  
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
   WlrLayershell.keyboardFocus: (bar.state === "wallpaper_selector" || bar.state === "app_selector" || bar.state === "power_menu")
@@ -39,6 +43,88 @@ PanelWindow {
   Item {
     id: main
     anchors.fill: parent
+
+    // Low battery popup warning
+    Rectangle {
+      id: lowBatteryPopup
+      visible: false
+      opacity: 0
+      
+      width: 400
+      height: 120
+      radius: 20
+      color: "#1e1e2e"
+      border.color: "#f38ba8"
+      border.width: 2
+      
+      anchors {
+        horizontalCenter: parent.horizontalCenter
+        top: parent.top
+        topMargin: 80
+      }
+      
+      layer.enabled: true
+      layer.samples: 4
+      
+      ColumnLayout {
+        anchors.centerIn: parent
+        spacing: 10
+        
+        Text {
+          text: ""
+          color: "#f38ba8"
+          font.pixelSize: 36
+          font.family: "monospace"
+          Layout.alignment: Qt.AlignHCenter
+        }
+        
+        Text {
+          text: "Low Battery Warning"
+          color: "#cdd6f4"
+          font.pixelSize: 16
+          font.bold: true
+          Layout.alignment: Qt.AlignHCenter
+        }
+        
+        Text {
+          text: "Battery at " + root.batteryPercent + "% — Please plug in charger"
+          color: "#a6adc8"
+          font.pixelSize: 13
+          Layout.alignment: Qt.AlignHCenter
+        }
+      }
+      
+      Behavior on opacity {
+        NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
+      }
+      
+      Timer {
+        id: lowBatteryPopupTimer
+        interval: 5000
+        running: false
+        repeat: false
+        onTriggered: {
+          lowBatteryPopup.opacity = 0
+          lowBatteryPopupHideTimer.start()
+        }
+      }
+      
+      Timer {
+        id: lowBatteryPopupHideTimer
+        interval: 300
+        running: false
+        repeat: false
+        onTriggered: {
+          lowBatteryPopup.visible = false
+        }
+      }
+      
+      function show() {
+        lowBatteryPopup.visible = true
+        lowBatteryPopup.opacity = 1
+        lowBatteryPopupTimer.restart()
+      }
+    }
 
     Shape {
       id: bar
@@ -521,7 +607,24 @@ PanelWindow {
     running: true
 
     stdout: StdioCollector {
-      onStreamFinished: root.batteryPercent = this.text.trim()
+      onStreamFinished: {
+        let newPercent = this.text.trim()
+        let prevPercent = parseInt(root.batteryPercent)
+        root.batteryPercent = newPercent
+        
+        let currentPercent = parseInt(newPercent)
+        
+        // Reset warning flag if battery goes back above threshold + 5%
+        if (currentPercent > root.lowBatteryThreshold + 5) {
+          root.lowBatteryWarningShown = false
+        }
+        
+        // Trigger warning if below threshold and not shown yet
+        if (currentPercent <= root.lowBatteryThreshold && !root.lowBatteryWarningShown) {
+          root.lowBatteryWarningShown = true
+          lowBatteryPopup.show()
+        }
+      }
     }
   }
 

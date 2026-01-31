@@ -1,0 +1,7 @@
+[Unit]
+Description=Update GOES Earth Live Wallpaper
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/scripts/wallpaper/goes_update.sh
+Environment=WAYLAND_DISPLAY=wayland-1

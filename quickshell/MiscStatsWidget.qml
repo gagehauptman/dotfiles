@@ -54,9 +54,9 @@ Item {
         top: parent.top
         left: parent.left
         right: parent.right
-        margins: 18
+        margins: 15
       }
-      spacing: 10
+      spacing: 8
       
       // Title
       Text {

@@ -55,9 +55,9 @@ Item {
     ColumnLayout {
       anchors {
         fill: parent
-        margins: 18
+        margins: 15
       }
-      spacing: 10
+      spacing: 8
       
       // Title
       Text {

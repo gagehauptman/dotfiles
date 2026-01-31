@@ -224,7 +224,7 @@ PanelWindow {
           PropertyChanges {
             target: bar;
             dropdownWidth: 40 * parent.width / 100;
-            dropdownHeight: 33 * parent.height / 100;
+            dropdownHeight: dashboardGrid.implicitHeight;
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20
           }
@@ -478,25 +478,61 @@ PanelWindow {
         
         anchors {
           top: parent.top
-          topMargin: bar.barHeight + 10
-          horizontalCenter: parent.horizontalCenter
+          topMargin: bar.barHeight
+          left: parent.left
+          right: parent.right
+          leftMargin: 20
+          rightMargin: 20
         }
         
-        width: parent.width - 40
-        spacing: 15
+        property real topMargin: 5
+        property real bottomMargin: 10
+        property real widgetHeight: 190
         
-        // Tailscale widget (full width, top row)
-        TailscaleWidget {
-          id: tailscaleWidget
+        // Calculate implicit height from contents
+        implicitHeight: topMargin + widgetHeight + spacing + widgetHeight + bottomMargin
+        
+        spacing: 10
+        
+        Item {
           Layout.fillWidth: true
-          Layout.preferredHeight: implicitHeight
+          Layout.preferredHeight: dashboardGrid.topMargin
+        }
+        
+        // Top row - Tailscale (2 units) + Quote (1 unit)
+        RowLayout {
+          id: topRowLayout
+          Layout.fillWidth: true
+          spacing: 10
+          
+          implicitHeight: dashboardGrid.widgetHeight
+          
+          TailscaleWidget {
+            id: tailscaleWidget
+            Layout.fillWidth: true
+            Layout.preferredWidth: 2
+            Layout.preferredHeight: dashboardGrid.widgetHeight
+            Layout.maximumHeight: dashboardGrid.widgetHeight
+            Layout.minimumHeight: dashboardGrid.widgetHeight
+          }
+          
+          QuoteWidget {
+            id: quoteWidget
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: dashboardGrid.widgetHeight
+            Layout.maximumHeight: dashboardGrid.widgetHeight
+            Layout.minimumHeight: dashboardGrid.widgetHeight
+          }
         }
         
         // Bottom row - three columns
         RowLayout {
+          id: bottomRowLayout
           Layout.fillWidth: true
-          Layout.bottomMargin: 20
           spacing: 10
+          
+          implicitHeight: dashboardGrid.widgetHeight
           
           SystemStatsWidget {
             Layout.fillWidth: true
@@ -515,6 +551,11 @@ PanelWindow {
             Layout.preferredWidth: 1
             Layout.preferredHeight: implicitHeight
           }
+        }
+        
+        Item {
+          Layout.fillWidth: true
+          Layout.preferredHeight: dashboardGrid.bottomMargin
         }
       }
     }

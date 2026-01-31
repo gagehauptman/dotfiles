@@ -22,6 +22,33 @@ PanelWindow {
   property string volumePercent: "0"
   property string volumeIcon: "󰕾"
   
+  // PipeWire volume tracking
+  PwObjectTracker {
+    objects: [ Pipewire.defaultAudioSink ]
+  }
+  
+  Connections {
+    target: Pipewire.defaultAudioSink?.audio
+    
+    function onVolumeChanged() {
+      let volume = Math.round((Pipewire.defaultAudioSink?.audio.volume ?? 0) * 100)
+      root.volumePercent = volume.toString()
+    }
+    
+    function onMutedChanged() {
+      root.volumeIcon = Pipewire.defaultAudioSink?.audio.muted ? "󰖁" : "󰕾"
+    }
+  }
+  
+  Component.onCompleted: {
+    // Initialize volume on startup
+    if (Pipewire.defaultAudioSink?.audio) {
+      let volume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100)
+      root.volumePercent = volume.toString()
+      root.volumeIcon = Pipewire.defaultAudioSink.audio.muted ? "󰖁" : "󰕾"
+    }
+  }
+  
   // Low battery warning state
   property int lowBatteryThreshold: 15
   property bool lowBatteryWarningShown: false
@@ -714,35 +741,5 @@ PanelWindow {
     onTriggered: cpuProc.running = true
   }
 
-  // Volume listener
-  Process {
-    id: volumeProc
-    command: ["bash", "-c", "/storage/git/dotfiles/scripts/listeners/volumelisten.sh"]
-    running: true
-
-    stdout: SplitParser {
-      onRead: data => {
-        let lines = data.split('\n').filter(l => l.trim())
-        if (lines.length > 0) {
-          root.volumePercent = lines[lines.length - 1].trim()
-        }
-      }
-    }
-  }
-
-  // Mute listener
-  Process {
-    id: muteProc
-    command: ["bash", "-c", "/storage/git/dotfiles/scripts/listeners/mutedlisten.sh"]
-    running: true
-
-    stdout: SplitParser {
-      onRead: data => {
-        let lines = data.split('\n').filter(l => l.trim())
-        if (lines.length > 0) {
-          root.volumeIcon = lines[lines.length - 1].trim() || "󰕾"
-        }
-      }
-    }
-  }
+  // Volume/mute now handled by PipeWire native tracking above
 }

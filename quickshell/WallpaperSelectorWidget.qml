@@ -23,7 +23,7 @@ Item {
 
     FolderListModel {
         id: wallpaperModel
-        folder: "file:///home/v1k/.config/wallpapers"
+        folder: "file://" + Quickshell.env("HOME") + "/.config/wallpapers"
         nameFilters: ["*.jpg", "*.png", "*.jpeg", "*.webp"]
         showDirs: false
     }
@@ -32,7 +32,7 @@ Item {
 
     FileView {
         id: savedWallpaperReader
-        path: "/home/v1k/.config/scripts/wallpaper/wpsave.txt" // Adjust path if needed
+        path: Quickshell.env("HOME") + "/.config/scripts/wallpaper/wpsave.txt"
     }
 
     onVisibleChanged: {

@@ -12,7 +12,6 @@ dotfiles/
 ├── scripts/        # Various utility scripts
 ├── systemd/user/   # Systemd user services/timers
 ├── wallpapers/     # Wallpaper collection
-└── eww/            # Eww widgets (legacy)
 ```
 
 ## Dependencies

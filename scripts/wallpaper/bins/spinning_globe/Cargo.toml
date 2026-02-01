@@ -1,0 +1,13 @@
+[package]
+name = "layer_shell_bevy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+smithay-client-toolkit = { version = "0.19", default-features = false }
+wayland-client = "0.31"
+pollster = "0.4"
+bytemuck = { version = "1", features = ["derive"] }
+glam = "0.29"
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }

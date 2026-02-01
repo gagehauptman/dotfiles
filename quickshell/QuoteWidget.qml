@@ -52,7 +52,7 @@ Item {
       
       // Title
       Text {
-        text: "  Quote of the Day"
+        text: "󰭺  Quote of the Day"
         color: "#cdd6f4"
         font.pixelSize: 16
         font.bold: true

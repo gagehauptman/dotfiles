@@ -60,7 +60,7 @@ Item {
       
       // Title
       Text {
-        text: "  System Info"
+        text: "󰌢  System Info"
         color: "#cdd6f4"
         font.pixelSize: 14
         font.bold: true

@@ -61,7 +61,7 @@ Item {
       
       // Title
       Text {
-        text: "  System Resources"
+        text: "󰻠  System Resources"
         color: "#cdd6f4"
         font.pixelSize: 14
         font.bold: true

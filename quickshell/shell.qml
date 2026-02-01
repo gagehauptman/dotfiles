@@ -272,8 +272,7 @@ PanelWindow {
           PropertyChanges {
             target: bar;
             dropdownWidth: 30 * parent.width / 100;
-            // Widget needs grid + 100 internal, plus padding on all sides
-            dropdownHeight: bar.appSelectorCellHeightConst * bar.appSelectorRowsPerPage + 100 + (bar.dropdownWidgetPadding * 2);
+            dropdownHeight: appSelectorWidget.totalHeight + (bar.dropdownWidgetPadding * 2) - bar.barHeight;
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20;
           }
@@ -419,7 +418,7 @@ PanelWindow {
           spacing: 5
 
           Text {
-            text: ""
+            text: "󰔏"
             color: {
               let temp = parseFloat(root.tempValue);
               if (temp > 80) return "#f38ba8";  // Red (hot)
@@ -496,7 +495,9 @@ PanelWindow {
 
       WallpaperSelectorWidget {}
 
-      AppSelectorWidget {}
+      AppSelectorWidget {
+          id: appSelectorWidget
+      }
 
       PowerMenuWidget {}
       

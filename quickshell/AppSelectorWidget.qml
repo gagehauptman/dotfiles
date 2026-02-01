@@ -23,14 +23,15 @@ Item {
     }
     
     width: parent.width - (bar.dropdownWidgetPadding * 2)
-    height: parent.height - (bar.dropdownWidgetPadding * 2)  // Fill available space like power menu
+    height: totalHeight
 
     // Layout constants
+    readonly property int edgePadding: 15
     readonly property int searchBarHeight: 32
-    readonly property int separatorY: searchBarHeight + 8  // 8px below search bar
+    readonly property int separatorY: edgePadding + searchBarHeight + 8  // 8px below search bar
     readonly property int gridY: separatorY + 2 + 8  // 8px below separator
     readonly property int gridHeight: bar.appSelectorRowsPerPage * bar.appSelectorCellHeightConst
-    readonly property int pageIndicatorHeight: 20
+    readonly property int totalHeight: gridHeight + gridY + edgePadding*2
 
     onVisibleChanged: {
         currentPage = 0;
@@ -169,9 +170,9 @@ Item {
 
     // Separator
     Rectangle {
-        x: 15
-        y: 15 + appSelectorWidget.separatorY
-        width: parent.width - 30
+        x: appSelectorWidget.edgePadding
+        y: appSelectorWidget.separatorY
+        width: parent.width - (appSelectorWidget.edgePadding*2)
         height: 2
         color: "#45475a"
     }
@@ -179,9 +180,9 @@ Item {
     // Grid
     GridView {
         id: resultsGrid
-        x: 15
-        y: 15 + appSelectorWidget.gridY
-        width: parent.width - 30
+        x: appSelectorWidget.edgePadding
+        y: appSelectorWidget.gridY
+        width: parent.width - (appSelectorWidget.edgePadding*2)
         height: appSelectorWidget.gridHeight
 
         cellWidth: width / appSelectorWidget.columns
@@ -289,7 +290,7 @@ Item {
         anchors {
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
-            bottomMargin: 10
+            bottomMargin: (appSelectorWidget.edgePadding/2)
         }
         text: (appSelectorWidget.currentPage + 1) + " / " + appSelectorWidget.totalPages
         color: "#6c7086"

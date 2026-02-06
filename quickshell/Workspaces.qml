@@ -2,33 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Io
 
 Item {
   id: workspacesWidget
   implicitWidth: 300
   implicitHeight: parent.height
 
-  // Read active monitor from the file Hyprland mon socket maintains
-  FileView {
-    id: activeMonitorFile
-    path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/" + Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") + "/active_monitor"
-  }
-
-  property int activeMonitor: {
-    let content = activeMonitorFile.text();
-    return parseInt(content.trim()) || 0;
-  }
-
-  // Listen to Hyprland workspace changes
-  Connections {
-    target: Hyprland.focusedMonitor
-    
-    function onActiveWorkspaceChanged() {
-      // Trigger a reload of the active monitor file
-      activeMonitorFile.reload();
-    }
-  }
+  // Get active monitor ID directly from Hyprland (0-indexed)
+  property int activeMonitor: Hyprland.focusedMonitor?.id ?? 0
 
   RowLayout {
     anchors.centerIn: parent
@@ -72,13 +53,5 @@ Item {
         }
       }
     }
-  }
-  
-  // Periodically reload the active monitor file
-  Timer {
-    interval: 100
-    running: true
-    repeat: true
-    onTriggered: activeMonitorFile.reload()
   }
 }

@@ -39,15 +39,35 @@ Item {
           return false
         }
         
+        // Check if workspace has urgent windows
+        property bool isUrgent: {
+          let wsList = workspacesWidget.workspacesList
+          for (let i = 0; i < wsList.length; i++) {
+            if (wsList[i].id === workspaceId) {
+              return wsList[i].urgent
+            }
+          }
+          return false
+        }
+        
         implicitWidth: isActive ? 22 : 13
         implicitHeight: 13
         radius: 6.5
         
         color: {
+          if (isUrgent) return "#f38ba8"                  // Red - urgent
           if (isActive && hasWindows) return "#89b4fa"   // Blue - active with windows
           if (isActive) return "#74c7ec"                  // Sapphire - active but empty
           if (hasWindows) return "#b4befe"               // Lavender - has windows
           return "#45475a"                                // Surface1 - empty
+        }
+        
+        // Pulse animation for urgent workspaces
+        SequentialAnimation on opacity {
+          running: isUrgent
+          loops: Animation.Infinite
+          NumberAnimation { to: 0.4; duration: 400; easing.type: Easing.InOutQuad }
+          NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
         }
         
         opacity: {

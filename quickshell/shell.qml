@@ -58,7 +58,9 @@ PanelWindow {
   WlrLayershell.keyboardFocus: (bar.state === "wallpaper_selector" || bar.state === "app_selector" || bar.state === "power_menu")
         ? WlrKeyboardFocus.Exclusive 
         : WlrKeyboardFocus.None
-  mask: Region {}
+  mask: Region {
+    item: bar
+  }
 
   anchors {
     top: true
@@ -359,23 +361,39 @@ PanelWindow {
         }
         spacing: 8
 
-        // Volume widget
-        RowLayout {
-          spacing: 5
+        // Volume widget (click to mute)
+        Item {
+          implicitWidth: volumeRow.implicitWidth
+          implicitHeight: volumeRow.implicitHeight
+          
+          RowLayout {
+            id: volumeRow
+            spacing: 5
 
-          Text {
-            text: root.volumeIcon
-            color: "#cba6f7"  // Mauve
-            font.pixelSize: 14
-            font.family: "monospace"
-            font.bold: true
+            Text {
+              text: root.volumeIcon
+              color: "#cba6f7"  // Mauve
+              font.pixelSize: 14
+              font.family: "monospace"
+              font.bold: true
+            }
+            
+            Text {
+              text: root.volumePercent + "%"
+              color: "#cba6f7"  // Mauve
+              font.pixelSize: 14
+              font.bold: true
+            }
           }
           
-          Text {
-            text: root.volumePercent + "%"
-            color: "#cba6f7"  // Mauve
-            font.pixelSize: 14
-            font.bold: true
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              if (Pipewire.defaultAudioSink?.audio) {
+                Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted
+              }
+            }
           }
         }
 

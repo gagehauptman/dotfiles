@@ -41,6 +41,18 @@ Item {
         musicWidget.hasMusic = false
       }
     }
+    
+    onExited: (code, status) => {
+      // Restart after delay when playerctl exits
+      musicRestartTimer.start()
+    }
+  }
+  
+  Timer {
+    id: musicRestartTimer
+    interval: 3000
+    repeat: false
+    onTriggered: musicProc.running = true
   }
   
   // Status checker - detects when Spotify closes

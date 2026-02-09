@@ -60,15 +60,11 @@ fn main() {
         configured: false,
         start_time: Instant::now(),
         running: true,
+        frame_pending: false,
     };
 
     while state.running {
         event_queue.blocking_dispatch(&mut state).unwrap();
-        
-        if state.configured && state.width > 0 && state.height > 0 {
-            state.draw(&qh);
-            std::thread::sleep(std::time::Duration::from_millis(33));
-        }
     }
 }
 
@@ -83,6 +79,7 @@ struct AppState {
     configured: bool,
     start_time: Instant,
     running: bool,
+    frame_pending: bool,
 }
 
 // Catppuccin Mocha colors
@@ -99,7 +96,7 @@ const TEAL_G: u8 = 226;
 const TEAL_B: u8 = 213;
 
 impl AppState {
-    fn draw(&mut self, _qh: &QueueHandle<Self>) {
+    fn draw(&mut self, qh: &QueueHandle<Self>) {
         let surface = self.layer_surface.as_ref().unwrap().wl_surface();
         let width = self.width;
         let height = self.height;
@@ -187,6 +184,13 @@ impl AppState {
 
         surface.attach(Some(buffer.wl_buffer()), 0, 0);
         surface.damage_buffer(0, 0, width as i32, height as i32);
+        
+        // Request next frame callback for vsync
+        if !self.frame_pending {
+            surface.frame(qh, surface.clone());
+            self.frame_pending = true;
+        }
+        
         surface.commit();
     }
 }
@@ -309,7 +313,12 @@ fn draw_glow_pixel(canvas: &mut [u8], width: u32, height: u32, x: i32, y: i32, r
 impl CompositorHandler for AppState {
     fn scale_factor_changed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: i32) {}
     fn transform_changed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: wl_output::Transform) {}
-    fn frame(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {}
+    fn frame(&mut self, _: &Connection, qh: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {
+        self.frame_pending = false;
+        if self.configured && self.width > 0 && self.height > 0 {
+            self.draw(qh);
+        }
+    }
     fn surface_enter(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: &wl_output::WlOutput) {}
     fn surface_leave(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: &wl_output::WlOutput) {}
 }

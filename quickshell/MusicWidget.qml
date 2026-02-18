@@ -23,14 +23,20 @@ Item {
   // Music listener
   Process {
     id: musicProc
-    command: ["playerctl", "--follow", "metadata", "--player=spotify", "--format", "{{xesam:artist}} // {{xesam:title}}"]
+    command: ["playerctl", "--follow", "metadata", "--player=spotifyd,%any", "--format", "{{playerName}}|||{{xesam:artist}} // {{xesam:title}}"]
     running: true
     
     stdout: SplitParser {
       onRead: data => {
         let lines = data.split('\n').filter(l => l.trim())
         if (lines.length > 0) {
-          musicWidget.musicText = lines[lines.length - 1].trim()
+          let parts = lines[lines.length - 1].trim().split("|||")
+          if (parts.length >= 2) {
+            musicWidget.musicPlayer = parts[0].trim().toLowerCase()
+            musicWidget.musicText = parts[1].trim()
+          } else {
+            musicWidget.musicText = lines[lines.length - 1].trim()
+          }
           musicWidget.hasMusic = true
         }
       }
@@ -58,7 +64,7 @@ Item {
   // Status checker - detects when Spotify closes
   Process {
     id: statusProc
-    command: ["playerctl", "status", "--player=spotify"]
+    command: ["playerctl", "status", "--player=spotifyd,%any"]
     
     stdout: SplitParser {
       onRead: data => {
@@ -136,6 +142,7 @@ Item {
   }
   
   property string musicText: ""
+  property string musicPlayer: ""
   property bool hasMusic: false
   
   property string launchName: "Loading launch data..."
@@ -179,7 +186,8 @@ Item {
       anchors.centerIn: parent
       text: {
         if (musicWidget.hasMusic && musicWidget.musicText) {
-          return "♫ " + musicWidget.musicText
+          let icon = (musicWidget.musicPlayer.indexOf("spotify") !== -1) ? " " : "♫ "
+          return icon + musicWidget.musicText
         } else if (musicWidget.launchName) {
           let display = "🚀 " + musicWidget.countdownText
           let name = musicWidget.launchName

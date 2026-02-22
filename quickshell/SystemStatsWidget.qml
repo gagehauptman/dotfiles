@@ -2,12 +2,13 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import "templates"
 
-Item {
+DataWidget {
   id: systemWidget
-  
-  visible: bar.state === "dashboard"
-  
+
+  title: "󰻠  System Resources"
+
   property real cpuUsage: 0
   property real ramUsed: 0
   property real ramTotal: 0
@@ -15,15 +16,12 @@ Item {
   property string diskUsed: "0G"
   property string diskTotal: "0G"
   property real diskPercent: 0
-  
-  implicitHeight: 190
-  
-  // System stats poller
+
   Process {
     id: systemProc
     command: ["bash", "/storage/git/dotfiles/scripts/polls/systempoll.sh"]
     running: true
-    
+
     stdout: StdioCollector {
       onStreamFinished: {
         let parts = this.text.trim().split('|')
@@ -39,191 +37,85 @@ Item {
       }
     }
   }
-  
+
   Timer {
-    interval: 3000 // Poll every 3 seconds
+    interval: 3000
     running: true
     repeat: true
     onTriggered: systemProc.running = true
   }
-  
-  Rectangle {
-    anchors.fill: parent
-    color: "#181825"
-    radius: 15
-    
+
+  dataContent: [
     ColumnLayout {
-      anchors {
-        top: parent.top
-        left: parent.left
-        right: parent.right
-        margins: 15
-      }
+      anchors.left: parent.left
+      anchors.right: parent.right
       spacing: 8
-      
-      // Title
-      Text {
-        text: "󰻠  System Resources"
-        color: "#cdd6f4"
-        font.pixelSize: 14
-        font.bold: true
-        font.family: "monospace"
-        Layout.fillWidth: true
-      }
-      
-      // Separator
-      Rectangle {
-        Layout.fillWidth: true
-        height: 2
-        color: "#45475a"
-      }
-      
+
       // CPU
       ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
-        
+
         RowLayout {
           Layout.fillWidth: true
-          
-          Text {
-            text: "󰘚 CPU"
-            color: "#89b4fa"
-            font.pixelSize: 13
-            font.bold: true
-            font.family: "monospace"
-            Layout.preferredWidth: 70
-          }
-          
-          Text {
-            text: systemWidget.cpuUsage.toFixed(1) + "%"
-            color: "#cdd6f4"
-            font.pixelSize: 12
-            Layout.fillWidth: true
-          }
+          Text { text: "󰘚 CPU"; color: "#89b4fa"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.cpuUsage.toFixed(1) + "%"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
         }
-        
+
         Rectangle {
-          Layout.fillWidth: true
-          height: 8
-          radius: 4
-          color: "#313244"
-          
+          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
           Rectangle {
-            width: parent.width * (systemWidget.cpuUsage / 100)
-            height: parent.height
-            radius: 4
-            color: {
-              if (systemWidget.cpuUsage > 80) return "#f38ba8"
-              if (systemWidget.cpuUsage > 50) return "#fab387"
-              return "#89b4fa"
-            }
-            
-            Behavior on width {
-              NumberAnimation { duration: 200 }
-            }
+            width: parent.width * (systemWidget.cpuUsage / 100); height: parent.height; radius: 4
+            color: systemWidget.cpuUsage > 80 ? "#f38ba8" : systemWidget.cpuUsage > 50 ? "#fab387" : "#89b4fa"
+            Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
       }
-      
+
       // RAM
       ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
-        
+
         RowLayout {
           Layout.fillWidth: true
-          
-          Text {
-            text: "󰍛 RAM"
-            color: "#a6e3a1"
-            font.pixelSize: 13
-            font.bold: true
-            font.family: "monospace"
-            Layout.preferredWidth: 70
-          }
-          
-          Text {
-            text: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
-            color: "#cdd6f4"
-            font.pixelSize: 12
-            Layout.fillWidth: true
-          }
+          Text { text: "󰍛 RAM"; color: "#a6e3a1"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
         }
-        
+
         Rectangle {
-          Layout.fillWidth: true
-          height: 8
-          radius: 4
-          color: "#313244"
-          
+          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
           Rectangle {
-            width: parent.width * (systemWidget.ramPercent / 100)
-            height: parent.height
-            radius: 4
-            color: {
-              if (systemWidget.ramPercent > 80) return "#f38ba8"
-              if (systemWidget.ramPercent > 50) return "#fab387"
-              return "#a6e3a1"
-            }
-            
-            Behavior on width {
-              NumberAnimation { duration: 200 }
-            }
+            width: parent.width * (systemWidget.ramPercent / 100); height: parent.height; radius: 4
+            color: systemWidget.ramPercent > 80 ? "#f38ba8" : systemWidget.ramPercent > 50 ? "#fab387" : "#a6e3a1"
+            Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
       }
-      
+
       // Disk
       ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
-        
+
         RowLayout {
           Layout.fillWidth: true
-          
-          Text {
-            text: "󰋊 Disk"
-            color: "#f5c2e7"
-            font.pixelSize: 13
-            font.bold: true
-            font.family: "monospace"
-            Layout.preferredWidth: 70
-          }
-          
-          Text {
-            text: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
-            color: "#cdd6f4"
-            font.pixelSize: 12
-            Layout.fillWidth: true
-          }
+          Text { text: "󰋊 Disk"; color: "#f5c2e7"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
         }
-        
+
         Rectangle {
-          Layout.fillWidth: true
-          height: 8
-          radius: 4
-          color: "#313244"
-          
+          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
           Rectangle {
-            width: parent.width * (systemWidget.diskPercent / 100)
-            height: parent.height
-            radius: 4
-            color: {
-              if (systemWidget.diskPercent > 80) return "#f38ba8"
-              if (systemWidget.diskPercent > 50) return "#fab387"
-              return "#f5c2e7"
-            }
-            
-            Behavior on width {
-              NumberAnimation { duration: 200 }
-            }
+            width: parent.width * (systemWidget.diskPercent / 100); height: parent.height; radius: 4
+            color: systemWidget.diskPercent > 80 ? "#f38ba8" : systemWidget.diskPercent > 50 ? "#fab387" : "#f5c2e7"
+            Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
       }
     }
-  }
-  
+  ]
+
   Component.onCompleted: {
     systemProc.running = true
   }

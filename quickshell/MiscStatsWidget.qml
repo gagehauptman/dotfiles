@@ -71,7 +71,7 @@ Item {
       // Separator
       Rectangle {
         Layout.fillWidth: true
-        height: 1
+        height: 2
         color: "#45475a"
       }
       

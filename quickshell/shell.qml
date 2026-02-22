@@ -253,7 +253,7 @@ PanelWindow {
           name: "dashboard"
           PropertyChanges {
             target: bar;
-            dropdownWidth: 40 * parent.width / 100;
+            dropdownWidth: 55 * parent.width / 100;
             dropdownHeight: dashboardGrid.implicitHeight;
             dropdownFilletRadius: 20;
             dropdownCornerRadius: 20
@@ -572,6 +572,15 @@ PanelWindow {
             Layout.maximumHeight: dashboardGrid.widgetHeight
             Layout.minimumHeight: dashboardGrid.widgetHeight
           }
+          
+          WeatherWidget {
+            id: weatherWidget
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: dashboardGrid.widgetHeight
+            Layout.maximumHeight: dashboardGrid.widgetHeight
+            Layout.minimumHeight: dashboardGrid.widgetHeight
+          }
         }
         
         // Bottom row - three columns
@@ -598,6 +607,27 @@ PanelWindow {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             Layout.preferredHeight: implicitHeight
+          }
+          
+          // Empty placeholder widget
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: dashboardGrid.widgetHeight
+            Layout.maximumHeight: dashboardGrid.widgetHeight
+            Layout.minimumHeight: dashboardGrid.widgetHeight
+            radius: 15
+            color: "#181825"
+            border.color: "#313244"
+            border.width: 1
+            
+            Text {
+              anchors.centerIn: parent
+              text: "+"
+              color: "#45475a"
+              font.pixelSize: 24
+              font.family: "Noto Sans"
+            }
           }
         }
         

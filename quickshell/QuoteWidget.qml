@@ -45,10 +45,12 @@ Item {
     ColumnLayout {
       id: quoteColumn
       anchors {
-        fill: parent
+        top: parent.top
+        left: parent.left
+        right: parent.right
         margins: 15
       }
-      spacing: 10
+      spacing: 8
       
       // Title
       Text {

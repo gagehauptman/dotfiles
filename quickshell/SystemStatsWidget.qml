@@ -54,7 +54,9 @@ Item {
     
     ColumnLayout {
       anchors {
-        fill: parent
+        top: parent.top
+        left: parent.left
+        right: parent.right
         margins: 15
       }
       spacing: 8
@@ -72,7 +74,7 @@ Item {
       // Separator
       Rectangle {
         Layout.fillWidth: true
-        height: 1
+        height: 2
         color: "#45475a"
       }
       

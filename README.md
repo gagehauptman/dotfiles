@@ -64,6 +64,22 @@ systemctl --user daemon-reload
 systemctl --user enable --now goes-update.timer
 ```
 
+### Hyprland Plugins
+
+**[split-monitor-workspaces](https://github.com/Duckonaut/split-monitor-workspaces)** - Gives each monitor its own independent workspace namespace (1-10 per monitor instead of shared global workspaces). Essential for multi-monitor setups.
+
+```bash
+# Install via hyprpm (Hyprland's built-in plugin manager)
+hyprpm update
+hyprpm add https://github.com/Duckonaut/split-monitor-workspaces
+hyprpm enable split-monitor-workspaces
+
+# Verify it's loaded
+hyprpm list
+```
+
+> **Note:** Plugins must be rebuilt after every Hyprland update. Run `hyprpm update` after upgrading Hyprland.
+
 ## Arch Packages
 
 ```bash

@@ -8,27 +8,50 @@ Item {
   implicitWidth: 300
   implicitHeight: parent.height
 
-  // Get active monitor ID directly from Hyprland (0-indexed)
-  property int activeMonitor: Hyprland.focusedMonitor?.id ?? 0
+  // Monitor ID this widget is bound to (set by parent bar instance)
+  property int monitorId: 0
+  property int workspaceCount: 10
 
-  // Track workspace changes for reactivity
+  // Find the Hyprland monitor object for this monitorId
+  property var hyprMonitor: {
+    let monitors = Hyprland.monitors.values
+    for (let i = 0; i < monitors.length; i++) {
+      if (monitors[i].id === monitorId) return monitors[i]
+    }
+    return null
+  }
+
+  // Detect the base workspace ID for this monitor from actual workspace state.
+  // The split-monitor-workspaces plugin assigns sequential IDs per monitor
+  // (e.g. monitor 0 = 1-10, monitor 1 = 11-20). We find the lowest workspace
+  // ID assigned to our monitor to compute the base.
   property var workspacesList: Hyprland.workspaces.values
+  property int baseWorkspaceId: {
+    let wsList = workspacesWidget.workspacesList
+    let minId = 999999
+    for (let i = 0; i < wsList.length; i++) {
+      let ws = wsList[i]
+      if (ws.monitor && ws.monitor.id === monitorId && ws.id > 0 && ws.id < minId) {
+        minId = ws.id
+      }
+    }
+    return minId === 999999 ? 1 : minId
+  }
 
   RowLayout {
     anchors.centerIn: parent
     spacing: 13
 
     Repeater {
-      model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-      
+      model: workspacesWidget.workspaceCount
+
       Rectangle {
-        required property int modelData
-        
-        // Calculate workspace ID: [monitor][digit]
-        property int workspaceId: (workspacesWidget.activeMonitor + 1) * 10 + modelData
-        property bool isActive: Hyprland.focusedMonitor?.activeWorkspace?.id === workspaceId
-        
-        // Reactive: re-evaluate when workspacesList changes
+        required property int index
+
+        property int workspaceId: workspacesWidget.baseWorkspaceId + index
+        property bool isActive: workspacesWidget.hyprMonitor?.activeWorkspace?.id === workspaceId
+
+        // Check if workspace has windows
         property bool hasWindows: {
           let wsList = workspacesWidget.workspacesList
           for (let i = 0; i < wsList.length; i++) {
@@ -38,67 +61,46 @@ Item {
           }
           return false
         }
-        
-        // Check if workspace has urgent windows
-        property bool isUrgent: {
-          let wsList = workspacesWidget.workspacesList
-          for (let i = 0; i < wsList.length; i++) {
-            if (wsList[i].id === workspaceId) {
-              return wsList[i].urgent
-            }
-          }
-          return false
-        }
-        
+
         implicitWidth: isActive ? 22 : 13
         implicitHeight: 13
         radius: 6.5
-        
+
         color: {
-          if (isUrgent) return "#f38ba8"                  // Red - urgent
           if (isActive && hasWindows) return "#89b4fa"   // Blue - active with windows
           if (isActive) return "#74c7ec"                  // Sapphire - active but empty
           if (hasWindows) return "#b4befe"               // Lavender - has windows
           return "#45475a"                                // Surface1 - empty
         }
-        
-        // Pulse animation for urgent workspaces
-        SequentialAnimation on opacity {
-          running: isUrgent
-          loops: Animation.Infinite
-          NumberAnimation { to: 0.4; duration: 400; easing.type: Easing.InOutQuad }
-          NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
-        }
-        
+
         opacity: {
           if (isActive) return 1.0
           if (hasWindows) return 0.5
           return 0.4
         }
-        
+
         Behavior on implicitWidth {
           NumberAnimation {
             duration: 150
             easing.type: Easing.OutQuad
           }
         }
-        
+
         Behavior on color {
           ColorAnimation {
             duration: 150
           }
         }
-        
+
         Behavior on opacity {
           NumberAnimation {
             duration: 150
           }
         }
-        
+
         MouseArea {
           anchors.fill: parent
           onClicked: {
-            // Switch to this workspace
             Hyprland.dispatch("workspace " + parent.workspaceId);
           }
         }

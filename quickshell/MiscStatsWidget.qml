@@ -14,6 +14,16 @@ DataWidget {
   property int processCount: 0
   property string kernel: "..."
   property int userCount: 0
+  property int packageCount: 0
+
+  Process {
+    id: pkgProc
+    command: ["bash", "-c", "pacman -Q 2>/dev/null | wc -l"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: miscWidget.packageCount = parseInt(this.text.trim()) || 0
+    }
+  }
 
   Process {
     id: miscProc
@@ -38,7 +48,7 @@ DataWidget {
     interval: 30000
     running: true
     repeat: true
-    onTriggered: miscProc.running = true
+    onTriggered: { miscProc.running = true; pkgProc.running = true }
   }
 
   dataContent: [
@@ -63,6 +73,9 @@ DataWidget {
 
       Text { text: "󰀄 Users"; color: "#cba6f7"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
       Text { text: miscWidget.userCount.toString(); color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
+
+      Text { text: "󰏖 Packages"; color: "#f5c2e7"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.packageCount.toString(); color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
     }
   ]
 

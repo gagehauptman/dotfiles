@@ -355,8 +355,8 @@ Scope {
               name: "dashboard"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: 55 * parent.width / 100;
-                dropdownHeight: dashboardGrid.implicitHeight;
+                dropdownWidth: 60 * parent.width / 100;
+                dropdownHeight: dashboardGrid.implicitHeight + (bar.dropdownWidgetPadding * 2) - bar.barHeight;
                 dropdownFilletRadius: 20;
                 dropdownCornerRadius: 20
               }
@@ -607,117 +607,103 @@ Scope {
 
           PowerMenuWidget {}
           
-          // Dashboard grid container
-          ColumnLayout {
+          // Dashboard grid container (column-based layout)
+          Item {
             id: dashboardGrid
             visible: bar.state === "dashboard"
             
             anchors {
               top: parent.top
               topMargin: bar.barHeight
-              left: parent.left
-              right: parent.right
-              leftMargin: 20
-              rightMargin: 20
+              horizontalCenter: parent.horizontalCenter
             }
             
-            property real topMargin: 5
-            property real bottomMargin: 10
-            property real widgetHeight: 190
+            width: parent.width - (bar.dropdownWidgetPadding * 2)
             
-            implicitHeight: topMargin + widgetHeight + spacing + widgetHeight + bottomMargin
+            property real widgetHeight: 160
+            property real colSpacing: 10
+            property real rowSpacing: 10
+            property real topPad: 5
+            property real bottomPad: 10
             
-            spacing: 10
-            
-            Item {
-              Layout.fillWidth: true
-              Layout.preferredHeight: dashboardGrid.topMargin
-            }
+            implicitHeight: topPad + (widgetHeight * 3) + (rowSpacing * 2) + bottomPad
             
             RowLayout {
-              id: topRowLayout
-              Layout.fillWidth: true
-              spacing: 10
+              anchors {
+                fill: parent
+                topMargin: dashboardGrid.topPad
+                bottomMargin: dashboardGrid.bottomPad
+              }
+              spacing: dashboardGrid.colSpacing
               
-              implicitHeight: dashboardGrid.widgetHeight
-              
-              TailscaleWidget {
-                id: tailscaleWidget
+              // Columns 1-2: Tailscale (2-tall) + SystemStats/MiscStats side by side
+              ColumnLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredWidth: 2
-                Layout.preferredHeight: dashboardGrid.widgetHeight
-                Layout.maximumHeight: dashboardGrid.widgetHeight
-                Layout.minimumHeight: dashboardGrid.widgetHeight
-              }
-              
-              QuoteWidget {
-                id: quoteWidget
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: dashboardGrid.widgetHeight
-                Layout.maximumHeight: dashboardGrid.widgetHeight
-                Layout.minimumHeight: dashboardGrid.widgetHeight
-              }
-              
-              WeatherWidget {
-                id: weatherWidget
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: dashboardGrid.widgetHeight
-                Layout.maximumHeight: dashboardGrid.widgetHeight
-                Layout.minimumHeight: dashboardGrid.widgetHeight
-              }
-            }
-            
-            RowLayout {
-              id: bottomRowLayout
-              Layout.fillWidth: true
-              spacing: 10
-              
-              implicitHeight: dashboardGrid.widgetHeight
-              
-              SystemStatsWidget {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: implicitHeight
-              }
-              
-              MiscStatsWidget {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: implicitHeight
-              }
-              
-              NetworkStatsWidget {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: implicitHeight
-              }
-              
-              Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: dashboardGrid.widgetHeight
-                Layout.maximumHeight: dashboardGrid.widgetHeight
-                Layout.minimumHeight: dashboardGrid.widgetHeight
-                radius: 15
-                color: "#181825"
-                border.color: "#313244"
-                border.width: 1
+                spacing: dashboardGrid.rowSpacing
                 
-                Text {
-                  anchors.centerIn: parent
-                  text: "+"
-                  color: "#45475a"
-                  font.pixelSize: 24
-                  font.family: "Noto Sans"
+                TailscaleWidget {
+                  id: tailscaleWidget
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                }
+                
+                RowLayout {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                  spacing: dashboardGrid.colSpacing
+                  
+                  SystemStatsWidget {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                  }
+                  
+                  MiscStatsWidget {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                  }
                 }
               }
-            }
-            
-            Item {
-              Layout.fillWidth: true
-              Layout.preferredHeight: dashboardGrid.bottomMargin
+              
+              // Column 3: 3 widgets stacked
+              ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                spacing: dashboardGrid.rowSpacing
+                
+                QuoteWidget {
+                  id: quoteWidget
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight
+                }
+                
+                WeatherWidget {
+                  id: weatherWidget
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight
+                }
+                
+                NetworkStatsWidget {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight
+                }
+              }
+              
+              // Column 4: Profile card (2-tall) + empty space
+              ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                spacing: dashboardGrid.rowSpacing
+                
+                ProfileWidget {
+                  id: profileWidget
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+                }
+              }
             }
           }
         }

@@ -8,6 +8,7 @@ DataWidget {
   id: systemWidget
 
   title: "󰻠  System Resources"
+  implicitHeight: 280
 
   property real cpuUsage: 0
   property real ramUsed: 0
@@ -16,6 +17,9 @@ DataWidget {
   property string diskUsed: "0G"
   property string diskTotal: "0G"
   property real diskPercent: 0
+  property string cpuGovernor: "powersave"
+  property int gpuProfileIdx: 0
+  property string gpuProfileName: "DEFAULT"
 
   Process {
     id: systemProc
@@ -25,7 +29,7 @@ DataWidget {
     stdout: StdioCollector {
       onStreamFinished: {
         let parts = this.text.trim().split('|')
-        if (parts.length === 7) {
+        if (parts.length >= 7) {
           systemWidget.cpuUsage = parseFloat(parts[0])
           systemWidget.ramUsed = parseFloat(parts[1])
           systemWidget.ramTotal = parseFloat(parts[2])
@@ -33,6 +37,11 @@ DataWidget {
           systemWidget.diskUsed = parts[4]
           systemWidget.diskTotal = parts[5]
           systemWidget.diskPercent = parseFloat(parts[6])
+          if (parts.length >= 8) systemWidget.cpuGovernor = parts[7].trim()
+          if (parts.length >= 10) {
+            systemWidget.gpuProfileIdx = parseInt(parts[8])
+            systemWidget.gpuProfileName = parts[9].trim()
+          }
         }
       }
     }
@@ -110,6 +119,115 @@ DataWidget {
             width: parent.width * (systemWidget.diskPercent / 100); height: parent.height; radius: 4
             color: systemWidget.diskPercent > 80 ? "#f38ba8" : systemWidget.diskPercent > 50 ? "#fab387" : "#f5c2e7"
             Behavior on width { NumberAnimation { duration: 200 } }
+          }
+        }
+      }
+
+      // Separator
+      Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: "#313244"
+      }
+
+      // Toggles
+      Process {
+        id: governorToggle
+        command: ["sudo", "/storage/git/dotfiles/scripts/cpu-governor-toggle.sh"]
+
+        stdout: StdioCollector {
+          onStreamFinished: {
+            systemWidget.cpuGovernor = this.text.trim()
+          }
+        }
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: 10
+
+        Rectangle {
+          width: 10; height: 10; radius: 5
+          color: systemWidget.cpuGovernor === "performance" ? "#a6e3a1" : "#89b4fa"
+          Behavior on color { ColorAnimation { duration: 200 } }
+        }
+
+        Text {
+          text: "󱐋 CPU Governor"
+          color: "#cdd6f4"
+          font.pixelSize: 13
+          font.bold: true
+          font.family: "monospace"
+          Layout.fillWidth: true
+        }
+
+        Text {
+          text: systemWidget.cpuGovernor === "performance" ? "performance" : "powersave"
+          color: systemWidget.cpuGovernor === "performance" ? "#a6e3a1" : "#89b4fa"
+          font.pixelSize: 13
+          font.italic: true
+          font.family: "monospace"
+
+          Behavior on color { ColorAnimation { duration: 200 } }
+
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: governorToggle.running = true
+          }
+        }
+      }
+
+      // GPU Power Profile toggle
+      Process {
+        id: gpuProfileToggle
+        command: ["sudo", "/storage/git/dotfiles/scripts/gpu-profile-toggle.sh"]
+
+        stdout: StdioCollector {
+          onStreamFinished: {
+            let parts = this.text.trim().split('|')
+            if (parts.length >= 2) {
+              systemWidget.gpuProfileIdx = parseInt(parts[0])
+              systemWidget.gpuProfileName = parts[1]
+            }
+          }
+        }
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: 10
+
+        Rectangle {
+          width: 10; height: 10; radius: 5
+          color: systemWidget.gpuProfileIdx === 1 ? "#a6e3a1" : systemWidget.gpuProfileIdx === 2 ? "#89b4fa" : "#f9e2af"
+          Behavior on color { ColorAnimation { duration: 200 } }
+        }
+
+        Text {
+          text: "󰢮 GPU Profile"
+          color: "#cdd6f4"
+          font.pixelSize: 13
+          font.bold: true
+          font.family: "monospace"
+          Layout.fillWidth: true
+        }
+
+        Text {
+          text: systemWidget.gpuProfileIdx === 0 ? "default" : systemWidget.gpuProfileIdx === 1 ? "3D gaming" : "powersave"
+          color: systemWidget.gpuProfileIdx === 1 ? "#a6e3a1" : systemWidget.gpuProfileIdx === 2 ? "#89b4fa" : "#f9e2af"
+          font.pixelSize: 13
+          font.italic: true
+          font.family: "monospace"
+
+          Behavior on color { ColorAnimation { duration: 200 } }
+
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: gpuProfileToggle.running = true
           }
         }
       }

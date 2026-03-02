@@ -64,6 +64,28 @@ systemctl --user daemon-reload
 systemctl --user enable --now goes-update.timer
 ```
 
+### System Stats Widget Toggles
+
+The Quickshell system stats widget includes clickable toggles for CPU governor and GPU power profile. These require passwordless sudo for the toggle scripts.
+
+```bash
+# Allow passwordless toggle scripts
+echo 'YOUR_USER ALL=(ALL) NOPASSWD: /path/to/dotfiles/scripts/cpu-governor-toggle.sh, /path/to/dotfiles/scripts/gpu-profile-toggle.sh' \
+  | sudo tee /etc/sudoers.d/cpu-governor
+sudo chmod 440 /etc/sudoers.d/cpu-governor
+```
+
+**CPU Governor** cycles between `performance` and `powersave`. Requires the `scaling_governor` sysfs interface (available on most systems with `amd-pstate` or `intel_pstate` drivers).
+
+**GPU Power Profile** cycles between `BOOTUP_DEFAULT`, `3D_FULL_SCREEN`, and `POWER_SAVING`. Requires an AMD dGPU with `pp_power_profile_mode` support. The script targets `card1` by default; edit `scripts/gpu-profile-toggle.sh` if your dGPU is on a different card index.
+
+To check your card mapping:
+```bash
+for card in /sys/class/drm/card[0-9]*; do
+  echo "$(basename $card): $(cat $card/device/uevent 2>/dev/null | grep PCI_SLOT_NAME)"
+done
+```
+
 ### Hyprland Plugins
 
 **[split-monitor-workspaces](https://github.com/Duckonaut/split-monitor-workspaces)** - Gives each monitor its own independent workspace namespace (1-10 per monitor instead of shared global workspaces). Essential for multi-monitor setups.

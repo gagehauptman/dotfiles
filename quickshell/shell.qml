@@ -467,6 +467,17 @@ Scope {
             }
           }
 
+          // Screen capture buttons (per-monitor)
+          ScreenCaptureWidget {
+            id: screenCapture
+            monitorName: barWindow.hyprMonitor?.name ?? ""
+            anchors {
+              right: timeDisplay.left
+              verticalCenter: parent.verticalCenter
+              rightMargin: 15
+            }
+          }
+
           // Clock widget
           Text {
             id: timeDisplay
@@ -498,7 +509,7 @@ Scope {
           // System widgets (battery, temp, cpu)
           RowLayout {
             anchors {
-              right: timeDisplay.left
+              right: screenCapture.left
               verticalCenter: parent.verticalCenter
               rightMargin: 15
             }

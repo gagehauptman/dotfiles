@@ -13,16 +13,34 @@ Scope {
         objects: [ Pipewire.defaultAudioSink ]
     }
 
+    property real lastKnownVolume: -1
+    property bool shouldShowOsd: false
+
     Connections {
         target: Pipewire.defaultAudioSink?.audio
 
         function onVolumeChanged() {
+            root.lastKnownVolume = Pipewire.defaultAudioSink?.audio.volume ?? -1;
             root.shouldShowOsd = true;
             hideTimer.restart();
         }
     }
 
-    property bool shouldShowOsd: false
+    // Poll every 2s to catch missed events
+    Timer {
+        id: pollTimer
+        interval: 2000
+        running: true
+        repeat: true
+        onTriggered: {
+            const current = Pipewire.defaultAudioSink?.audio.volume ?? -1;
+            if (current !== root.lastKnownVolume) {
+                root.lastKnownVolume = current;
+                root.shouldShowOsd = true;
+                hideTimer.restart();
+            }
+        }
+    }
 
     Timer {
         id: hideTimer

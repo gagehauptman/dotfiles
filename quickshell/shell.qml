@@ -22,6 +22,9 @@ Scope {
   property string cpuLoad: "0"
   property string volumePercent: "0"
   property string volumeIcon: "󰕾"
+  property bool hasBrightness: false
+  property real brightnessValue: 0    // 0.0 – 1.0
+  property int brightnessMax: 1
   property int lowBatteryThreshold: 15
   property bool lowBatteryWarningShown: false
   property int lowBatteryTrigger: 0
@@ -103,6 +106,45 @@ Scope {
     }
   }
   Timer { interval: 2000; running: true; repeat: true; onTriggered: cpuProc.running = true }
+
+  // Brightness detection + polling
+  Process {
+    id: brightnessMaxProc
+    command: ["cat", "/sys/class/backlight/amdgpu_bl2/max_brightness"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        let val = parseInt(this.text.trim())
+        if (val > 0) {
+          root.brightnessMax = val
+          root.hasBrightness = true
+        }
+      }
+    }
+  }
+
+  Process {
+    id: brightnessProc
+    command: ["cat", "/sys/class/backlight/amdgpu_bl2/brightness"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        if (root.hasBrightness) {
+          root.brightnessValue = parseInt(this.text.trim()) / root.brightnessMax
+        }
+      }
+    }
+  }
+  Timer { interval: 2000; running: root.hasBrightness; repeat: true; onTriggered: brightnessProc.running = true }
+
+  Process {
+    id: brightnessSetProc
+    command: ["brightnessctl", "set", "0"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: brightnessProc.running = true  // re-read after set
+    }
+  }
 
   // === GLOBAL SHORTCUTS (registered once) ===
   property int toggleCounter: 0
@@ -461,6 +503,28 @@ Scope {
               rightMargin: 15
             }
             spacing: 8
+
+            // Brightness widget (only if backlight exists)
+            BarSliderWidget {
+              visible: root.hasBrightness
+              icon: "󰃠"
+              value: root.brightnessValue
+              displayValue: Math.round(root.brightnessValue * 100) + "%"
+              accentColor: "#f9e2af"
+
+              onMoved: (newVal) => {
+                let raw = Math.round(newVal * root.brightnessMax);
+                brightnessSetProc.command = ["brightnessctl", "set", raw.toString()];
+                brightnessSetProc.running = true;
+              }
+            }
+
+            Rectangle {
+              visible: root.hasBrightness
+              implicitWidth: 2
+              implicitHeight: parent.parent.height * 0.6
+              color: "#6c7086"
+            }
 
             // Volume widget (hover to expand slider, click to mute)
             BarSliderWidget {

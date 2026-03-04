@@ -1,9 +1,9 @@
 return {
-  -- LSP config
+  -- Completion engine
   {
-    "neovim/nvim-lspconfig",
+    "hrsh7th/nvim-cmp",
+    event = "InsertEnter",
     dependencies = {
-      "hrsh7th/nvim-cmp",
       "hrsh7th/cmp-nvim-lsp",
       "hrsh7th/cmp-buffer",
       "hrsh7th/cmp-path",
@@ -11,37 +11,6 @@ return {
       "saadparwaiz1/cmp_luasnip",
     },
     config = function()
-      local lspconfig = require("lspconfig")
-      local capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-      -- Rust (rust-analyzer)
-      lspconfig.rust_analyzer.setup({
-        capabilities = capabilities,
-        settings = {
-          ["rust-analyzer"] = {
-            checkOnSave = { command = "clippy" },
-            cargo = { allFeatures = true },
-            procMacro = { enable = true },
-          },
-        },
-      })
-
-      -- LSP keymaps (set on attach)
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(ev)
-          local opts = { buffer = ev.buf }
-          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-          vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-          vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-          vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float, opts)
-          vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
-          vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
-        end,
-      })
-
-      -- Completion
       local cmp = require("cmp")
       local luasnip = require("luasnip")
 

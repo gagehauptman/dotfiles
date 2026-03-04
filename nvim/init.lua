@@ -16,6 +16,9 @@ vim.g.maplocalleader = " "
 -- Load plugins from lua/plugins/
 require("lazy").setup("plugins")
 
+-- Native LSP setup (nvim 0.11+)
+require("lsp")
+
 -- Basic options
 vim.opt.number = true
 vim.opt.relativenumber = true

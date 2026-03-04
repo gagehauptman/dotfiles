@@ -10,6 +10,7 @@ import Quickshell.Wayland
 import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
+import "templates"
 
 Scope {
   id: root
@@ -461,38 +462,22 @@ Scope {
             }
             spacing: 8
 
-            // Volume widget (click to mute)
-            Item {
-              implicitWidth: volumeRow.implicitWidth
-              implicitHeight: volumeRow.implicitHeight
-              
-              RowLayout {
-                id: volumeRow
-                spacing: 5
+            // Volume widget (hover to expand slider, click to mute)
+            BarSliderWidget {
+              icon: root.volumeIcon
+              value: (Pipewire.defaultAudioSink?.audio.volume ?? 0)
+              displayValue: root.volumePercent + "%"
+              accentColor: "#cba6f7"
 
-                Text {
-                  text: root.volumeIcon
-                  color: "#cba6f7"
-                  font.pixelSize: 14
-                  font.family: "monospace"
-                  font.bold: true
-                }
-                
-                Text {
-                  text: root.volumePercent + "%"
-                  color: "#cba6f7"
-                  font.pixelSize: 14
-                  font.bold: true
+              onMoved: (newVal) => {
+                if (Pipewire.defaultAudioSink?.audio) {
+                  Pipewire.defaultAudioSink.audio.volume = newVal;
                 }
               }
-              
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                  if (Pipewire.defaultAudioSink?.audio) {
-                    Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted
-                  }
+
+              onClicked: {
+                if (Pipewire.defaultAudioSink?.audio) {
+                  Pipewire.defaultAudioSink.audio.muted = !Pipewire.defaultAudioSink.audio.muted;
                 }
               }
             }

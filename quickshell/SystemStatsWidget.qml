@@ -23,7 +23,7 @@ DataWidget {
 
   Process {
     id: systemProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/systempoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/systempoll.sh"]
     running: true
 
     stdout: StdioCollector {
@@ -133,7 +133,7 @@ DataWidget {
       // Toggles
       Process {
         id: governorToggle
-        command: ["sudo", "/storage/git/dotfiles/scripts/cpu-governor-toggle.sh"]
+        command: ["sudo", root.home + "/.config/scripts/cpu-governor-toggle.sh"]
 
         stdout: StdioCollector {
           onStreamFinished: {
@@ -182,7 +182,7 @@ DataWidget {
       // GPU Power Profile toggle
       Process {
         id: gpuProfileToggle
-        command: ["sudo", "/storage/git/dotfiles/scripts/gpu-profile-toggle.sh"]
+        command: ["sudo", root.home + "/.config/scripts/gpu-profile-toggle.sh"]
 
         stdout: StdioCollector {
           onStreamFinished: {

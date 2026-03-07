@@ -60,7 +60,7 @@ ThreeRowWidget {
 
   Process {
     id: weatherProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/weatherpoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/weatherpoll.sh"]
     running: true
 
     stdout: StdioCollector {

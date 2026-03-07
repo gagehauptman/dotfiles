@@ -66,7 +66,7 @@ Item {
         Image {
           id: pfpImage
           anchors.fill: parent
-          source: "file:///home/v1k/.face"
+          source: "file://" + root.home + "/.face"
           sourceSize: Qt.size(100, 100)
           fillMode: Image.PreserveAspectCrop
           visible: false

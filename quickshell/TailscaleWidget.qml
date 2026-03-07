@@ -14,7 +14,7 @@ DataWidget {
 
   Process {
     id: tailscaleProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/tailscalepoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/tailscalepoll.sh"]
     running: true
 
     stdout: StdioCollector {

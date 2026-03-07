@@ -15,6 +15,8 @@ import "templates"
 Scope {
   id: root
 
+  property string home: Quickshell.env("HOME")
+
   // === SHARED DATA (runs once, not per-screen) ===
   property string tempValue: "0"
   property string batteryPercent: "0"
@@ -58,7 +60,7 @@ Scope {
   // === POLLING PROCESSES (shared, run once) ===
   Process {
     id: tempProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/temppoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/temppoll.sh"]
     running: true
     stdout: StdioCollector {
       onStreamFinished: root.tempValue = this.text.trim()
@@ -68,7 +70,7 @@ Scope {
 
   Process {
     id: batteryPercentProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/batterypoll1.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/batterypoll1.sh"]
     running: true
     stdout: StdioCollector {
       onStreamFinished: {
@@ -89,7 +91,7 @@ Scope {
 
   Process {
     id: batteryIconProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/batterypoll2.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/batterypoll2.sh"]
     running: true
     stdout: StdioCollector {
       onStreamFinished: root.batteryIcon = this.text.trim()
@@ -99,7 +101,7 @@ Scope {
 
   Process {
     id: cpuProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/cpupoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/cpupoll.sh"]
     running: true
     stdout: StdioCollector {
       onStreamFinished: root.cpuLoad = this.text.trim()

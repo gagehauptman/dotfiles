@@ -1,10 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Io
 
 Item {
   id: root
 
+  property string home: Quickshell.env("HOME")
   property string monitorName: ""
   property bool isRecording: false
 
@@ -24,36 +26,36 @@ Item {
   implicitWidth: row.implicitWidth
   implicitHeight: parent ? parent.height : 30
 
-  property string screenshotDir: "/home/v1k/Pictures/Screenshots"
-  property string recordingDir: "/home/v1k/Videos/Recordings"
+  property string screenshotDir: root.home + "/Pictures/Screenshots"
+  property string recordingDir: root.home + "/Videos/Recordings"
 
   Process {
     id: screenshotProc
-    command: ["bash", "/storage/git/dotfiles/scripts/hyprland_capture_full.sh"]
+    command: ["bash", root.home + "/.config/scripts/hyprland_capture_full.sh"]
     running: false
   }
 
   Process {
     id: screenshotRegionProc
-    command: ["hyprctl", "dispatch", "exec", "bash /storage/git/dotfiles/scripts/hyprland_capture_partial.sh"]
+    command: ["hyprctl", "dispatch", "exec", "bash " + root.home + "/.config/scripts/hyprland_capture_partial.sh"]
     running: false
   }
 
   Process {
     id: recordStartFullProc
-    command: ["hyprctl", "dispatch", "exec", "bash /storage/git/dotfiles/scripts/hyprland_record_full.sh"]
+    command: ["hyprctl", "dispatch", "exec", "bash " + root.home + "/.config/scripts/hyprland_record_full.sh"]
     running: false
   }
 
   Process {
     id: recordStartRegionProc
-    command: ["hyprctl", "dispatch", "exec", "bash /storage/git/dotfiles/scripts/hyprland_record_region.sh"]
+    command: ["hyprctl", "dispatch", "exec", "bash " + root.home + "/.config/scripts/hyprland_record_region.sh"]
     running: false
   }
 
   Process {
     id: recordStopProc
-    command: ["bash", "/storage/git/dotfiles/scripts/hyprland_record_stop.sh"]
+    command: ["bash", root.home + "/.config/scripts/hyprland_record_stop.sh"]
     running: false
     onRunningChanged: {
       if (!running) {

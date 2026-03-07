@@ -27,7 +27,7 @@ DataWidget {
 
   Process {
     id: miscProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/miscstatspoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/miscstatspoll.sh"]
     running: true
 
     stdout: StdioCollector {

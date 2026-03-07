@@ -17,7 +17,7 @@ DataWidget {
 
   Process {
     id: networkProc
-    command: ["bash", "/storage/git/dotfiles/scripts/polls/networkpoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/networkpoll.sh"]
     running: true
 
     stdout: StdioCollector {

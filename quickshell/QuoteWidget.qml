@@ -14,7 +14,7 @@ ThreeRowWidget {
 
   Process {
     id: quoteProc
-    command: ["bash", "-c", "shuf -n 1 /storage/git/dotfiles/quickshell/quotes.txt"]
+    command: ["bash", "-c", "shuf -n 1 " + root.home + "/.config/quickshell/quotes.txt"]
     running: true
 
     stdout: StdioCollector {

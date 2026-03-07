@@ -40,7 +40,7 @@ dotfiles/
 
 ```bash
 # Clone the repo
-git clone https://github.com/ghauptman/dotfiles.git ~/dotfiles
+git clone https://github.com/gagehauptman/dotfiles.git ~/dotfiles
 
 # Symlink configs
 ln -sf ~/dotfiles/hypr ~/.config/hypr

@@ -8,10 +8,10 @@ My personal dotfiles for Hyprland on Arch Linux.
 dotfiles/
 ├── hypr/           # Hyprland window manager config
 ├── kitty/          # Kitty terminal config
+├── nvim/           # Neovim config (lazy.nvim)
 ├── quickshell/     # Quickshell bar/widgets (QML)
-├── scripts/        # Various utility scripts
-├── systemd/user/   # Systemd user services/timers
-├── wallpapers/     # Wallpaper collection
+├── scripts/        # Utility scripts
+└── wallpapers/     # Wallpaper collection
 ```
 
 ## Dependencies
@@ -26,20 +26,15 @@ dotfiles/
 
 ### Utilities
 
+| Package | Description |
+|---------|-------------|
 | [grim](https://sr.ht/~emersion/grim/) | Screenshot tool |
 | [slurp](https://github.com/emersion/slurp) | Region selection |
 | [wl-clipboard](https://github.com/bugaevc/wl-clipboard) | Clipboard utilities |
 | [playerctl](https://github.com/altdesktop/playerctl) | Media player control |
 | [brightnessctl](https://github.com/Hummer12007/brightnessctl) | Brightness control |
 | [pipewire](https://pipewire.org/) | Audio server |
-
-### GOES Earth Live Wallpaper
-
-The `goes_earth_live` wallpaper fetches real-time satellite imagery from NOAA's GOES-West satellite.
-
-**Requires:** [goes-imagery](https://github.com/ghauptman/goes-imagery)
-
-The systemd timer (`goes-update.timer`) updates the wallpaper every 10 minutes.
+| [neovim](https://neovim.io/) | Text editor |
 
 ## Installation
 
@@ -51,17 +46,10 @@ git clone https://github.com/ghauptman/dotfiles.git ~/dotfiles
 ln -sf ~/dotfiles/hypr ~/.config/hypr
 ln -sf ~/dotfiles/kitty ~/.config/kitty
 ln -sf ~/dotfiles/quickshell ~/.config/quickshell
+ln -sf ~/dotfiles/nvim ~/.config/nvim
 ln -sf ~/dotfiles/scripts ~/.config/scripts
 ln -sf ~/dotfiles/wallpapers ~/.config/wallpapers
 
-# Symlink systemd user units
-mkdir -p ~/.config/systemd/user
-ln -sf ~/dotfiles/systemd/user/goes-update.service ~/.config/systemd/user/
-ln -sf ~/dotfiles/systemd/user/goes-update.timer ~/.config/systemd/user/
-
-# Enable GOES wallpaper timer
-systemctl --user daemon-reload
-systemctl --user enable --now goes-update.timer
 ```
 
 ### System Stats Widget Toggles
@@ -106,7 +94,7 @@ hyprpm list
 
 ```bash
 # Install all dependencies
-pacman -S hyprland kitty swww hyprlock \
+pacman -S hyprland kitty swww hyprlock neovim \
           grim slurp wl-clipboard playerctl brightnessctl \
           pipewire pipewire-pulse jq socat wireplumber \
           noto-fonts noto-fonts-cjk noto-fonts-emoji \

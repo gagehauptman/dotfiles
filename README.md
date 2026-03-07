@@ -98,7 +98,8 @@ pacman -S hyprland kitty swww hyprlock neovim \
           grim slurp wl-clipboard playerctl brightnessctl \
           pipewire pipewire-pulse jq socat wireplumber \
           noto-fonts noto-fonts-cjk noto-fonts-emoji \
-          noto-fonts-extra ttf-nerd-fonts-symbols meson
+          noto-fonts-extra ttf-nerd-fonts-symbols meson \
+          qt6ct papirus-icon-theme
 
 # Quickshell (AUR)
 yay -S quickshell-git

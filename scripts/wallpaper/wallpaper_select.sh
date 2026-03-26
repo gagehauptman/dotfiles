@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Wallpaper selector script
-# Handles both regular wallpapers (via swww) and the spinning globe
+# Handles both regular wallpapers (via awww) and the spinning globe
 
 selection=$1
 
@@ -14,8 +14,8 @@ GLOBE_BIN="$HOME/.config/scripts/wallpaper/bins/spinning_globe/target/release/la
 
 # Check if this is the spinning globe
 if [[ "$selection" == *"spinning_globe"* ]]; then
-  # Kill swww if running
-  pkill -x swww-daemon 2>/dev/null
+  # Kill awww if running
+  pkill -x awww-daemon 2>/dev/null
   
   # Kill any existing globe instance
   pkill -f "layer_shell_bevy" 2>/dev/null
@@ -28,14 +28,14 @@ else
   # Kill the spinning globe if running
   pkill -f "layer_shell_bevy" 2>/dev/null
   
-  # Make sure swww is running
-  if ! pgrep -x swww-daemon >/dev/null; then
-    swww-daemon &
+  # Make sure awww is running
+  if ! pgrep -x awww-daemon >/dev/null; then
+    awww-daemon &
     sleep 0.3
   fi
   
-  # Apply the wallpaper using swww
-  swww img --transition-type outer \
+  # Apply the wallpaper using awww
+  awww img --transition-type outer \
     --transition-pos 0.$((RANDOM % 999)),0.$((RANDOM % 999)) \
     --transition-step 25 \
     --transition-fps 120 \

@@ -1,5 +1,5 @@
 #!/bin/sh
 
-pkill swww-daemon
-swww-daemon
-swww img $(cat $HOME/.config/scripts/wallpaper/wpsave.txt)
+pkill awww-daemon
+awww-daemon
+awww img $(cat $HOME/.config/scripts/wallpaper/wpsave.txt)

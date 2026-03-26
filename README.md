@@ -21,7 +21,7 @@ dotfiles/
 | [hyprland](https://hyprland.org/) | Tiling Wayland compositor |
 | [quickshell](https://quickshell.outfoxxed.me/) | Qt6/QML shell toolkit |
 | [kitty](https://sw.kovidgoyal.net/kitty/) | GPU-accelerated terminal |
-| [swww](https://github.com/LGFae/swww) | Wallpaper daemon |
+| [awww](https://github.com/LGFae/awww) | Wallpaper daemon |
 | [hyprlock](https://github.com/hyprwm/hyprlock) | Lock screen |
 
 ### Utilities
@@ -94,7 +94,7 @@ hyprpm list
 
 ```bash
 # Install all dependencies
-pacman -S hyprland kitty swww hyprlock neovim \
+pacman -S hyprland kitty awww hyprlock neovim \
           grim slurp wl-clipboard playerctl brightnessctl \
           pipewire pipewire-pulse jq socat wireplumber \
           noto-fonts noto-fonts-cjk noto-fonts-emoji \

@@ -1,16 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
-import QtQuick.Effects
 import Quickshell
-import Quickshell.Services.Pipewire
-import Quickshell.Widgets
-import Quickshell.Hyprland
-import Quickshell.Wayland
-import Qt.labs.folderlistmodel
-import Qt5Compat.GraphicalEffects
-import Quickshell.Io
-import QtQml.Models 
+import QtQml.Models
 
 Item {
     id: appSelectorWidget

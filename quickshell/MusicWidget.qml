@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 
@@ -20,31 +19,55 @@ Item {
     }
   }
   
+  function resetMusicState() {
+    activePlayer = ""
+    playbackStatus = ""
+    musicText = ""
+    hasMusic = false
+  }
+  
+  property string musicFieldSeparator: "<QSMUSIC>"
+  
+  function updateMusicState(line) {
+    let parts = line.split(musicFieldSeparator)
+    if (parts.length < 4) {
+      resetMusicState()
+      return
+    }
+    
+    let player = parts[0].trim()
+    let status = parts[1].trim()
+    let artist = parts[2].trim()
+    let title = parts.slice(3).join(musicFieldSeparator).trim()
+    let textParts = []
+    
+    if (artist) textParts.push(artist)
+    if (title) textParts.push(title)
+    
+    activePlayer = player
+    playbackStatus = status
+    musicText = textParts.length > 0 ? textParts.join(" // ") : player
+    hasMusic = player.length > 0 && (status === "Playing" || status === "Paused")
+  }
+  
   // Music listener
   Process {
     id: musicProc
-    command: ["playerctl", "--follow", "metadata", "--player=spotifyd,%any", "--format", "{{playerName}}|||{{xesam:artist}} // {{xesam:title}}"]
+    command: ["playerctl", "--follow", "metadata", "--player=spotifyd,%any", "--format", "{{playerName}}<QSMUSIC>{{status}}<QSMUSIC>{{xesam:artist}}<QSMUSIC>{{xesam:title}}"]
     running: true
     
     stdout: SplitParser {
       onRead: data => {
         let lines = data.split('\n').filter(l => l.trim())
         if (lines.length > 0) {
-          let parts = lines[lines.length - 1].trim().split("|||")
-          if (parts.length >= 2) {
-            musicWidget.musicPlayer = parts[0].trim().toLowerCase()
-            musicWidget.musicText = parts[1].trim()
-          } else {
-            musicWidget.musicText = lines[lines.length - 1].trim()
-          }
-          musicWidget.hasMusic = true
+          musicWidget.updateMusicState(lines[lines.length - 1].trim())
         }
       }
     }
     
     onRunningChanged: {
       if (!running) {
-        musicWidget.hasMusic = false
+        musicWidget.resetMusicState()
       }
     }
     
@@ -61,33 +84,9 @@ Item {
     onTriggered: musicProc.running = true
   }
   
-  // Status checker - detects when Spotify closes
   Process {
-    id: statusProc
-    command: ["playerctl", "status", "--player=spotifyd,%any"]
-    
-    stdout: SplitParser {
-      onRead: data => {
-        let status = data.trim()
-        if (status !== "Playing" && status !== "Paused") {
-          musicWidget.hasMusic = false
-        }
-      }
-    }
-    
-    onExited: (code, status) => {
-      // playerctl exits with error when no player exists
-      if (code !== 0) {
-        musicWidget.hasMusic = false
-      }
-    }
-  }
-  
-  Timer {
-    interval: 2000
-    running: true
-    repeat: true
-    onTriggered: statusProc.running = true
+    id: togglePlaybackProc
+    command: ["playerctl", "--player=" + (musicWidget.activePlayer || "spotifyd,%any"), "play-pause"]
   }
   
   // Launch data poller - uses Launch Library 2 API
@@ -116,7 +115,6 @@ Item {
             
             musicWidget.launchName = launch.name || "Unknown"
             musicWidget.launchTime = launch.net ? new Date(launch.net) : null
-            musicWidget.launchProvider = launch.launch_service_provider?.name || ""
           }
         } catch (e) {
           musicWidget.launchName = "Launch data unavailable"
@@ -142,12 +140,12 @@ Item {
   }
   
   property string musicText: ""
-  property string musicPlayer: ""
+  property string activePlayer: ""
+  property string playbackStatus: ""
   property bool hasMusic: false
   
   property string launchName: "Loading launch data..."
   property var launchTime: null
-  property string launchProvider: ""
   property string countdownText: ""
   
   function updateCountdown() {
@@ -182,11 +180,21 @@ Item {
     anchors.fill: parent
     color: "transparent"
     
+    MouseArea {
+      id: musicMouse
+      anchors.fill: parent
+      enabled: musicWidget.hasMusic
+      hoverEnabled: musicWidget.hasMusic
+      acceptedButtons: Qt.LeftButton
+      cursorShape: musicWidget.hasMusic ? Qt.PointingHandCursor : Qt.ArrowCursor
+      onClicked: togglePlaybackProc.running = true
+    }
+    
     Text {
       anchors.centerIn: parent
       text: {
         if (musicWidget.hasMusic && musicWidget.musicText) {
-          let icon = (musicWidget.musicPlayer.indexOf("spotify") !== -1) ? " " : "♫ "
+          let icon = musicWidget.playbackStatus === "Paused" ? "▶ " : "⏸ "
           return icon + musicWidget.musicText
         } else if (musicWidget.launchName) {
           let display = "🚀 " + musicWidget.countdownText
@@ -196,7 +204,7 @@ Item {
         }
         return "..."
       }
-      color: musicWidget.hasMusic ? "#f5c2e7" : "#fab387"
+      color: musicWidget.hasMusic ? (musicMouse.containsMouse ? "#f9e2af" : "#f5c2e7") : "#fab387"
       font.pixelSize: 13
       font.bold: false
       elide: Text.ElideRight
@@ -205,8 +213,5 @@ Item {
     }
   }
   
-  Component.onCompleted: {
-    launchProc.running = true
-    updateCountdown()
-  }
+  Component.onCompleted: updateCountdown()
 }

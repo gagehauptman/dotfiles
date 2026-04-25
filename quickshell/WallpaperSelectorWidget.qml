@@ -29,32 +29,77 @@ Item {
     }
 
     property int selectedIndex: 0
+    property bool restoringSelection: false
+    property string savedWallpaperPath: ""
+    property string pendingWallpaperPath: ""
+
+    function normalizedPath(path) {
+        return String(path || "").replace(/[\r\n]+/gm, "");
+    }
+
+    function queueWallpaper(path) {
+        let cleanPath = normalizedPath(path);
+        if (cleanPath.length === 0 || cleanPath === savedWallpaperPath)
+            return;
+
+        pendingWallpaperPath = cleanPath;
+        wallpaperDebounce.restart();
+    }
+
+    function runPendingWallpaper() {
+        if (pendingWallpaperPath.length === 0 || wallpaperProcess.running)
+            return;
+
+        let cleanPath = pendingWallpaperPath;
+        pendingWallpaperPath = "";
+        savedWallpaperPath = cleanPath;
+        wallpaperProcess.command = [
+            Quickshell.env("HOME") + "/.config/scripts/wallpaper/wallpaper_select.sh",
+            cleanPath
+        ];
+        wallpaperProcess.running = true;
+    }
 
     FileView {
         id: savedWallpaperReader
         path: Quickshell.env("HOME") + "/.config/scripts/wallpaper/wpsave.txt"
     }
 
+    Timer {
+        id: wallpaperDebounce
+        interval: 150
+        repeat: false
+        onTriggered: runPendingWallpaper()
+    }
+
     onVisibleChanged: {
         savedWallpaperReader.reload();
         
         if (visible) {
-            let savedPath = savedWallpaperReader.text();
+            savedWallpaperPath = normalizedPath(savedWallpaperReader.text());
             
             let findIndex = () => {
+                restoringSelection = true;
+                let found = false;
+
                 for (let i = 0; i < wallpaperModel.count; i++) {
-                    if (String(wallpaperModel.get(i, "filePath")).replace(/[\r\n]+/gm, "") === String(savedPath).replace(/[\r\n]+/gm, "")) {
+                    if (normalizedPath(wallpaperModel.get(i, "filePath")) === savedWallpaperPath) {
                         carousel.positionViewAtIndex(i, PathView.Center);
                         carousel.currentIndex = i;
+                        found = true;
                         break;
                     }
                 }
+
+                if (found)
+                    Qt.callLater(() => restoringSelection = false);
+                else
+                    restoringSelection = false;
             };
 
             if (wallpaperModel.status === FolderListModel.Ready) {
                 findIndex();
             } else {
-                // Wait for model to load if it hasn't yet
                 const onReady = () => {
                     if (wallpaperModel.status === FolderListModel.Ready) {
                         findIndex();
@@ -99,15 +144,14 @@ Item {
 
         Process {
             id: wallpaperProcess
+            onExited: (code, status) => runPendingWallpaper()
         }
 
         onCurrentIndexChanged: {
-            wallpaperProcess.command = [
-                Quickshell.env("HOME") + "/.config/scripts/wallpaper/wallpaper_select.sh", 
-                model.get(currentIndex, "filePath")
-            ];
+            if (restoringSelection || currentIndex < 0 || currentIndex >= model.count)
+                return;
 
-            wallpaperProcess.running = true;
+            queueWallpaper(model.get(currentIndex, "filePath"));
         }
 
         delegate: Rectangle {

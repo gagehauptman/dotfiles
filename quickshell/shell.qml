@@ -21,6 +21,7 @@ Scope {
   property string tempValue: "0"
   property string batteryPercent: "0"
   property string batteryIcon: ""
+  property bool hasBattery: false
   property string cpuLoad: "0"
   property string volumePercent: "0"
   property string volumeIcon: "󰕾"
@@ -75,6 +76,12 @@ Scope {
     stdout: StdioCollector {
       onStreamFinished: {
         let newPercent = this.text.trim()
+        root.hasBattery = newPercent !== "" && !isNaN(parseInt(newPercent))
+        if (!root.hasBattery) {
+          root.batteryPercent = "0"
+          root.lowBatteryWarningShown = false
+          return
+        }
         root.batteryPercent = newPercent
         let currentPercent = parseInt(newPercent)
         if (currentPercent > root.lowBatteryThreshold + 5) {
@@ -312,6 +319,9 @@ Scope {
           }
           
           function show() {
+            if (!root.hasBattery) {
+              return
+            }
             lowBatteryPopup.visible = true
             lowBatteryPopup.opacity = 1
             lowBatteryPopupTimer.restart()
@@ -616,12 +626,14 @@ Scope {
             }
 
             Rectangle {
+              visible: root.hasBattery
               implicitWidth: 2
               implicitHeight: parent.parent.height * 0.6
               color: "#6c7086"
             }
 
             RowLayout {
+              visible: root.hasBattery
               spacing: 5
               Text {
                 text: root.batteryIcon

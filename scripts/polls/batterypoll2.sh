@@ -1,5 +1,17 @@
-status=$(cat /sys/class/power_supply/BAT0/status)
-percent=$(acpi | grep "Battery 0" | grep -o "[0-9]*%")
+battery=""
+
+for supply in /sys/class/power_supply/*; do
+  [ -e "$supply/type" ] || continue
+  [ "$(cat "$supply/type")" = "Battery" ] || continue
+  battery="$supply"
+  break
+done
+
+if [ -z "$battery" ] || [ ! -r "$battery/status" ]; then
+  exit 0
+fi
+
+status=$(cat "$battery/status")
 
 case $status in
     "Full")

@@ -45,6 +45,7 @@ git clone https://github.com/gagehauptman/dotfiles.git ~/dotfiles
 # Symlink configs
 ln -sf ~/dotfiles/hypr ~/.config/hypr
 ln -sf ~/dotfiles/kitty ~/.config/kitty
+ln -sf ~/dotfiles/zed ~/.config/zed
 ln -sf ~/dotfiles/quickshell ~/.config/quickshell
 ln -sf ~/dotfiles/nvim ~/.config/nvim
 ln -sf ~/dotfiles/scripts ~/.config/scripts

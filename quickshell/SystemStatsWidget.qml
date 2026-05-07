@@ -17,9 +17,15 @@ DataWidget {
   property string diskUsed: "0G"
   property string diskTotal: "0G"
   property real diskPercent: 0
-  property string cpuGovernor: "powersave"
-  property int gpuProfileIdx: 0
-  property string gpuProfileName: "DEFAULT"
+
+  // Bluetooth summary (one connected device, else first paired, else state)
+  property string btPower: "off"
+  property string btDeviceName: ""
+  property bool btDeviceConnected: false
+  property string btDeviceBattery: "NA"
+
+  // Days since last `pacman -Syu` ("NA" if unknown)
+  property string daysSinceUpgrade: "NA"
 
   Process {
     id: systemProc
@@ -37,11 +43,6 @@ DataWidget {
           systemWidget.diskUsed = parts[4]
           systemWidget.diskTotal = parts[5]
           systemWidget.diskPercent = parseFloat(parts[6])
-          if (parts.length >= 8) systemWidget.cpuGovernor = parts[7].trim()
-          if (parts.length >= 10) {
-            systemWidget.gpuProfileIdx = parseInt(parts[8])
-            systemWidget.gpuProfileName = parts[9].trim()
-          }
         }
       }
     }
@@ -52,6 +53,69 @@ DataWidget {
     running: true
     repeat: true
     onTriggered: systemProc.running = true
+  }
+
+  Process {
+    id: btProc
+    command: ["bash", root.home + "/.config/scripts/polls/bluetoothpoll.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: {
+        let lines = this.text.trim().split('\n').filter(l => l.trim())
+        let pwr = "off"
+        let pickName = ""
+        let pickConnected = false
+        let pickBattery = "NA"
+        for (let i = 0; i < lines.length; i++) {
+          let parts = lines[i].split('|')
+          if (parts[0] === "power") {
+            pwr = parts[1]
+          } else if (parts[0] === "device" && parts.length >= 6) {
+            let connected = parts[3] === "1"
+            // Prefer first connected; otherwise fall back to first paired.
+            if (connected && !pickConnected) {
+              pickName = parts[2]
+              pickConnected = true
+              pickBattery = parts[4]
+            } else if (!pickConnected && pickName === "") {
+              pickName = parts[2]
+              pickBattery = parts[4]
+            }
+          }
+        }
+        systemWidget.btPower = pwr
+        systemWidget.btDeviceName = pickName
+        systemWidget.btDeviceConnected = pickConnected
+        systemWidget.btDeviceBattery = pickBattery
+      }
+    }
+  }
+
+  Timer {
+    interval: 5000
+    running: true
+    repeat: true
+    onTriggered: btProc.running = true
+  }
+
+  Process {
+    id: updatesProc
+    command: ["bash", root.home + "/.config/scripts/polls/updatespoll.sh"]
+    running: true
+
+    stdout: StdioCollector {
+      onStreamFinished: {
+        systemWidget.daysSinceUpgrade = this.text.trim() || "NA"
+      }
+    }
+  }
+
+  Timer {
+    interval: 300000
+    running: true
+    repeat: true
+    onTriggered: updatesProc.running = true
   }
 
   dataContent: [
@@ -130,30 +194,22 @@ DataWidget {
         color: "#313244"
       }
 
-      // Toggles
-      Process {
-        id: governorToggle
-        command: ["sudo", root.home + "/.config/scripts/cpu-governor-toggle.sh"]
-
-        stdout: StdioCollector {
-          onStreamFinished: {
-            systemWidget.cpuGovernor = this.text.trim()
-          }
-        }
-      }
-
+      // Bluetooth status row
       RowLayout {
         Layout.fillWidth: true
         spacing: 10
 
         Rectangle {
           width: 10; height: 10; radius: 5
-          color: systemWidget.cpuGovernor === "performance" ? "#a6e3a1" : "#89b4fa"
+          color: systemWidget.btPower === "unavailable" ? "#f38ba8"
+               : systemWidget.btDeviceConnected ? "#a6e3a1"
+               : systemWidget.btPower === "on" ? "#89b4fa"
+               : "#6c7086"
           Behavior on color { ColorAnimation { duration: 200 } }
         }
 
         Text {
-          text: "󱐋 CPU Governor"
+          text: "󰂯 Bluetooth"
           color: "#cdd6f4"
           font.pixelSize: 13
           font.bold: true
@@ -162,51 +218,51 @@ DataWidget {
         }
 
         Text {
-          text: systemWidget.cpuGovernor === "performance" ? "performance" : "powersave"
-          color: systemWidget.cpuGovernor === "performance" ? "#a6e3a1" : "#89b4fa"
-          font.pixelSize: 13
-          font.italic: true
-          font.family: "monospace"
-
-          Behavior on color { ColorAnimation { duration: 200 } }
-
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: governorToggle.running = true
-          }
-        }
-      }
-
-      // GPU Power Profile toggle
-      Process {
-        id: gpuProfileToggle
-        command: ["sudo", root.home + "/.config/scripts/gpu-profile-toggle.sh"]
-
-        stdout: StdioCollector {
-          onStreamFinished: {
-            let parts = this.text.trim().split('|')
-            if (parts.length >= 2) {
-              systemWidget.gpuProfileIdx = parseInt(parts[0])
-              systemWidget.gpuProfileName = parts[1]
+          text: {
+            if (systemWidget.btPower === "unavailable") return "unavailable"
+            if (systemWidget.btPower === "off") return "off"
+            if (!systemWidget.btDeviceName) return "ready"
+            let s = systemWidget.btDeviceName
+            if (systemWidget.btDeviceConnected) {
+              if (systemWidget.btDeviceBattery !== "NA") {
+                s += " · " + systemWidget.btDeviceBattery + "%"
+              }
+            } else {
+              s += " (paired)"
             }
+            return s
           }
+          color: systemWidget.btPower === "unavailable" ? "#f38ba8"
+               : systemWidget.btDeviceConnected ? "#a6e3a1"
+               : systemWidget.btPower === "on" ? "#89b4fa"
+               : "#6c7086"
+          font.pixelSize: 13
+          font.italic: true
+          font.family: "monospace"
+
+          Behavior on color { ColorAnimation { duration: 200 } }
         }
       }
 
+      // Last upgrade row (days since `pacman -Syu`)
       RowLayout {
         Layout.fillWidth: true
         spacing: 10
 
         Rectangle {
           width: 10; height: 10; radius: 5
-          color: systemWidget.gpuProfileIdx === 1 ? "#a6e3a1" : systemWidget.gpuProfileIdx === 2 ? "#89b4fa" : "#f9e2af"
+          color: {
+            let d = parseInt(systemWidget.daysSinceUpgrade)
+            if (isNaN(d)) return "#6c7086"
+            if (d <= 7) return "#a6e3a1"
+            if (d <= 30) return "#f9e2af"
+            return "#f38ba8"
+          }
           Behavior on color { ColorAnimation { duration: 200 } }
         }
 
         Text {
-          text: "󰢮 GPU Profile"
+          text: "󰚰 Last Upgrade"
           color: "#cdd6f4"
           font.pixelSize: 13
           font.bold: true
@@ -215,20 +271,25 @@ DataWidget {
         }
 
         Text {
-          text: systemWidget.gpuProfileIdx === 0 ? "default" : systemWidget.gpuProfileIdx === 1 ? "3D gaming" : "powersave"
-          color: systemWidget.gpuProfileIdx === 1 ? "#a6e3a1" : systemWidget.gpuProfileIdx === 2 ? "#89b4fa" : "#f9e2af"
+          text: {
+            let d = parseInt(systemWidget.daysSinceUpgrade)
+            if (isNaN(d)) return "unknown"
+            if (d === 0) return "today"
+            if (d === 1) return "1 day ago"
+            return d + " days ago"
+          }
+          color: {
+            let d = parseInt(systemWidget.daysSinceUpgrade)
+            if (isNaN(d)) return "#6c7086"
+            if (d <= 7) return "#a6e3a1"
+            if (d <= 30) return "#f9e2af"
+            return "#f38ba8"
+          }
           font.pixelSize: 13
           font.italic: true
           font.family: "monospace"
 
           Behavior on color { ColorAnimation { duration: 200 } }
-
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: gpuProfileToggle.running = true
-          }
         }
       }
     }
@@ -236,5 +297,7 @@ DataWidget {
 
   Component.onCompleted: {
     systemProc.running = true
+    btProc.running = true
+    updatesProc.running = true
   }
 }

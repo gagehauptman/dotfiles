@@ -727,12 +727,12 @@ Scope {
                   Layout.fillWidth: true
                   Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
                   spacing: dashboardGrid.colSpacing
-                  
+
                   SystemStatsWidget {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                   }
-                  
+
                   MiscStatsWidget {
                     Layout.fillWidth: true
                     Layout.fillHeight: true

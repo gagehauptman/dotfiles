@@ -137,7 +137,10 @@ local smw = hl.plugin.split_monitor_workspaces
 for i = 0, 9 do
     local key = tostring(i)
     hl.bind(mainMod .. " + " .. key, function() return smw.workspace(i) end)
-    hl.bind(mainMod .. " + SHIFT + " .. key, function() return smw.move_to_workspace_silent(i) end)
+    hl.bind("ALT + " .. key, function()
+        smw.move_to_workspace_silent(i)
+        smw.workspace(i)
+    end)
 end
 
 local perdevice = os.getenv("HOME") .. "/.config/hypr/perdevice.lua"

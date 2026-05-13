@@ -43,7 +43,7 @@ Item {
             label: "Logout",
             icon: "󰍃",
             color: "#f9e2af",
-            command: ["hyprctl", "dispatch", "exit"]
+            command: ["hyprctl", "dispatch", "hl.dsp.exit()"]
         }
     ]
 

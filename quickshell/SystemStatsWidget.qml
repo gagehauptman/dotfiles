@@ -20,6 +20,7 @@ DataWidget {
 
   // Bluetooth summary (one connected device, else first paired, else state)
   property string btPower: "off"
+  property string btDeviceMac: ""
   property string btDeviceName: ""
   property bool btDeviceConnected: false
   property string btDeviceBattery: "NA"
@@ -64,6 +65,7 @@ DataWidget {
       onStreamFinished: {
         let lines = this.text.trim().split('\n').filter(l => l.trim())
         let pwr = "off"
+        let pickMac = ""
         let pickName = ""
         let pickConnected = false
         let pickBattery = "NA"
@@ -75,16 +77,19 @@ DataWidget {
             let connected = parts[3] === "1"
             // Prefer first connected; otherwise fall back to first paired.
             if (connected && !pickConnected) {
+              pickMac = parts[1]
               pickName = parts[2]
               pickConnected = true
               pickBattery = parts[4]
             } else if (!pickConnected && pickName === "") {
+              pickMac = parts[1]
               pickName = parts[2]
               pickBattery = parts[4]
             }
           }
         }
         systemWidget.btPower = pwr
+        systemWidget.btDeviceMac = pickMac
         systemWidget.btDeviceName = pickName
         systemWidget.btDeviceConnected = pickConnected
         systemWidget.btDeviceBattery = pickBattery
@@ -97,6 +102,14 @@ DataWidget {
     running: true
     repeat: true
     onTriggered: btProc.running = true
+  }
+
+  Process {
+    id: btToggleProc
+    property string mac: ""
+    property bool doConnect: false
+    command: ["bluetoothctl", doConnect ? "connect" : "disconnect", mac]
+    onExited: btProc.running = true
   }
 
   Process {
@@ -195,52 +208,74 @@ DataWidget {
       }
 
       // Bluetooth status row
-      RowLayout {
+      Rectangle {
         Layout.fillWidth: true
-        spacing: 10
+        implicitHeight: btRow.implicitHeight
+        color: "transparent"
 
-        Rectangle {
-          width: 10; height: 10; radius: 5
-          color: systemWidget.btPower === "unavailable" ? "#f38ba8"
-               : systemWidget.btDeviceConnected ? "#a6e3a1"
-               : systemWidget.btPower === "on" ? "#89b4fa"
-               : "#6c7086"
-          Behavior on color { ColorAnimation { duration: 200 } }
-        }
+        RowLayout {
+          id: btRow
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: 10
 
-        Text {
-          text: "󰂯 Bluetooth"
-          color: "#cdd6f4"
-          font.pixelSize: 13
-          font.bold: true
-          font.family: "monospace"
-          Layout.fillWidth: true
-        }
-
-        Text {
-          text: {
-            if (systemWidget.btPower === "unavailable") return "unavailable"
-            if (systemWidget.btPower === "off") return "off"
-            if (!systemWidget.btDeviceName) return "ready"
-            let s = systemWidget.btDeviceName
-            if (systemWidget.btDeviceConnected) {
-              if (systemWidget.btDeviceBattery !== "NA") {
-                s += " · " + systemWidget.btDeviceBattery + "%"
-              }
-            } else {
-              s += " (paired)"
-            }
-            return s
+          Rectangle {
+            width: 10; height: 10; radius: 5
+            color: systemWidget.btPower === "unavailable" ? "#f38ba8"
+                 : systemWidget.btDeviceConnected ? "#a6e3a1"
+                 : systemWidget.btPower === "on" ? "#89b4fa"
+                 : "#6c7086"
+            Behavior on color { ColorAnimation { duration: 200 } }
           }
-          color: systemWidget.btPower === "unavailable" ? "#f38ba8"
-               : systemWidget.btDeviceConnected ? "#a6e3a1"
-               : systemWidget.btPower === "on" ? "#89b4fa"
-               : "#6c7086"
-          font.pixelSize: 13
-          font.italic: true
-          font.family: "monospace"
 
-          Behavior on color { ColorAnimation { duration: 200 } }
+          Text {
+            text: "󰂯 Bluetooth"
+            color: "#cdd6f4"
+            font.pixelSize: 13
+            font.bold: true
+            font.family: "monospace"
+            Layout.fillWidth: true
+          }
+
+          Text {
+            text: {
+              if (systemWidget.btPower === "unavailable") return "unavailable"
+              if (systemWidget.btPower === "off") return "off"
+              if (!systemWidget.btDeviceName) return "ready"
+              let s = systemWidget.btDeviceName
+              if (systemWidget.btDeviceConnected) {
+                if (systemWidget.btDeviceBattery !== "NA") {
+                  s += " · " + systemWidget.btDeviceBattery + "%"
+                }
+              } else {
+                s += " (paired)"
+              }
+              return s
+            }
+            color: systemWidget.btPower === "unavailable" ? "#f38ba8"
+                 : systemWidget.btDeviceConnected ? "#a6e3a1"
+                 : systemWidget.btPower === "on" ? "#89b4fa"
+                 : "#6c7086"
+            font.pixelSize: 13
+            font.italic: true
+            font.family: "monospace"
+
+            Behavior on color { ColorAnimation { duration: 200 } }
+          }
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          enabled: systemWidget.btPower === "on" && systemWidget.btDeviceMac !== ""
+          hoverEnabled: enabled
+          acceptedButtons: Qt.LeftButton
+          cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+          onClicked: {
+            btToggleProc.mac = systemWidget.btDeviceMac
+            btToggleProc.doConnect = !systemWidget.btDeviceConnected
+            btToggleProc.running = true
+          }
         }
       }
 

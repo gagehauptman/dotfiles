@@ -42,7 +42,7 @@ Item {
       // Separator
       Rectangle {
         Layout.fillWidth: true
-        height: 2
+        height: bar.dividerThickness
         color: "#45475a"
       }
 

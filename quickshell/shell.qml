@@ -337,6 +337,8 @@ Scope {
 
           property real barHeight: 2.5 * parent.height / 100
 
+          property int dividerThickness: 1
+
           property real dropdownWidth: 30 * parent.width / 100
           property real dropdownHeight: 10 * parent.height / 100
           property real dropdownFilletRadius: 10
@@ -544,7 +546,7 @@ Scope {
 
             Rectangle {
               visible: root.hasBrightness
-              implicitWidth: 2
+              implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
               color: "#6c7086"
             }
@@ -570,7 +572,7 @@ Scope {
             }
 
             Rectangle {
-              implicitWidth: 2
+              implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
               color: "#6c7086"
             }
@@ -593,7 +595,7 @@ Scope {
             }
 
             Rectangle {
-              implicitWidth: 2
+              implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
               color: "#6c7086"
             }
@@ -627,7 +629,7 @@ Scope {
 
             Rectangle {
               visible: root.hasBattery
-              implicitWidth: 2
+              implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
               color: "#6c7086"
             }

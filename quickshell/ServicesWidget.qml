@@ -113,7 +113,7 @@ ThreeRowWidget {
   }
 
   Timer {
-    interval: 30000; running: true; repeat: true
+    interval: 10000; running: true; repeat: true
     onTriggered: tessieProc.running = true
   }
 
@@ -326,8 +326,9 @@ ThreeRowWidget {
 
           onClicked: {
             let turningOn = !servicesWidget.carClimateOn
-            servicesWidget.carClimateOn = turningOn   // optimistic
-            (turningOn ? climateOnCmdProc : climateOffCmdProc).running = true
+            servicesWidget.carClimateOn = turningOn
+            if (turningOn) climateOnCmdProc.running = true
+            else climateOffCmdProc.running = true
           }
         }
       }

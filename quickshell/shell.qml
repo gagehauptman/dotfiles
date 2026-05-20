@@ -712,15 +712,15 @@ Scope {
               }
               spacing: dashboardGrid.colSpacing
               
-              // Columns 1-2: Tailscale (2-tall) + SystemStats/MiscStats side by side
+              // Columns 1-2: Services (2-tall) + SystemStats/MiscStats side by side
               ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredWidth: 2
                 spacing: dashboardGrid.rowSpacing
-                
-                TailscaleWidget {
-                  id: tailscaleWidget
+
+                ServicesWidget {
+                  id: servicesWidget
                   Layout.fillWidth: true
                   Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
                 }

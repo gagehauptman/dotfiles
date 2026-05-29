@@ -106,67 +106,25 @@ DataWidget {
       anchors.right: parent.right
       spacing: 8
 
-      // CPU
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 6
-
-        RowLayout {
-          Layout.fillWidth: true
-          Text { text: "󰘚 CPU"; color: Theme.colors.blue; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.cpuUsage.toFixed(1) + "%"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
-        }
-
-        Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
-          Rectangle {
-            width: parent.width * (systemWidget.cpuUsage / 100); height: parent.height; radius: 4
-            color: systemWidget.cpuUsage > 80 ? Theme.colors.red : systemWidget.cpuUsage > 50 ? Theme.colors.orange : Theme.colors.blue
-            Behavior on width { NumberAnimation { duration: 200 } }
-          }
-        }
+      StatBar {
+        label: "󰘚 CPU"
+        valueText: systemWidget.cpuUsage.toFixed(1) + "%"
+        percent: systemWidget.cpuUsage
+        accentColor: Theme.colors.blue
       }
 
-      // RAM
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 6
-
-        RowLayout {
-          Layout.fillWidth: true
-          Text { text: "󰍛 RAM"; color: Theme.colors.green; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
-        }
-
-        Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
-          Rectangle {
-            width: parent.width * (systemWidget.ramPercent / 100); height: parent.height; radius: 4
-            color: systemWidget.ramPercent > 80 ? Theme.colors.red : systemWidget.ramPercent > 50 ? Theme.colors.orange : Theme.colors.green
-            Behavior on width { NumberAnimation { duration: 200 } }
-          }
-        }
+      StatBar {
+        label: "󰍛 RAM"
+        valueText: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
+        percent: systemWidget.ramPercent
+        accentColor: Theme.colors.green
       }
 
-      // Disk
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 6
-
-        RowLayout {
-          Layout.fillWidth: true
-          Text { text: "󰋊 Disk"; color: Theme.colors.pink; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
-        }
-
-        Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
-          Rectangle {
-            width: parent.width * (systemWidget.diskPercent / 100); height: parent.height; radius: 4
-            color: systemWidget.diskPercent > 80 ? Theme.colors.red : systemWidget.diskPercent > 50 ? Theme.colors.orange : Theme.colors.pink
-            Behavior on width { NumberAnimation { duration: 200 } }
-          }
-        }
+      StatBar {
+        label: "󰋊 Disk"
+        valueText: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
+        percent: systemWidget.diskPercent
+        accentColor: Theme.colors.pink
       }
 
       // Separator

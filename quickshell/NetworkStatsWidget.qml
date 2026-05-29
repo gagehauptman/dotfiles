@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 DataWidget {
   id: networkWidget
@@ -54,18 +55,18 @@ DataWidget {
         Layout.fillWidth: true
         spacing: 10
 
-        Text { text: "󰇚"; color: "#89dceb"; font.pixelSize: 16; font.family: "monospace" }
+        Text { text: "󰇚"; color: Theme.colors.cyan; font.pixelSize: 16; font.family: "monospace" }
 
         ColumnLayout {
           Layout.fillWidth: true
           spacing: 2
 
-          Text { text: "Download"; color: "#89dceb"; font.pixelSize: 11; font.bold: true }
+          Text { text: "Download"; color: Theme.colors.cyan; font.pixelSize: 11; font.bold: true }
 
           RowLayout {
             spacing: 8
-            Text { text: networkWidget.rxRate; color: "#cdd6f4"; font.pixelSize: 12; font.bold: true }
-            Text { text: "(" + networkWidget.rxTotal + " total)"; color: "#6c7086"; font.pixelSize: 10 }
+            Text { text: networkWidget.rxRate; color: Theme.colors.textPrimary; font.pixelSize: 12; font.bold: true }
+            Text { text: "(" + networkWidget.rxTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: 10 }
           }
         }
       }
@@ -75,18 +76,18 @@ DataWidget {
         Layout.fillWidth: true
         spacing: 10
 
-        Text { text: "󰕒"; color: "#a6e3a1"; font.pixelSize: 16; font.family: "monospace" }
+        Text { text: "󰕒"; color: Theme.colors.green; font.pixelSize: 16; font.family: "monospace" }
 
         ColumnLayout {
           Layout.fillWidth: true
           spacing: 2
 
-          Text { text: "Upload"; color: "#a6e3a1"; font.pixelSize: 11; font.bold: true }
+          Text { text: "Upload"; color: Theme.colors.green; font.pixelSize: 11; font.bold: true }
 
           RowLayout {
             spacing: 8
-            Text { text: networkWidget.txRate; color: "#cdd6f4"; font.pixelSize: 12; font.bold: true }
-            Text { text: "(" + networkWidget.txTotal + " total)"; color: "#6c7086"; font.pixelSize: 10 }
+            Text { text: networkWidget.txRate; color: Theme.colors.textPrimary; font.pixelSize: 12; font.bold: true }
+            Text { text: "(" + networkWidget.txTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: 10 }
           }
         }
       }

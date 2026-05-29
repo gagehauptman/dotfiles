@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "themes"
 
 Item {
   id: musicWidget
@@ -204,7 +205,7 @@ Item {
         }
         return "..."
       }
-      color: musicWidget.hasMusic ? (musicMouse.containsMouse ? "#f9e2af" : "#f5c2e7") : "#fab387"
+      color: musicWidget.hasMusic ? (musicMouse.containsMouse ? Theme.colors.yellow : Theme.colors.pink) : Theme.colors.orange
       font.pixelSize: 13
       font.bold: false
       elide: Text.ElideRight

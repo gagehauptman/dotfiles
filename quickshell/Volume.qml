@@ -4,6 +4,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Pipewire
 import Quickshell.Widgets
+import "themes"
 
 Scope {
     id: root
@@ -100,7 +101,7 @@ Scope {
 
                         implicitHeight: 10
                         radius: 20
-                        color: "#ff000000"
+                        color: Theme.colors.panelDeep
 
                         Rectangle {
                             anchors {
@@ -111,7 +112,7 @@ Scope {
 
                             implicitWidth: parent.width * (Pipewire.defaultAudioSink?.audio.volume ?? 0)
                             radius: parent.radius
-                            color: "#ffff0000"
+                            color: Theme.colors.red
                         }
                     }
                 }

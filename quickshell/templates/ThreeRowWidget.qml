@@ -2,6 +2,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import "../themes"
 
 Item {
   id: root
@@ -15,7 +16,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    color: "#181825"
+    color: Theme.colors.panel
     radius: 15
 
     ColumnLayout {
@@ -30,7 +31,7 @@ Item {
       // Title
       Text {
         text: root.title
-        color: "#cdd6f4"
+        color: Theme.colors.textPrimary
         font.pixelSize: 16
         font.bold: true
         font.family: "monospace"
@@ -42,7 +43,7 @@ Item {
       Rectangle {
         Layout.fillWidth: true
         height: bar.dividerThickness
-        color: "#45475a"
+        color: Theme.colors.border
       }
 
       // Middle content slot
@@ -56,7 +57,7 @@ Item {
       Rectangle {
         Layout.fillWidth: true
         height: bar.dividerThickness
-        color: "#45475a"
+        color: Theme.colors.border
       }
 
       // Footer content slot

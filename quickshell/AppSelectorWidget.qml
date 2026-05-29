@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import QtQml.Models
+import "themes"
 
 Item {
     id: appSelectorWidget
@@ -77,7 +78,7 @@ Item {
     // Background
     Rectangle {
         anchors.fill: parent
-        color: "#181825"
+        color: Theme.colors.panel
         radius: 15
     }
 
@@ -88,7 +89,7 @@ Item {
         y: 15
         width: parent.width - 30
         height: appSelectorWidget.searchBarHeight
-        color: "#313244"
+        color: Theme.colors.inset
         radius: 8
 
         Text {
@@ -96,7 +97,7 @@ Item {
             x: 12
             anchors.verticalCenter: parent.verticalCenter
             text: "󰍉"
-            color: "#89b4fa"
+            color: Theme.colors.blue
             font.pixelSize: 14
             font.family: "monospace"
         }
@@ -105,7 +106,7 @@ Item {
             x: searchIcon.x + searchIcon.width + 8
             anchors.verticalCenter: parent.verticalCenter
             text: "Search applications..."
-            color: "#6c7086"
+            color: Theme.colors.textMuted
             font.pixelSize: 14
             font.family: "monospace"
             visible: !searchBox.text && !searchBox.activeFocus
@@ -117,7 +118,7 @@ Item {
             width: parent.width - x - 12
             anchors.verticalCenter: parent.verticalCenter
             
-            color: "#cdd6f4"
+            color: Theme.colors.textPrimary
             font.pixelSize: 14
             font.family: "monospace"
             clip: true
@@ -165,7 +166,7 @@ Item {
         y: appSelectorWidget.separatorY
         width: parent.width - (appSelectorWidget.edgePadding*2)
         height: 2
-        color: "#45475a"
+        color: Theme.colors.border
     }
 
     // Grid
@@ -200,10 +201,10 @@ Item {
         }
 
         highlight: Rectangle { 
-            color: "#313244"
+            color: Theme.colors.inset
             radius: 10
             border.width: 2
-            border.color: "#89b4fa"
+            border.color: Theme.colors.blue
         }
         highlightFollowsCurrentItem: true
 
@@ -245,7 +246,7 @@ Item {
 
                 Text {
                     text: appData.name
-                    color: "#cdd6f4"
+                    color: Theme.colors.textPrimary
                     font.pixelSize: 11
                     font.bold: isSelected
                     font.family: "monospace"
@@ -284,7 +285,7 @@ Item {
             bottomMargin: (appSelectorWidget.edgePadding/2)
         }
         text: (appSelectorWidget.currentPage + 1) + " / " + appSelectorWidget.totalPages
-        color: "#6c7086"
+        color: Theme.colors.textMuted
         font.pixelSize: 11
         font.family: "monospace"
         visible: appSelectorWidget.totalPages > 1

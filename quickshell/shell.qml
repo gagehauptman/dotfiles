@@ -11,6 +11,7 @@ import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import "templates"
+import "themes"
 
 Scope {
   id: root
@@ -252,8 +253,8 @@ Scope {
           width: 400
           height: 120
           radius: 20
-          color: "#1e1e2e"
-          border.color: "#f38ba8"
+          color: Theme.colors.background
+          border.color: Theme.colors.red
           border.width: 2
           
           anchors {
@@ -271,7 +272,7 @@ Scope {
             
             Text {
               text: ""
-              color: "#f38ba8"
+              color: Theme.colors.red
               font.pixelSize: 36
               font.family: "monospace"
               Layout.alignment: Qt.AlignHCenter
@@ -279,7 +280,7 @@ Scope {
             
             Text {
               text: "Low Battery Warning"
-              color: "#cdd6f4"
+              color: Theme.colors.textPrimary
               font.pixelSize: 16
               font.bold: true
               Layout.alignment: Qt.AlignHCenter
@@ -287,7 +288,7 @@ Scope {
             
             Text {
               text: "Battery at " + root.batteryPercent + "% — Please plug in charger"
-              color: "#a6adc8"
+              color: Theme.colors.textSecondary
               font.pixelSize: 13
               Layout.alignment: Qt.AlignHCenter
             }
@@ -353,7 +354,7 @@ Scope {
           property int appSelectorRowsPerPage: 5
 
           ShapePath {
-            fillColor: "#11111b"
+            fillColor: Theme.colors.panelDeep
             strokeColor: "transparent"
 
             startX: 0; startY: 0
@@ -501,7 +502,7 @@ Scope {
               rightMargin: 20
             }
 
-            color: "#cdd6f4"
+            color: Theme.colors.textPrimary
             font.pixelSize: 14
             font.family: "Noto Sans"
             font.bold: true
@@ -535,7 +536,7 @@ Scope {
               icon: "󰃠"
               value: root.brightnessValue
               displayValue: Math.round(root.brightnessValue * 100) + "%"
-              accentColor: "#f9e2af"
+              accentColor: Theme.colors.yellow
 
               onMoved: (newVal) => {
                 let raw = Math.round(newVal * root.brightnessMax);
@@ -548,7 +549,7 @@ Scope {
               visible: root.hasBrightness
               implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
-              color: "#6c7086"
+              color: Theme.colors.textMuted
             }
 
             // Volume widget (hover to expand slider, click to mute)
@@ -556,7 +557,7 @@ Scope {
               icon: root.volumeIcon
               value: (Pipewire.defaultAudioSink?.audio.volume ?? 0)
               displayValue: root.volumePercent + "%"
-              accentColor: "#cba6f7"
+              accentColor: Theme.colors.violet
 
               onMoved: (newVal) => {
                 if (Pipewire.defaultAudioSink?.audio) {
@@ -574,21 +575,21 @@ Scope {
             Rectangle {
               implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
-              color: "#6c7086"
+              color: Theme.colors.textMuted
             }
 
             RowLayout {
               spacing: 5
               Text {
                 text: "󰘚"
-                color: "#89b4fa"
+                color: Theme.colors.blue
                 font.pixelSize: 14
                 font.family: "monospace"
                 font.bold: true
               }
               Text {
                 text: parseFloat(root.cpuLoad).toFixed(0) + "%"
-                color: "#89b4fa"
+                color: Theme.colors.blue
                 font.pixelSize: 14
                 font.bold: true
               }
@@ -597,7 +598,7 @@ Scope {
             Rectangle {
               implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
-              color: "#6c7086"
+              color: Theme.colors.textMuted
             }
 
             RowLayout {
@@ -606,9 +607,9 @@ Scope {
                 text: "󰔏"
                 color: {
                   let temp = parseFloat(root.tempValue);
-                  if (temp > 80) return "#f38ba8";
-                  if (temp > 60) return "#fab387";
-                  return "#94e2d5";
+                  if (temp > 80) return Theme.colors.red;
+                  if (temp > 60) return Theme.colors.orange;
+                  return Theme.colors.teal;
                 }
                 font.pixelSize: 14
                 font.family: "monospace"
@@ -618,9 +619,9 @@ Scope {
                 text: parseFloat(root.tempValue).toFixed(0) + "°C"
                 color: {
                   let temp = parseFloat(root.tempValue);
-                  if (temp > 80) return "#f38ba8";
-                  if (temp > 60) return "#fab387";
-                  return "#94e2d5";
+                  if (temp > 80) return Theme.colors.red;
+                  if (temp > 60) return Theme.colors.orange;
+                  return Theme.colors.teal;
                 }
                 font.pixelSize: 14
                 font.bold: true
@@ -631,7 +632,7 @@ Scope {
               visible: root.hasBattery
               implicitWidth: bar.dividerThickness
               implicitHeight: parent.parent.height * 0.6
-              color: "#6c7086"
+              color: Theme.colors.textMuted
             }
 
             RowLayout {
@@ -641,9 +642,9 @@ Scope {
                 text: root.batteryIcon
                 color: {
                   let level = parseInt(root.batteryPercent);
-                  if (level > 60) return "#a6e3a1";
-                  if (level > 30) return "#f9e2af";
-                  return "#f38ba8";
+                  if (level > 60) return Theme.colors.green;
+                  if (level > 30) return Theme.colors.yellow;
+                  return Theme.colors.red;
                 }
                 font.pixelSize: 14
                 font.family: "monospace"
@@ -653,9 +654,9 @@ Scope {
                 text: root.batteryPercent + "%"
                 color: {
                   let level = parseInt(root.batteryPercent);
-                  if (level > 60) return "#a6e3a1";
-                  if (level > 30) return "#f9e2af";
-                  return "#f38ba8";
+                  if (level > 60) return Theme.colors.green;
+                  if (level > 30) return Theme.colors.yellow;
+                  return Theme.colors.red;
                 }
                 font.pixelSize: 14
                 font.bold: true

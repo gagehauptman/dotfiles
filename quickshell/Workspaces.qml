@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import "themes"
 
 Item {
   id: workspacesWidget
@@ -57,10 +58,10 @@ Item {
 
         color: {
           let base
-          if (isActive && hasWindows) base = "#89b4fa"   // Blue - active with windows
-          else if (isActive) base = "#74c7ec"             // Sapphire - active but empty
-          else if (hasWindows) base = "#b4befe"          // Lavender - has windows
-          else base = "#45475a"                           // Surface1 - empty
+          if (isActive && hasWindows) base = Theme.colors.blue
+          else if (isActive) base = Theme.colors.indigo
+          else if (hasWindows) base = Theme.colors.lavender
+          else base = Theme.colors.border
           return isHovered ? Qt.lighter(base, 1.25) : base
         }
 

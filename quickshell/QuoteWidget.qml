@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 ThreeRowWidget {
   id: quoteWidget
@@ -39,7 +40,7 @@ ThreeRowWidget {
   middleContent: Component {
     Text {
       text: quoteWidget.quoteText || "Loading..."
-      color: "#cdd6f4"
+      color: Theme.colors.textPrimary
       font.pixelSize: 13
       font.italic: true
       wrapMode: Text.WordWrap
@@ -51,7 +52,7 @@ ThreeRowWidget {
     Text {
       visible: quoteWidget.quoteAuthor !== ""
       text: "— " + quoteWidget.quoteAuthor
-      color: "#89b4fa"
+      color: Theme.colors.blue
       font.pixelSize: 12
       font.bold: true
       horizontalAlignment: Text.AlignRight

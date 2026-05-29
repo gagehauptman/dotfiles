@@ -10,6 +10,7 @@ import Quickshell.Wayland
 import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
+import "themes"
 
 // Wallpaper Selector
 Item {
@@ -214,7 +215,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 text: fileBaseName
-                color: "#bac2de"
+                color: Theme.colors.textSecondary
                 font.family: "Noto Sans"
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

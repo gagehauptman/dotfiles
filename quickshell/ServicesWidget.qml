@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 ThreeRowWidget {
   id: servicesWidget
@@ -154,7 +155,7 @@ ThreeRowWidget {
 
       Text {
         text: "󰛳  Tailscale"
-        color: "#a6adc8"
+        color: Theme.colors.textSecondary
         font.pixelSize: 12
         font.bold: true
         font.family: "monospace"
@@ -170,12 +171,12 @@ ThreeRowWidget {
 
           Rectangle {
             width: 10; height: 10; radius: 5
-            color: modelData.status === "online" ? "#a6e3a1" : "#f38ba8"
+            color: modelData.status === "online" ? Theme.colors.green : Theme.colors.red
           }
 
           Text {
             text: modelData.name
-            color: "#cdd6f4"
+            color: Theme.colors.textPrimary
             font.pixelSize: 14
             font.bold: true
             Layout.fillWidth: true
@@ -183,7 +184,7 @@ ThreeRowWidget {
 
           Text {
             text: modelData.status
-            color: modelData.status === "online" ? "#a6e3a1" : "#6c7086"
+            color: modelData.status === "online" ? Theme.colors.green : Theme.colors.textMuted
             font.pixelSize: 13
             font.italic: true
           }
@@ -193,9 +194,9 @@ ThreeRowWidget {
             text: "(" + modelData.ping + ")"
             color: {
               let pingValue = parseInt(modelData.ping)
-              if (pingValue < 30)  return "#a6e3a1"
-              if (pingValue < 100) return "#f9e2af"
-              return "#f38ba8"
+              if (pingValue < 30)  return Theme.colors.green
+              if (pingValue < 100) return Theme.colors.yellow
+              return Theme.colors.red
             }
             font.pixelSize: 12
           }
@@ -205,7 +206,7 @@ ThreeRowWidget {
       Text {
         visible: servicesWidget.devices.length === 0
         text: "Loading devices..."
-        color: "#6c7086"
+        color: Theme.colors.textMuted
         font.pixelSize: 13
         font.italic: true
         Layout.fillWidth: true
@@ -224,10 +225,10 @@ ThreeRowWidget {
         Layout.rightMargin: 2
         width: 10; height: 10; radius: 5
         color: {
-          if (!servicesWidget.carOk)                return "#6c7086"
-          if (servicesWidget.carState === "online") return "#a6e3a1"
-          if (servicesWidget.carState === "asleep") return "#f9e2af"
-          return "#f38ba8"
+          if (!servicesWidget.carOk)                return Theme.colors.textMuted
+          if (servicesWidget.carState === "online") return Theme.colors.green
+          if (servicesWidget.carState === "asleep") return Theme.colors.yellow
+          return Theme.colors.red
         }
         Behavior on color { ColorAnimation { duration: 150 } }
       }
@@ -235,7 +236,7 @@ ThreeRowWidget {
       // Name
       Text {
         text: "󰄋  " + servicesWidget.carName
-        color: "#cdd6f4"
+        color: Theme.colors.textPrimary
         font.pixelSize: 14
         font.bold: true
         font.family: "monospace"
@@ -245,7 +246,7 @@ ThreeRowWidget {
       Text {
         visible: !servicesWidget.carOk
         text: servicesWidget.carStatus === "loading" ? "loading..." : servicesWidget.carError
-        color: "#6c7086"
+        color: Theme.colors.textMuted
         font.pixelSize: 12
         font.italic: true
         Layout.leftMargin: 4
@@ -263,10 +264,10 @@ ThreeRowWidget {
           return icon + servicesWidget.carBattery + "%" + rate
         }
         color: {
-          if (servicesWidget.isCharging)      return "#a6e3a1"
-          if (servicesWidget.carBattery > 50) return "#a6e3a1"
-          if (servicesWidget.carBattery > 20) return "#f9e2af"
-          return "#f38ba8"
+          if (servicesWidget.isCharging)      return Theme.colors.green
+          if (servicesWidget.carBattery > 50) return Theme.colors.green
+          if (servicesWidget.carBattery > 20) return Theme.colors.yellow
+          return Theme.colors.red
         }
         font.pixelSize: 13
         font.bold: true
@@ -277,7 +278,7 @@ ThreeRowWidget {
       Text {
         visible: servicesWidget.carOk
         text: servicesWidget.carRange + " mi"
-        color: "#a6adc8"
+        color: Theme.colors.textSecondary
         font.pixelSize: 12
       }
 
@@ -287,7 +288,7 @@ ThreeRowWidget {
       Text {
         visible: servicesWidget.carOk
         text: servicesWidget.carTemp.toFixed(0) + "°C"
-        color: "#a6adc8"
+        color: Theme.colors.textSecondary
         font.pixelSize: 12
         font.family: "monospace"
       }
@@ -305,7 +306,7 @@ ThreeRowWidget {
         Text {
           anchors.centerIn: parent
           text: "󰈐"
-          color: servicesWidget.carClimateOn ? "#89b4fa" : "#6c7086"
+          color: servicesWidget.carClimateOn ? Theme.colors.blue : Theme.colors.textMuted
           font.pixelSize: 14
           font.family: "monospace"
           Behavior on color { ColorAnimation { duration: 150 } }
@@ -355,7 +356,7 @@ ThreeRowWidget {
         Text {
           anchors.centerIn: parent
           text: "󰌾"
-          color: "#a6e3a1"
+          color: Theme.colors.green
           font.pixelSize: 14
           font.family: "monospace"
           visible: servicesWidget.carLocked
@@ -365,7 +366,7 @@ ThreeRowWidget {
         Text {
           anchors.centerIn: parent
           text: "󰿆"
-          color: "#f38ba8"
+          color: Theme.colors.red
           font.pixelSize: 14
           font.family: "monospace"
           opacity: servicesWidget.carLocked ? lockButton.holdProgress : 1.0

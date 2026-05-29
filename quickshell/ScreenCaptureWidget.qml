@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import "themes"
 
 Item {
   id: root
@@ -72,7 +73,7 @@ Item {
     Text {
       id: screenshotBtn
       text: "\uf030"
-      color: screenshotMouse.containsMouse ? "#89dceb" : "#a6adc8"
+      color: screenshotMouse.containsMouse ? Theme.colors.cyan : Theme.colors.textSecondary
       font.pixelSize: 14
       font.family: "monospace"
       font.bold: true
@@ -103,7 +104,7 @@ Item {
       text: root.isRecording ? "\uf04d" : "\uf111"
       color: {
         if (root.isRecording) return pulseAnim.pulseColor
-        return recordMouse.containsMouse ? "#f38ba8" : "#a6adc8"
+        return recordMouse.containsMouse ? Theme.colors.red : Theme.colors.textSecondary
       }
       font.pixelSize: root.isRecording ? 14 : 10
       font.family: "monospace"
@@ -112,17 +113,17 @@ Item {
 
       Timer {
         id: pulseAnim
-        property color pulseColor: "#f38ba8"
+        property color pulseColor: Theme.colors.red
         property bool bright: true
         interval: 700
         running: root.isRecording
         repeat: true
         onTriggered: {
           bright = !bright
-          pulseColor = bright ? "#f38ba8" : "#7f1d2d"
+          pulseColor = bright ? Theme.colors.red : Qt.darker(Theme.colors.red, 2.0)
         }
         onRunningChanged: {
-          if (running) { bright = true; pulseColor = "#f38ba8" }
+          if (running) { bright = true; pulseColor = Theme.colors.red }
         }
       }
 

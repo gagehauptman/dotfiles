@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import "../themes"
 
 Item {
   id: root
@@ -10,7 +11,7 @@ Item {
   property string icon: ""
   property real value: 0          // 0.0 – 1.0
   property string displayValue: ""
-  property color accentColor: "#cba6f7"
+  property color accentColor: Theme.colors.violet
   property bool mutable: true     // false = display-only, no slider
 
   signal moved(real newValue)
@@ -108,7 +109,7 @@ Item {
       width: parent.width
       height: root.sliderHeight
       radius: root.sliderHeight / 2
-      color: "#45475a"
+      color: Theme.colors.border
 
       Rectangle {
         anchors {
@@ -127,7 +128,7 @@ Item {
       width: root.knobSize
       height: root.knobSize
       radius: root.knobSize / 2
-      color: "#cdd6f4"
+      color: Theme.colors.textPrimary
       x: (sliderContainer.width - width) * Math.max(0, Math.min(1, root.effectiveValue))
       anchors.verticalCenter: parent.verticalCenter
     }

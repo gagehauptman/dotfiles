@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 DataWidget {
   id: miscWidget
@@ -59,23 +60,23 @@ DataWidget {
       columnSpacing: 10
       rowSpacing: 7
 
-      Text { text: "󰥔 Uptime"; color: "#f9e2af"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.uptime; color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
+      Text { text: "󰥔 Uptime"; color: Theme.colors.yellow; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.uptime; color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
 
-      Text { text: "󰓅 Load Avg"; color: "#fab387"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.loadAvg; color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
+      Text { text: "󰓅 Load Avg"; color: Theme.colors.orange; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.loadAvg; color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true }
 
-      Text { text: "󰐾 Processes"; color: "#94e2d5"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.processCount.toString(); color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
+      Text { text: "󰐾 Processes"; color: Theme.colors.teal; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.processCount.toString(); color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true }
 
-      Text { text: "󰒓 Kernel"; color: "#b4befe"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.kernel; color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
+      Text { text: "󰒓 Kernel"; color: Theme.colors.lavender; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.kernel; color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
 
-      Text { text: "󰀄 Users"; color: "#cba6f7"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.userCount.toString(); color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
+      Text { text: "󰀄 Users"; color: Theme.colors.violet; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.userCount.toString(); color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true }
 
-      Text { text: "󰏖 Packages"; color: "#f5c2e7"; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
-      Text { text: miscWidget.packageCount.toString(); color: "#cdd6f4"; font.pixelSize: 11; Layout.fillWidth: true }
+      Text { text: "󰏖 Packages"; color: Theme.colors.pink; font.pixelSize: 12; font.bold: true; font.family: "monospace" }
+      Text { text: miscWidget.packageCount.toString(); color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true }
     }
   ]
 

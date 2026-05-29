@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import "themes"
 
 // Power Menu
 Item {
@@ -24,25 +25,25 @@ Item {
         {
             label: "Shutdown",
             icon: "󰐥",
-            color: "#f38ba8",
+            color: Theme.colors.red,
             command: ["systemctl", "poweroff"]
         },
         {
             label: "Reboot",
             icon: "󰜉",
-            color: "#fab387",
+            color: Theme.colors.orange,
             command: ["systemctl", "reboot"]
         },
         {
             label: "Lock",
             icon: "󰌾",
-            color: "#89b4fa",
+            color: Theme.colors.blue,
             command: ["hyprlock"]
         },
         {
             label: "Logout",
             icon: "󰍃",
-            color: "#f9e2af",
+            color: Theme.colors.yellow,
             command: ["hyprctl", "dispatch", "hl.dsp.exit()"]
         }
     ]
@@ -68,7 +69,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#181825"
+        color: Theme.colors.panel
         radius: 15
 
         ColumnLayout {
@@ -80,7 +81,7 @@ Item {
 
             Text {
                 text: "Power Options"
-                color: "#cdd6f4"
+                color: Theme.colors.textPrimary
                 font.pixelSize: 16
                 font.bold: true
                 font.family: "monospace"
@@ -91,7 +92,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 height: 2
-                color: "#45475a"
+                color: Theme.colors.border
             }
 
             RowLayout {
@@ -108,7 +109,7 @@ Item {
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        color: powerMenuWidget.selectedIndex === index ? "#313244" : "transparent"
+                        color: powerMenuWidget.selectedIndex === index ? Theme.colors.inset : "transparent"
                         radius: 10
                         border.width: powerMenuWidget.selectedIndex === index ? 2 : 0
                         border.color: modelData.color
@@ -127,7 +128,7 @@ Item {
 
                             Text {
                                 text: modelData.label
-                                color: "#cdd6f4"
+                                color: Theme.colors.textPrimary
                                 font.pixelSize: 11
                                 font.bold: true
                                 Layout.alignment: Qt.AlignHCenter

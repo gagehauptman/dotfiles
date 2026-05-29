@@ -5,13 +5,14 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Pipewire
 import Quickshell.Widgets
+import "themes"
 
 Shape {
     id: corner
     preferredRendererType: Shape.CurveRenderer
 
     property real radius: 20
-    property color color: "#181825"
+    property color color: Theme.colors.panel
 
     ShapePath {
         strokeWidth: 0

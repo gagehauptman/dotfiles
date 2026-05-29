@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 ThreeRowWidget {
   id: weatherWidget
@@ -48,14 +49,14 @@ ThreeRowWidget {
   }
 
   function weatherColor(code) {
-    if (code === 0) return "#f9e2af"
-    if (code <= 3) return "#9399b2"
-    if (code <= 49) return "#9399b2"
-    if (code <= 69) return "#89b4fa"
-    if (code <= 79) return "#cdd6f4"
-    if (code <= 86) return "#cdd6f4"
-    if (code >= 95) return "#f38ba8"
-    return "#cdd6f4"
+    if (code === 0) return Theme.colors.yellow
+    if (code <= 3) return Theme.colors.textMuted
+    if (code <= 49) return Theme.colors.textMuted
+    if (code <= 69) return Theme.colors.blue
+    if (code <= 79) return Theme.colors.textPrimary
+    if (code <= 86) return Theme.colors.textPrimary
+    if (code >= 95) return Theme.colors.red
+    return Theme.colors.textPrimary
   }
 
   Process {
@@ -102,7 +103,7 @@ ThreeRowWidget {
 
         Text {
           text: weatherWidget.temperature.toFixed(1) + "°C"
-          color: "#cdd6f4"
+          color: Theme.colors.textPrimary
           font.pixelSize: 28
           font.bold: true
           font.family: "Noto Sans"
@@ -124,14 +125,14 @@ ThreeRowWidget {
 
       RowLayout {
         spacing: 4
-        Text { text: "󰖎"; color: "#94e2d5"; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.humidity + "%"; color: "#a6adc8"; font.pixelSize: 11 }
+        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
+        Text { text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: 11 }
       }
 
       RowLayout {
         spacing: 4
-        Text { text: "󰖝"; color: "#89b4fa"; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: "#a6adc8"; font.pixelSize: 11 }
+        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
+        Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: 11 }
       }
     }
   }

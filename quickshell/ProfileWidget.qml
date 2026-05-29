@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
+import "themes"
 
 Item {
   id: profileWidget
@@ -32,7 +33,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    color: "#181825"
+    color: Theme.colors.panel
     radius: 15
     ColumnLayout {
       anchors.centerIn: parent
@@ -48,15 +49,15 @@ Item {
         Rectangle {
           anchors.fill: parent
           radius: 50
-          color: "#313244"
-          border.color: "#45475a"
+          color: Theme.colors.inset
+          border.color: Theme.colors.border
           border.width: 2
           visible: pfpImage.status !== Image.Ready
 
           Text {
             anchors.centerIn: parent
             text: "󰀉"
-            color: "#6c7086"
+            color: Theme.colors.textMuted
             font.pixelSize: 48
             font.family: "monospace"
           }
@@ -91,7 +92,7 @@ Item {
       Text {
         Layout.alignment: Qt.AlignHCenter
         text: profileWidget.username
-        color: "#cdd6f4"
+        color: Theme.colors.textPrimary
         font.pixelSize: 16
         font.bold: true
         font.family: "monospace"
@@ -101,7 +102,7 @@ Item {
       Text {
         Layout.alignment: Qt.AlignHCenter
         text: profileWidget.hostname
-        color: "#6c7086"
+        color: Theme.colors.textMuted
         font.pixelSize: 12
         font.family: "monospace"
       }
@@ -112,7 +113,7 @@ Item {
         spacing: 6
 
         Repeater {
-          model: ["#f38ba8", "#fab387", "#f9e2af", "#a6e3a1", "#89b4fa", "#cba6f7", "#f5c2e7", "#94e2d5"]
+          model: [Theme.colors.red, Theme.colors.orange, Theme.colors.yellow, Theme.colors.green, Theme.colors.blue, Theme.colors.violet, Theme.colors.pink, Theme.colors.teal]
           Rectangle {
             width: 14
             height: 14

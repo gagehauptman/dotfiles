@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
+import "themes"
 
 DataWidget {
   id: systemWidget
@@ -144,15 +145,15 @@ DataWidget {
 
         RowLayout {
           Layout.fillWidth: true
-          Text { text: "󰘚 CPU"; color: "#89b4fa"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.cpuUsage.toFixed(1) + "%"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
+          Text { text: "󰘚 CPU"; color: Theme.colors.blue; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.cpuUsage.toFixed(1) + "%"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
         }
 
         Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
+          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
           Rectangle {
             width: parent.width * (systemWidget.cpuUsage / 100); height: parent.height; radius: 4
-            color: systemWidget.cpuUsage > 80 ? "#f38ba8" : systemWidget.cpuUsage > 50 ? "#fab387" : "#89b4fa"
+            color: systemWidget.cpuUsage > 80 ? Theme.colors.red : systemWidget.cpuUsage > 50 ? Theme.colors.orange : Theme.colors.blue
             Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
@@ -165,15 +166,15 @@ DataWidget {
 
         RowLayout {
           Layout.fillWidth: true
-          Text { text: "󰍛 RAM"; color: "#a6e3a1"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
+          Text { text: "󰍛 RAM"; color: Theme.colors.green; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
         }
 
         Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
+          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
           Rectangle {
             width: parent.width * (systemWidget.ramPercent / 100); height: parent.height; radius: 4
-            color: systemWidget.ramPercent > 80 ? "#f38ba8" : systemWidget.ramPercent > 50 ? "#fab387" : "#a6e3a1"
+            color: systemWidget.ramPercent > 80 ? Theme.colors.red : systemWidget.ramPercent > 50 ? Theme.colors.orange : Theme.colors.green
             Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
@@ -186,15 +187,15 @@ DataWidget {
 
         RowLayout {
           Layout.fillWidth: true
-          Text { text: "󰋊 Disk"; color: "#f5c2e7"; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
-          Text { text: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"; color: "#cdd6f4"; font.pixelSize: 12; Layout.fillWidth: true }
+          Text { text: "󰋊 Disk"; color: Theme.colors.pink; font.pixelSize: 13; font.bold: true; font.family: "monospace"; Layout.preferredWidth: 70 }
+          Text { text: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"; color: Theme.colors.textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
         }
 
         Rectangle {
-          Layout.fillWidth: true; height: 8; radius: 4; color: "#313244"
+          Layout.fillWidth: true; height: 8; radius: 4; color: Theme.colors.inset
           Rectangle {
             width: parent.width * (systemWidget.diskPercent / 100); height: parent.height; radius: 4
-            color: systemWidget.diskPercent > 80 ? "#f38ba8" : systemWidget.diskPercent > 50 ? "#fab387" : "#f5c2e7"
+            color: systemWidget.diskPercent > 80 ? Theme.colors.red : systemWidget.diskPercent > 50 ? Theme.colors.orange : Theme.colors.pink
             Behavior on width { NumberAnimation { duration: 200 } }
           }
         }
@@ -204,7 +205,7 @@ DataWidget {
       Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: "#313244"
+        color: Theme.colors.inset
       }
 
       // Bluetooth status row
@@ -222,16 +223,16 @@ DataWidget {
 
           Rectangle {
             width: 10; height: 10; radius: 5
-            color: systemWidget.btPower === "unavailable" ? "#f38ba8"
-                 : systemWidget.btDeviceConnected ? "#a6e3a1"
-                 : systemWidget.btPower === "on" ? "#89b4fa"
-                 : "#6c7086"
+            color: systemWidget.btPower === "unavailable" ? Theme.colors.red
+                 : systemWidget.btDeviceConnected ? Theme.colors.green
+                 : systemWidget.btPower === "on" ? Theme.colors.blue
+                 : Theme.colors.textMuted
             Behavior on color { ColorAnimation { duration: 200 } }
           }
 
           Text {
             text: "󰂯 Bluetooth"
-            color: "#cdd6f4"
+            color: Theme.colors.textPrimary
             font.pixelSize: 13
             font.bold: true
             font.family: "monospace"
@@ -253,10 +254,10 @@ DataWidget {
               }
               return s
             }
-            color: systemWidget.btPower === "unavailable" ? "#f38ba8"
-                 : systemWidget.btDeviceConnected ? "#a6e3a1"
-                 : systemWidget.btPower === "on" ? "#89b4fa"
-                 : "#6c7086"
+            color: systemWidget.btPower === "unavailable" ? Theme.colors.red
+                 : systemWidget.btDeviceConnected ? Theme.colors.green
+                 : systemWidget.btPower === "on" ? Theme.colors.blue
+                 : Theme.colors.textMuted
             font.pixelSize: 13
             font.italic: true
             font.family: "monospace"
@@ -288,17 +289,17 @@ DataWidget {
           width: 10; height: 10; radius: 5
           color: {
             let d = parseInt(systemWidget.daysSinceUpgrade)
-            if (isNaN(d)) return "#6c7086"
-            if (d <= 7) return "#a6e3a1"
-            if (d <= 30) return "#f9e2af"
-            return "#f38ba8"
+            if (isNaN(d)) return Theme.colors.textMuted
+            if (d <= 7) return Theme.colors.green
+            if (d <= 30) return Theme.colors.yellow
+            return Theme.colors.red
           }
           Behavior on color { ColorAnimation { duration: 200 } }
         }
 
         Text {
           text: "󰚰 Last Upgrade"
-          color: "#cdd6f4"
+          color: Theme.colors.textPrimary
           font.pixelSize: 13
           font.bold: true
           font.family: "monospace"
@@ -315,10 +316,10 @@ DataWidget {
           }
           color: {
             let d = parseInt(systemWidget.daysSinceUpgrade)
-            if (isNaN(d)) return "#6c7086"
-            if (d <= 7) return "#a6e3a1"
-            if (d <= 30) return "#f9e2af"
-            return "#f38ba8"
+            if (isNaN(d)) return Theme.colors.textMuted
+            if (d <= 7) return Theme.colors.green
+            if (d <= 30) return Theme.colors.yellow
+            return Theme.colors.red
           }
           font.pixelSize: 13
           font.italic: true

@@ -13,28 +13,17 @@ ThreeRowWidget {
   property string quoteText: ""
   property string quoteAuthor: ""
 
-  Process {
+  PollProcess {
     id: quoteProc
     command: ["bash", "-c", "shuf -n 1 " + root.home + "/.config/quickshell/quotes.txt"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let result = this.text.trim()
-        if (result && result.includes('|')) {
-          let parts = result.split('|')
-          quoteWidget.quoteText = parts[0]
-          quoteWidget.quoteAuthor = parts[1] || "Isaac Asimov"
-        }
+    interval: 3600000
+    onOutput: text => {
+      if (text && text.includes('|')) {
+        let parts = text.split('|')
+        quoteWidget.quoteText = parts[0]
+        quoteWidget.quoteAuthor = parts[1] || "Isaac Asimov"
       }
     }
-  }
-
-  Timer {
-    interval: 3600000
-    running: true
-    repeat: true
-    onTriggered: quoteProc.running = true
   }
 
   middleContent: Component {
@@ -57,9 +46,5 @@ ThreeRowWidget {
       font.bold: true
       horizontalAlignment: Text.AlignRight
     }
-  }
-
-  Component.onCompleted: {
-    quoteProc.running = true
   }
 }

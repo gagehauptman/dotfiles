@@ -17,39 +17,27 @@ DataWidget {
   property int userCount: 0
   property int packageCount: 0
 
-  Process {
+  PollProcess {
     id: pkgProc
     command: ["bash", "-c", "pacman -Q 2>/dev/null | wc -l"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: miscWidget.packageCount = parseInt(this.text.trim()) || 0
-    }
+    interval: 30000
+    onOutput: text => miscWidget.packageCount = parseInt(text) || 0
   }
 
-  Process {
+  PollProcess {
     id: miscProc
     command: ["bash", root.home + "/.config/scripts/polls/miscstatspoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let parts = this.text.trim().split('|')
-        if (parts.length === 5) {
-          miscWidget.uptime = parts[0]
-          miscWidget.loadAvg = parts[1]
-          miscWidget.processCount = parseInt(parts[2])
-          miscWidget.kernel = parts[3]
-          miscWidget.userCount = parseInt(parts[4])
-        }
+    interval: 30000
+    onOutput: text => {
+      let parts = text.split('|')
+      if (parts.length === 5) {
+        miscWidget.uptime = parts[0]
+        miscWidget.loadAvg = parts[1]
+        miscWidget.processCount = parseInt(parts[2])
+        miscWidget.kernel = parts[3]
+        miscWidget.userCount = parseInt(parts[4])
       }
     }
-  }
-
-  Timer {
-    interval: 30000
-    running: true
-    repeat: true
-    onTriggered: { miscProc.running = true; pkgProc.running = true }
   }
 
   dataContent: [
@@ -79,8 +67,4 @@ DataWidget {
       Text { text: miscWidget.packageCount.toString(); color: Theme.colors.textPrimary; font.pixelSize: 11; Layout.fillWidth: true }
     }
   ]
-
-  Component.onCompleted: {
-    miscProc.running = true
-  }
 }

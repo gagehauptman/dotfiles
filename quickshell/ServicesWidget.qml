@@ -59,63 +59,47 @@ ThreeRowWidget {
     }
   }
 
-  Process {
+  PollProcess {
     id: tailscaleProc
     command: ["bash", root.home + "/.config/scripts/polls/tailscalepoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let deviceList = []
-        for (let line of this.text.trim().split('\n')) {
-          if (!line.trim()) continue
-          let parts = line.split('|')
-          if (parts.length === 3) {
-            deviceList.push({ name: parts[0], status: parts[1], ping: parts[2] })
-          }
+    interval: 10000
+    onOutput: text => {
+      let deviceList = []
+      for (let line of text.split('\n')) {
+        if (!line.trim()) continue
+        let parts = line.split('|')
+        if (parts.length === 3) {
+          deviceList.push({ name: parts[0], status: parts[1], ping: parts[2] })
         }
-        servicesWidget.devices = deviceList
       }
+      servicesWidget.devices = deviceList
     }
   }
 
-  Timer {
-    interval: 10000; running: true; repeat: true
-    onTriggered: tailscaleProc.running = true
-  }
-
-  Process {
+  PollProcess {
     id: tessieProc
     command: ["bash", root.home + "/.config/scripts/polls/tessiepoll.sh"]
-    running: true
+    interval: 10000
+    onOutput: text => {
+      let parts = text.split('|')
 
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let parts = this.text.trim().split('|')
-
-        if (parts[0] === "ok" && parts.length >= 10) {
-          servicesWidget.carStatus      = "ok"
-          servicesWidget.carError       = ""
-          servicesWidget.carState       = parts[1]
-          servicesWidget.carBattery     = parseInt(parts[2])
-          servicesWidget.carRange       = parseInt(parts[3])
-          servicesWidget.carCharging    = parts[4]
-          if (!servicesWidget.lockUpdateSuppressed)    servicesWidget.carLocked    = parts[5] === "true"
-          if (!servicesWidget.climateUpdateSuppressed) servicesWidget.carClimateOn = parts[6] === "true"
-          servicesWidget.carTemp        = parseFloat(parts[7])
-          servicesWidget.carName        = parts[8] || "Car"
-          servicesWidget.carChargePower = parseInt(parts[9])
-        } else {
-          servicesWidget.carStatus = "error"
-          servicesWidget.carError  = parts[1] || "unknown error"
-        }
+      if (parts[0] === "ok" && parts.length >= 10) {
+        servicesWidget.carStatus      = "ok"
+        servicesWidget.carError       = ""
+        servicesWidget.carState       = parts[1]
+        servicesWidget.carBattery     = parseInt(parts[2])
+        servicesWidget.carRange       = parseInt(parts[3])
+        servicesWidget.carCharging    = parts[4]
+        if (!servicesWidget.lockUpdateSuppressed)    servicesWidget.carLocked    = parts[5] === "true"
+        if (!servicesWidget.climateUpdateSuppressed) servicesWidget.carClimateOn = parts[6] === "true"
+        servicesWidget.carTemp        = parseFloat(parts[7])
+        servicesWidget.carName        = parts[8] || "Car"
+        servicesWidget.carChargePower = parseInt(parts[9])
+      } else {
+        servicesWidget.carStatus = "error"
+        servicesWidget.carError  = parts[1] || "unknown error"
       }
     }
-  }
-
-  Timer {
-    interval: 10000; running: true; repeat: true
-    onTriggered: tessieProc.running = true
   }
 
   // Action processes. Optimistic updates happen in the click handlers; the

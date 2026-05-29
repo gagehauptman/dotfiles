@@ -16,30 +16,20 @@ DataWidget {
   property string rxRate: "0B/s"
   property string txRate: "0B/s"
 
-  Process {
+  PollProcess {
     id: networkProc
     command: ["bash", root.home + "/.config/scripts/polls/networkpoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let parts = this.text.trim().split('|')
-        if (parts.length === 5) {
-          networkWidget.interfaceName = parts[0]
-          networkWidget.rxTotal = parts[1]
-          networkWidget.txTotal = parts[2]
-          networkWidget.rxRate = parts[3]
-          networkWidget.txRate = parts[4]
-        }
+    interval: 2000
+    onOutput: text => {
+      let parts = text.split('|')
+      if (parts.length === 5) {
+        networkWidget.interfaceName = parts[0]
+        networkWidget.rxTotal = parts[1]
+        networkWidget.txTotal = parts[2]
+        networkWidget.rxRate = parts[3]
+        networkWidget.txRate = parts[4]
       }
     }
-  }
-
-  Timer {
-    interval: 2000
-    running: true
-    repeat: true
-    onTriggered: networkProc.running = true
   }
 
   dataContent: [
@@ -93,8 +83,4 @@ DataWidget {
       }
     }
   ]
-
-  Component.onCompleted: {
-    networkProc.running = true
-  }
 }

@@ -29,42 +29,30 @@ DataWidget {
   // Days since last `pacman -Syu` ("NA" if unknown)
   property string daysSinceUpgrade: "NA"
 
-  Process {
+  PollProcess {
     id: systemProc
     command: ["bash", root.home + "/.config/scripts/polls/systempoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let parts = this.text.trim().split('|')
-        if (parts.length >= 7) {
-          systemWidget.cpuUsage = parseFloat(parts[0])
-          systemWidget.ramUsed = parseFloat(parts[1])
-          systemWidget.ramTotal = parseFloat(parts[2])
-          systemWidget.ramPercent = parseFloat(parts[3])
-          systemWidget.diskUsed = parts[4]
-          systemWidget.diskTotal = parts[5]
-          systemWidget.diskPercent = parseFloat(parts[6])
-        }
+    interval: 3000
+    onOutput: text => {
+      let parts = text.split('|')
+      if (parts.length >= 7) {
+        systemWidget.cpuUsage = parseFloat(parts[0])
+        systemWidget.ramUsed = parseFloat(parts[1])
+        systemWidget.ramTotal = parseFloat(parts[2])
+        systemWidget.ramPercent = parseFloat(parts[3])
+        systemWidget.diskUsed = parts[4]
+        systemWidget.diskTotal = parts[5]
+        systemWidget.diskPercent = parseFloat(parts[6])
       }
     }
   }
 
-  Timer {
-    interval: 3000
-    running: true
-    repeat: true
-    onTriggered: systemProc.running = true
-  }
-
-  Process {
+  PollProcess {
     id: btProc
     command: ["bash", root.home + "/.config/scripts/polls/bluetoothpoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let lines = this.text.trim().split('\n').filter(l => l.trim())
+    interval: 5000
+    onOutput: text => {
+        let lines = text.split('\n').filter(l => l.trim())
         let pwr = "off"
         let pickMac = ""
         let pickName = ""
@@ -94,15 +82,7 @@ DataWidget {
         systemWidget.btDeviceName = pickName
         systemWidget.btDeviceConnected = pickConnected
         systemWidget.btDeviceBattery = pickBattery
-      }
     }
-  }
-
-  Timer {
-    interval: 5000
-    running: true
-    repeat: true
-    onTriggered: btProc.running = true
   }
 
   Process {
@@ -113,23 +93,11 @@ DataWidget {
     onExited: btProc.running = true
   }
 
-  Process {
+  PollProcess {
     id: updatesProc
     command: ["bash", root.home + "/.config/scripts/polls/updatespoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        systemWidget.daysSinceUpgrade = this.text.trim() || "NA"
-      }
-    }
-  }
-
-  Timer {
     interval: 300000
-    running: true
-    repeat: true
-    onTriggered: updatesProc.running = true
+    onOutput: text => systemWidget.daysSinceUpgrade = text || "NA"
   }
 
   dataContent: [
@@ -330,10 +298,4 @@ DataWidget {
       }
     }
   ]
-
-  Component.onCompleted: {
-    systemProc.running = true
-    btProc.running = true
-    updatesProc.running = true
-  }
 }

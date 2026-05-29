@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import "templates"
 import "themes"
 
 Item {
@@ -12,17 +13,12 @@ Item {
   property bool isRecording: false
 
   // Poll wf-recorder process to sync state (catches keybind-triggered recordings)
-  Process {
+  PollProcess {
     id: recordingPollProc
     command: ["pgrep", "-x", "wf-recorder"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.isRecording = (this.text.trim().length > 0)
-      }
-    }
+    interval: 1000
+    onOutput: text => root.isRecording = (text.length > 0)
   }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: recordingPollProc.running = true }
 
   implicitWidth: row.implicitWidth
   implicitHeight: parent ? parent.height : 30

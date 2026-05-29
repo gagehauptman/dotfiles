@@ -59,30 +59,20 @@ ThreeRowWidget {
     return Theme.colors.textPrimary
   }
 
-  Process {
+  PollProcess {
     id: weatherProc
     command: ["bash", root.home + "/.config/scripts/polls/weatherpoll.sh"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let parts = this.text.trim().split('|')
-        if (parts.length === 5) {
-          weatherWidget.cityName = parts[0]
-          weatherWidget.weatherCode = parseInt(parts[1])
-          weatherWidget.temperature = parseFloat(parts[2])
-          weatherWidget.humidity = parseInt(parts[3])
-          weatherWidget.windSpeed = parseFloat(parts[4])
-        }
+    interval: 300000
+    onOutput: text => {
+      let parts = text.split('|')
+      if (parts.length === 5) {
+        weatherWidget.cityName = parts[0]
+        weatherWidget.weatherCode = parseInt(parts[1])
+        weatherWidget.temperature = parseFloat(parts[2])
+        weatherWidget.humidity = parseInt(parts[3])
+        weatherWidget.windSpeed = parseFloat(parts[4])
       }
     }
-  }
-
-  Timer {
-    interval: 300000
-    running: true
-    repeat: true
-    onTriggered: weatherProc.running = true
   }
 
   middleContent: Component {
@@ -135,9 +125,5 @@ ThreeRowWidget {
         Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: 11 }
       }
     }
-  }
-
-  Component.onCompleted: {
-    weatherProc.running = true
   }
 }

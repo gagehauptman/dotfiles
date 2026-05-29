@@ -59,63 +59,50 @@ Scope {
     }
   }
 
-  // === POLLING PROCESSES (shared, run once) ===
-  Process {
+  // === POLLING PROCESSES (shared) ===
+  PollProcess {
     id: tempProc
     command: ["bash", root.home + "/.config/scripts/polls/temppoll.sh"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: root.tempValue = this.text.trim()
-    }
+    interval: 2000
+    onOutput: text => root.tempValue = text
   }
-  Timer { interval: 2000; running: true; repeat: true; onTriggered: tempProc.running = true }
 
-  Process {
+  PollProcess {
     id: batteryPercentProc
     command: ["bash", root.home + "/.config/scripts/polls/batterypoll1.sh"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: {
-        let newPercent = this.text.trim()
-        root.hasBattery = newPercent !== "" && !isNaN(parseInt(newPercent))
-        if (!root.hasBattery) {
-          root.batteryPercent = "0"
-          root.lowBatteryWarningShown = false
-          return
-        }
-        root.batteryPercent = newPercent
-        let currentPercent = parseInt(newPercent)
-        if (currentPercent > root.lowBatteryThreshold + 5) {
-          root.lowBatteryWarningShown = false
-        }
-        if (currentPercent <= root.lowBatteryThreshold && !root.lowBatteryWarningShown) {
-          root.lowBatteryWarningShown = true
-          root.lowBatteryTrigger++
-        }
+    interval: 5000
+    onOutput: text => {
+      root.hasBattery = text !== "" && !isNaN(parseInt(text))
+      if (!root.hasBattery) {
+        root.batteryPercent = "0"
+        root.lowBatteryWarningShown = false
+        return
+      }
+      root.batteryPercent = text
+      let currentPercent = parseInt(text)
+      if (currentPercent > root.lowBatteryThreshold + 5) {
+        root.lowBatteryWarningShown = false
+      }
+      if (currentPercent <= root.lowBatteryThreshold && !root.lowBatteryWarningShown) {
+        root.lowBatteryWarningShown = true
+        root.lowBatteryTrigger++
       }
     }
   }
-  Timer { interval: 5000; running: true; repeat: true; onTriggered: batteryPercentProc.running = true }
 
-  Process {
+  PollProcess {
     id: batteryIconProc
     command: ["bash", root.home + "/.config/scripts/polls/batterypoll2.sh"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: root.batteryIcon = this.text.trim()
-    }
+    interval: 5000
+    onOutput: text => root.batteryIcon = text
   }
-  Timer { interval: 5000; running: true; repeat: true; onTriggered: batteryIconProc.running = true }
 
-  Process {
+  PollProcess {
     id: cpuProc
     command: ["bash", root.home + "/.config/scripts/polls/cpupoll.sh"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: root.cpuLoad = this.text.trim()
-    }
+    interval: 2000
+    onOutput: text => root.cpuLoad = text
   }
-  Timer { interval: 2000; running: true; repeat: true; onTriggered: cpuProc.running = true }
 
   // Brightness detection + polling
   Process {
@@ -133,19 +120,17 @@ Scope {
     }
   }
 
-  Process {
+  PollProcess {
     id: brightnessProc
     command: ["cat", "/sys/class/backlight/amdgpu_bl2/brightness"]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: {
-        if (root.hasBrightness) {
-          root.brightnessValue = parseInt(this.text.trim()) / root.brightnessMax
-        }
+    interval: 2000
+    poll: root.hasBrightness
+    onOutput: text => {
+      if (root.hasBrightness) {
+        root.brightnessValue = parseInt(text) / root.brightnessMax
       }
     }
   }
-  Timer { interval: 2000; running: root.hasBrightness; repeat: true; onTriggered: brightnessProc.running = true }
 
   Process {
     id: brightnessSetProc

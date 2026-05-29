@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "templates"
 import "themes"
 
 Item {
@@ -92,44 +93,34 @@ Item {
   
   // Launch data poller - uses Launch Library 2 API
   // Filter for Go/TBD/TBC status only (excludes completed launches)
-  Process {
+  PollProcess {
     id: launchProc
     command: ["curl", "-s", "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=5&mode=list"]
-    running: true
-    
-    stdout: StdioCollector {
-      onStreamFinished: {
-        try {
-          let data = JSON.parse(this.text)
-          if (data.results && data.results.length > 0) {
-            // Find first launch that hasn't happened yet
-            let now = new Date()
-            let launch = data.results.find(l => {
-              let net = new Date(l.net)
-              // Must be in future AND not already successful/failed
-              let status = l.status?.id
-              return net > now && (status === 1 || status === 2 || status === 5 || status === 8)
-            })
-            
-            if (!launch) launch = data.results.find(l => new Date(l.net) > now)
-            if (!launch) launch = data.results[0]
-            
-            musicWidget.launchName = launch.name || "Unknown"
-            musicWidget.launchTime = launch.net ? new Date(launch.net) : null
-          }
-        } catch (e) {
-          musicWidget.launchName = "Launch data unavailable"
-          musicWidget.launchTime = null
+    interval: 600000 // 10 minutes
+    onOutput: text => {
+      try {
+        let data = JSON.parse(text)
+        if (data.results && data.results.length > 0) {
+          // Find first launch that hasn't happened yet
+          let now = new Date()
+          let launch = data.results.find(l => {
+            let net = new Date(l.net)
+            // Must be in future AND not already successful/failed
+            let status = l.status?.id
+            return net > now && (status === 1 || status === 2 || status === 5 || status === 8)
+          })
+
+          if (!launch) launch = data.results.find(l => new Date(l.net) > now)
+          if (!launch) launch = data.results[0]
+
+          musicWidget.launchName = launch.name || "Unknown"
+          musicWidget.launchTime = launch.net ? new Date(launch.net) : null
         }
+      } catch (e) {
+        musicWidget.launchName = "Launch data unavailable"
+        musicWidget.launchTime = null
       }
     }
-  }
-  
-  Timer {
-    interval: 600000 // 10 minutes
-    running: true
-    repeat: true
-    onTriggered: launchProc.running = true
   }
   
   // Countdown update timer

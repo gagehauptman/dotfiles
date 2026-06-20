@@ -125,9 +125,9 @@ hl.config({
     plugin = {
         split_monitor_workspaces = {
             count                        = 10,
-            keep_focused                 = 1,
-            enable_notifications         = 0,
-            enable_persistent_workspaces = 1,
+            keep_focused                 = true,
+            enable_notifications         = false,
+            enable_persistent_workspaces = true,
         },
     },
 })

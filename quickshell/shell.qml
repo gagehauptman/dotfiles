@@ -24,8 +24,12 @@ Scope {
   property string batteryIcon: ""
   property bool hasBattery: false
   property string cpuLoad: "0"
-  property string volumePercent: "0"
-  property string volumeIcon: "󰕾"
+  // Derive volume/mute state directly from the current default sink so the
+  // widget stays correct when the default sink changes (device switch, headphones
+  // plugged in, sink ready after startup). Imperative updates went stale on rebind.
+  readonly property var sinkAudio: Pipewire.defaultAudioSink?.audio ?? null
+  readonly property string volumePercent: Math.round((sinkAudio?.volume ?? 0) * 100).toString()
+  readonly property string volumeIcon: (sinkAudio?.muted ?? false) ? "󰖁" : "󰕾"
   property bool hasBrightness: false
   property real brightnessValue: 0    // 0.0 – 1.0
   property int brightnessMax: 1
@@ -33,30 +37,11 @@ Scope {
   property bool lowBatteryWarningShown: false
   property int lowBatteryTrigger: 0
 
-  // PipeWire volume tracking (shared)
+  // PipeWire volume tracking (shared). The tracker keeps the node's audio
+  // properties live; volumePercent/volumeIcon above bind to them reactively,
+  // so they stay correct across default-sink changes without manual updates.
   PwObjectTracker {
     objects: [ Pipewire.defaultAudioSink ]
-  }
-
-  Connections {
-    target: Pipewire.defaultAudioSink?.audio
-
-    function onVolumeChanged() {
-      let volume = Math.round((Pipewire.defaultAudioSink?.audio.volume ?? 0) * 100)
-      root.volumePercent = volume.toString()
-    }
-
-    function onMutedChanged() {
-      root.volumeIcon = Pipewire.defaultAudioSink?.audio.muted ? "󰖁" : "󰕾"
-    }
-  }
-
-  Component.onCompleted: {
-    if (Pipewire.defaultAudioSink?.audio) {
-      let volume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100)
-      root.volumePercent = volume.toString()
-      root.volumeIcon = Pipewire.defaultAudioSink.audio.muted ? "󰖁" : "󰕾"
-    }
   }
 
   // === POLLING PROCESSES (shared) ===

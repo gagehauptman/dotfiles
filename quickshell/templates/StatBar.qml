@@ -13,35 +13,35 @@ ColumnLayout {
   property color accentColor: Theme.colors.blue
 
   Layout.fillWidth: true
-  spacing: 6
+  spacing: metrics.spacingSmall
 
   RowLayout {
     Layout.fillWidth: true
     Text {
       text: root.label
       color: root.accentColor
-      font.pixelSize: 13
+      font.pixelSize: metrics.fontSmall
       font.bold: true
       font.family: "monospace"
-      Layout.preferredWidth: 70
+      Layout.preferredWidth: metrics.s(70)
     }
     Text {
       text: root.valueText
       color: Theme.colors.textPrimary
-      font.pixelSize: 12
+      font.pixelSize: metrics.fontSmall
       Layout.fillWidth: true
     }
   }
 
   Rectangle {
     Layout.fillWidth: true
-    height: 8
-    radius: 4
+    height: metrics.s(8)
+    radius: metrics.s(4)
     color: Theme.colors.inset
     Rectangle {
       width: parent.width * Math.max(0, Math.min(1, root.percent / 100))
       height: parent.height
-      radius: 4
+      radius: metrics.s(4)
       color: root.percent > 80 ? Theme.colors.red
            : root.percent > 50 ? Theme.colors.orange
            : root.accentColor

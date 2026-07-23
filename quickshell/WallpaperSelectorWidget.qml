@@ -125,6 +125,8 @@ Item {
 
         Keys.onLeftPressed: decrementCurrentIndex()
         Keys.onRightPressed: incrementCurrentIndex()
+        Keys.onUpPressed: decrementCurrentIndex()
+        Keys.onDownPressed: incrementCurrentIndex()
         Keys.onReturnPressed: bar.state = "normal"
         Keys.onEnterPressed: bar.state = "normal"
         Keys.onEscapePressed: bar.state = "normal"
@@ -139,7 +141,7 @@ Item {
         highlightRangeMode: PathView.StrictlyEnforceRange
         
         snapMode: PathView.SnapToItem
-        dragMargin: 200
+        dragMargin: metrics.s(200)
 
         clip: true
 
@@ -157,8 +159,8 @@ Item {
 
         delegate: Rectangle {
             id: wallpaperDelegate
-            width: carousel.width / 6
-            height: width * 9/16 + 30
+            width: metrics.isVertical ? carousel.width * 0.6 : carousel.width / 6
+            height: width * 9/16 + metrics.s(30)
             
             scale: PathView.iconScale 
             z: PathView.iconZ
@@ -197,7 +199,7 @@ Item {
                     maskSource: Rectangle {
                         width: img.width
                         height: img.height
-                        radius: wallpaperDelegate.isCurrentItem ? 8 : 4
+                        radius: wallpaperDelegate.isCurrentItem ? metrics.radiusNormal : metrics.radiusSmall
                         visible: false 
                         Behavior on radius {
                             NumberAnimation {
@@ -211,7 +213,7 @@ Item {
 
             Text {
                 anchors.top: img.bottom
-                anchors.topMargin: 8
+                anchors.topMargin: metrics.spacingSmall
                 anchors.left: parent.left
                 anchors.right: parent.right
                 text: fileBaseName
@@ -228,21 +230,26 @@ Item {
             }
         }
 
-        // 6. The Path: Defines the horizontal line the items float along
+        // 6. The Path the items float along: horizontal on a top bar, vertical on
+        //    a side bar (start/end swap axes; the middle point is the same center).
         path: Path {
-            startX: 0; startY: carousel.height / 2
-            
-            // Left side of screen (Scale 0.95)
+            startX: metrics.isVertical ? carousel.width / 2 : 0
+            startY: metrics.isVertical ? 0 : carousel.height / 2
+
+            // Start of path (Scale 0.95)
             PathAttribute { name: "iconScale"; value: 0.95 }
             PathAttribute { name: "iconZ"; value: 0 }
-            
+
             // Middle of screen (Scale 1.1, Z-index 100 to stay on top)
             PathLine { x: carousel.width / 2; y: carousel.height / 2 }
             PathAttribute { name: "iconScale"; value: 1.1 }
             PathAttribute { name: "iconZ"; value: 100 }
-            
-            // Right side of screen (Scale 0.95)
-            PathLine { x: carousel.width; y: carousel.height / 2 }
+
+            // End of path (Scale 0.95)
+            PathLine {
+                x: metrics.isVertical ? carousel.width / 2 : carousel.width
+                y: metrics.isVertical ? carousel.height : carousel.height / 2
+            }
             PathAttribute { name: "iconScale"; value: 0.95 }
             PathAttribute { name: "iconZ"; value: 0 }
         }

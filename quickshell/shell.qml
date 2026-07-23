@@ -170,6 +170,68 @@ Scope {
       property int monitorId: hyprMonitor?.id ?? 0
       property bool isFocused: Hyprland.focusedMonitor?.id === monitorId
 
+      // === PER-MONITOR METRICS (scale + orientation) ===
+      // One instance per screen. Reached by every widget via QML dynamic
+      // scoping, exactly like `bar` and `root`. Cannot be a Singleton because
+      // scale/orientation differ per monitor and both render simultaneously.
+      QtObject {
+        id: metrics
+
+        // Post-transform logical size of THIS screen.
+        readonly property real screenW: barWindow.screen?.width ?? barWindow.width
+        readonly property real screenH: barWindow.screen?.height ?? barWindow.height
+        readonly property int transform: barWindow.hyprMonitor?.transform ?? 0
+
+        // Orientation — transform 1/3 = rotated 90/270; dimension test is the
+        // robust fallback (a portrait monitor is always taller than it is wide).
+        readonly property bool isVertical: (transform === 1 || transform === 3) || (screenW < screenH)
+
+        // Scale from the SHORT axis so a rotated (tall) monitor doesn't scale up.
+        readonly property real scale: Math.max(0.5, Math.min(1.25, Math.min(screenW, screenH) / 1440))
+        function s(px) { return Math.round(px * scale) }
+
+        // Bar geometry. Thickness follows the short axis (was 2.5% of height).
+        // Length is the axis the bar runs along; longPct replaces `%parent.width`.
+        readonly property real barThickness: Math.round((isVertical ? 0.037 : 0.025) * Math.min(screenW, screenH))
+        readonly property real barLength: isVertical ? screenH : screenW
+        // long axis = the direction the bar runs; cross axis = its thickness / pocket depth.
+        function longPct(p) { return p / 100 * barLength }
+        function crossPct(p) { return p / 100 * (isVertical ? screenW : screenH) }
+
+        // Fonts (collapse ~10 literals into 6 tokens).
+        readonly property real fontTiny: s(11)     // 10,11
+        readonly property real fontSmall: s(12)    // 12,13
+        readonly property real fontNormal: s(14)   // 14 (bar default)
+        readonly property real fontLarge: s(16)    // 16
+        readonly property real fontXL: s(28)       // 28
+        readonly property real fontHuge: s(38)     // 36,38,48
+
+        // Spacing / radii. Pill radii (width/2) stay in-place; hairlines unscaled.
+        readonly property real spacingTiny: s(4)
+        readonly property real spacingSmall: s(6)
+        readonly property real spacingNormal: s(10)
+        readonly property real spacingLarge: s(15)
+        readonly property real radiusSmall: s(5)
+        readonly property real radiusNormal: s(10)
+        readonly property real radiusLarge: s(15)
+        readonly property real radiusXL: s(20)
+
+        readonly property real marginBar: s(15)
+        readonly property real marginEdge: s(20)
+        readonly property real widgetPadding: s(20)   // dropdownWidgetPadding
+
+        // Widget boxes.
+        readonly property real profilePicSize: s(100)
+        readonly property real dashWidgetHeight: s(160)
+        readonly property real dataWidgetHeight: s(190)
+        readonly property real systemWidgetHeight: s(280)
+        readonly property real appCellHeight: s(120)
+        readonly property real sliderTrackWidth: s(80)
+
+        // Dashboard reflow: fewer columns on narrow / portrait screens.
+        readonly property int dashColumns: isVertical ? 2 : 4
+      }
+
       // Handle global shortcut toggles (only on focused monitor)
       Connections {
         target: root
@@ -196,8 +258,13 @@ Scope {
 
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
-      WlrLayershell.keyboardFocus: (bar.state === "wallpaper_selector" || bar.state === "app_selector" || bar.state === "power_menu")
-            ? WlrKeyboardFocus.Exclusive 
+      // app_selector / power_menu need immediate keyboard (typing / arrow-select), so
+      // they grab exclusively. The wallpaper selector is mouse-navigable, so it uses
+      // OnDemand — an Exclusive grab is global and blocks clicks on other monitors.
+      WlrLayershell.keyboardFocus: (bar.state === "app_selector" || bar.state === "power_menu")
+            ? WlrKeyboardFocus.Exclusive
+            : (bar.state === "wallpaper_selector")
+            ? WlrKeyboardFocus.OnDemand
             : WlrKeyboardFocus.None
       mask: Region {
         item: bar
@@ -220,17 +287,17 @@ Scope {
           visible: false
           opacity: 0
           
-          width: 400
-          height: 120
-          radius: 20
+          width: metrics.s(400)
+          height: metrics.s(120)
+          radius: metrics.radiusXL
           color: Theme.colors.background
           border.color: Theme.colors.red
           border.width: 2
-          
+
           anchors {
             horizontalCenter: parent.horizontalCenter
             top: parent.top
-            topMargin: 80
+            topMargin: metrics.s(80)
           }
           
           layer.enabled: true
@@ -238,12 +305,12 @@ Scope {
           
           ColumnLayout {
             anchors.centerIn: parent
-            spacing: 10
-            
+            spacing: metrics.spacingNormal
+
             Text {
               text: ""
               color: Theme.colors.red
-              font.pixelSize: 36
+              font.pixelSize: metrics.fontHuge
               font.family: "monospace"
               Layout.alignment: Qt.AlignHCenter
             }
@@ -251,7 +318,7 @@ Scope {
             Text {
               text: "Low Battery Warning"
               color: Theme.colors.textPrimary
-              font.pixelSize: 16
+              font.pixelSize: metrics.fontLarge
               font.bold: true
               Layout.alignment: Qt.AlignHCenter
             }
@@ -259,7 +326,7 @@ Scope {
             Text {
               text: "Battery at " + root.batteryPercent + "% — Please plug in charger"
               color: Theme.colors.textSecondary
-              font.pixelSize: 13
+              font.pixelSize: metrics.fontSmall
               Layout.alignment: Qt.AlignHCenter
             }
           }
@@ -306,21 +373,38 @@ Scope {
           layer.enabled: true
           layer.samples: 4
 
-          property real barHeight: 2.5 * parent.height / 100
+          property real barThickness: metrics.barThickness
 
           property int dividerThickness: 1
 
-          property real dropdownWidth: 30 * parent.width / 100
+          // dropdownWidth = pocket length ALONG the bar's long axis.
+          // dropdownHeight = pocket protrusion along the CROSS axis (thickness dir).
+          property real dropdownWidth: metrics.longPct(30)
           property real dropdownHeight: 10 * parent.height / 100
-          property real dropdownFilletRadius: 10
-          property real dropdownCornerRadius: 25
-          property int dropdownWidgetPadding: 20
+          property real dropdownFilletRadius: metrics.radiusNormal
+          property real dropdownCornerRadius: metrics.s(25)
+          property int dropdownWidgetPadding: metrics.widgetPadding
 
-          width: parent.width
-          height: barHeight + dropdownHeight
+          // Orientation-generalized geometry. The outline is authored once in
+          // (a,b) = (along-long-axis, along-cross-axis) space; sx/sy map it to
+          // screen coords for a horizontal (top) or vertical (left) bar. Reflecting
+          // across the diagonal flips arc handedness, so arcDir swaps when vertical.
+          readonly property real barLong: metrics.barLength
+          readonly property real barCross: barThickness + dropdownHeight
+          readonly property real pocketLo: (barLong - dropdownWidth) / 2
+          readonly property real pocketHi: pocketLo + dropdownWidth
+          function sx(a, b) { return metrics.isVertical ? b : a }
+          function sy(a, b) { return metrics.isVertical ? a : b }
+          function arcDir(d) {
+            if (!metrics.isVertical) return d
+            return d === PathArc.Clockwise ? PathArc.Counterclockwise : PathArc.Clockwise
+          }
 
-          property int appSelectorCellHeightConst: 120
-          property int appSelectorOffsetFromBar: 5
+          width: metrics.isVertical ? barCross : parent.width
+          height: metrics.isVertical ? parent.height : barCross
+
+          property int appSelectorCellHeightConst: metrics.appCellHeight
+          property int appSelectorOffsetFromBar: metrics.s(5)
           property int appSelectorRowsPerPage: 5
 
           ShapePath {
@@ -328,95 +412,101 @@ Scope {
             strokeColor: "transparent"
 
             startX: 0; startY: 0
-            PathLine { x: bar.width; y: 0 }
-            PathLine { x: bar.width; y: bar.barHeight }
-            PathLine { x: bar.dropdownWidth + (bar.width - bar.dropdownWidth)/2 + bar.dropdownFilletRadius; y: bar.barHeight }
+            PathLine { x: bar.sx(bar.barLong, 0); y: bar.sy(bar.barLong, 0) }
+            PathLine { x: bar.sx(bar.barLong, bar.barThickness); y: bar.sy(bar.barLong, bar.barThickness) }
+            PathLine { x: bar.sx(bar.pocketHi + bar.dropdownFilletRadius, bar.barThickness); y: bar.sy(bar.pocketHi + bar.dropdownFilletRadius, bar.barThickness) }
 
             PathArc {
-              x: bar.dropdownWidth + (bar.width - bar.dropdownWidth)/2
-              y: bar.barHeight + bar.dropdownFilletRadius
+              x: bar.sx(bar.pocketHi, bar.barThickness + bar.dropdownFilletRadius)
+              y: bar.sy(bar.pocketHi, bar.barThickness + bar.dropdownFilletRadius)
               radiusX: bar.dropdownFilletRadius
               radiusY: bar.dropdownFilletRadius
-              direction: PathArc.Counterclockwise
+              direction: bar.arcDir(PathArc.Counterclockwise)
             }
 
-            PathLine { x: bar.dropdownWidth + (bar.width - bar.dropdownWidth)/2; y: bar.height - bar.dropdownCornerRadius }
+            PathLine { x: bar.sx(bar.pocketHi, bar.barCross - bar.dropdownCornerRadius); y: bar.sy(bar.pocketHi, bar.barCross - bar.dropdownCornerRadius) }
 
             PathArc {
-              x: bar.dropdownWidth + (bar.width - bar.dropdownWidth)/2 - bar.dropdownCornerRadius
-              y: bar.height
+              x: bar.sx(bar.pocketHi - bar.dropdownCornerRadius, bar.barCross)
+              y: bar.sy(bar.pocketHi - bar.dropdownCornerRadius, bar.barCross)
               radiusX: bar.dropdownCornerRadius
               radiusY: bar.dropdownCornerRadius
-              direction: PathArc.Clockwise
+              direction: bar.arcDir(PathArc.Clockwise)
             }
 
-            PathLine { x: (bar.width - bar.dropdownWidth)/2 + bar.dropdownCornerRadius; y: bar.height }
+            PathLine { x: bar.sx(bar.pocketLo + bar.dropdownCornerRadius, bar.barCross); y: bar.sy(bar.pocketLo + bar.dropdownCornerRadius, bar.barCross) }
 
             PathArc {
-              x: (bar.width - bar.dropdownWidth)/2
-              y: bar.height - bar.dropdownCornerRadius
+              x: bar.sx(bar.pocketLo, bar.barCross - bar.dropdownCornerRadius)
+              y: bar.sy(bar.pocketLo, bar.barCross - bar.dropdownCornerRadius)
               radiusX: bar.dropdownCornerRadius
               radiusY: bar.dropdownCornerRadius
-              direction: PathArc.Clockwise
+              direction: bar.arcDir(PathArc.Clockwise)
             }
 
-            PathLine { x: (bar.width - bar.dropdownWidth)/2; y: bar.barHeight + bar.dropdownFilletRadius }
+            PathLine { x: bar.sx(bar.pocketLo, bar.barThickness + bar.dropdownFilletRadius); y: bar.sy(bar.pocketLo, bar.barThickness + bar.dropdownFilletRadius) }
 
             PathArc {
-              x: (bar.width - bar.dropdownWidth)/2 - bar.dropdownFilletRadius
-              y: bar.barHeight
+              x: bar.sx(bar.pocketLo - bar.dropdownFilletRadius, bar.barThickness)
+              y: bar.sy(bar.pocketLo - bar.dropdownFilletRadius, bar.barThickness)
               radiusX: bar.dropdownFilletRadius
               radiusY: bar.dropdownFilletRadius
-              direction: PathArc.Counterclockwise
+              direction: bar.arcDir(PathArc.Counterclockwise)
             }
 
-            PathLine { x: 0; y: bar.barHeight }
+            PathLine { x: bar.sx(0, bar.barThickness); y: bar.sy(0, bar.barThickness) }
             PathLine { x: 0; y: 0 }
           }
 
+          // dropdownWidth = pocket length along the long axis; dropdownHeight = pocket
+          // protrusion along the cross axis. longPct/crossPct reduce to today's
+          // parent.width/parent.height percentages when horizontal (byte-identical),
+          // and adapt to the tall-narrow pocket when vertical. Content-driven pockets
+          // (dashboard/app_selector) use fixed generous extents when vertical to avoid
+          // the axis-swap circular sizing.
           states: [
             State {
               name: "normal"
-              PropertyChanges { target: bar; dropdownWidth: 10 * parent.width / 100; dropdownHeight: 0; dropdownFilletRadius: 0; dropdownCornerRadius: 0 }
+              PropertyChanges { target: bar; dropdownWidth: metrics.longPct(10); dropdownHeight: 0; dropdownFilletRadius: 0; dropdownCornerRadius: 0 }
             },
             State {
               name: "dashboard"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: 60 * parent.width / 100;
-                dropdownHeight: dashboardGrid.implicitHeight + (bar.dropdownWidgetPadding * 2) - bar.barHeight;
-                dropdownFilletRadius: 20;
-                dropdownCornerRadius: 20
+                dropdownWidth: metrics.isVertical ? (dashboardGrid.verticalContentHeight + dashboardGrid.topPad + dashboardGrid.bottomPad + bar.dropdownWidgetPadding * 2) : metrics.longPct(60);
+                dropdownHeight: metrics.isVertical ? metrics.crossPct(72) : (dashboardGrid.implicitHeight + (bar.dropdownWidgetPadding * 2) - bar.barThickness);
+                dropdownFilletRadius: metrics.radiusXL;
+                dropdownCornerRadius: metrics.radiusXL
               }
             },
             State {
               name: "wallpaper_selector"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: 50 * parent.width / 100;
-                dropdownHeight: 10 * parent.height / 100;
-                dropdownFilletRadius: 20;
-                dropdownCornerRadius: 20
+                dropdownWidth: metrics.isVertical ? metrics.longPct(70) : metrics.longPct(50);
+                dropdownHeight: metrics.isVertical ? metrics.crossPct(36) : metrics.crossPct(10);
+                dropdownFilletRadius: metrics.radiusXL;
+                dropdownCornerRadius: metrics.radiusXL
               }
             },
             State {
               name: "app_selector"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: 30 * parent.width / 100;
-                dropdownHeight: appSelectorWidget.totalHeight + (bar.dropdownWidgetPadding * 2) - bar.barHeight;
-                dropdownFilletRadius: 20;
-                dropdownCornerRadius: 20;
+                dropdownWidth: metrics.isVertical ? metrics.longPct(80) : metrics.longPct(30);
+                dropdownHeight: metrics.isVertical ? metrics.crossPct(80) : (appSelectorWidget.totalHeight + (bar.dropdownWidgetPadding * 2) - bar.barThickness);
+                dropdownFilletRadius: metrics.radiusXL;
+                dropdownCornerRadius: metrics.radiusXL;
               }
             },
             State {
               name: "power_menu"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: 35 * parent.width / 100;
-                dropdownHeight: 12 * parent.height / 100;
-                dropdownFilletRadius: 20;
-                dropdownCornerRadius: 20;
+                dropdownWidth: metrics.isVertical ? metrics.longPct(45) : metrics.longPct(35);
+                dropdownHeight: metrics.isVertical ? metrics.crossPct(65) : metrics.crossPct(12);
+                dropdownFilletRadius: metrics.radiusXL;
+                dropdownCornerRadius: metrics.radiusXL;
               }
             }
           ]
@@ -428,57 +518,72 @@ Scope {
           ]
         }
 
-        // Container for all the bar-exclusive widgets
+        // Container for all the bar-exclusive widgets. Horizontal: full-width strip
+        // of barThickness. Vertical: full-height strip of barThickness down the left.
         Item {
           id: barWidgetsContainer
-          width: parent.width
-          height: bar.barHeight
+          width: metrics.isVertical ? bar.barThickness : parent.width
+          height: metrics.isVertical ? parent.height : bar.barThickness
 
-          // Workspaces on the left (per-monitor)
+          // Workspaces at the START of the long axis (left / top), per-monitor
           Workspaces {
             monitorId: barWindow.monitorId
+            isVertical: metrics.isVertical
             anchors {
-              left: parent.left
-              verticalCenter: parent.verticalCenter
-              leftMargin: 15
+              left: metrics.isVertical ? undefined : parent.left
+              top: metrics.isVertical ? parent.top : undefined
+              verticalCenter: metrics.isVertical ? undefined : parent.verticalCenter
+              horizontalCenter: metrics.isVertical ? parent.horizontalCenter : undefined
+              leftMargin: metrics.isVertical ? 0 : metrics.marginBar
+              topMargin: metrics.isVertical ? metrics.marginBar : 0
             }
           }
 
-          // Music/Weather widget in center
+          // Music/Weather widget centered on the long axis
           MusicWidget {
+            isVertical: metrics.isVertical
             anchors {
               horizontalCenter: parent.horizontalCenter
               verticalCenter: parent.verticalCenter
             }
           }
 
-          // Screen capture buttons (per-monitor)
+          // Screen capture buttons (per-monitor), just before the clock
           ScreenCaptureWidget {
             id: screenCapture
             monitorName: barWindow.hyprMonitor?.name ?? ""
+            isVertical: metrics.isVertical
             anchors {
-              right: timeDisplay.left
-              verticalCenter: parent.verticalCenter
-              rightMargin: 15
+              right: metrics.isVertical ? undefined : timeDisplay.left
+              bottom: metrics.isVertical ? timeDisplay.top : undefined
+              verticalCenter: metrics.isVertical ? undefined : parent.verticalCenter
+              horizontalCenter: metrics.isVertical ? parent.horizontalCenter : undefined
+              rightMargin: metrics.isVertical ? 0 : metrics.marginBar
+              bottomMargin: metrics.isVertical ? metrics.marginBar : 0
             }
           }
 
-          // Clock widget
+          // Clock at the far END of the long axis (right / bottom). Vertical bars
+          // are too thin for hh:mm:ss, so stack hh over mm there.
           Text {
             id: timeDisplay
+            horizontalAlignment: Text.AlignHCenter
             anchors {
-              right: parent.right
-              verticalCenter: parent.verticalCenter
-              rightMargin: 20
+              right: metrics.isVertical ? undefined : parent.right
+              bottom: metrics.isVertical ? parent.bottom : undefined
+              verticalCenter: metrics.isVertical ? undefined : parent.verticalCenter
+              horizontalCenter: metrics.isVertical ? parent.horizontalCenter : undefined
+              rightMargin: metrics.isVertical ? 0 : metrics.marginEdge
+              bottomMargin: metrics.isVertical ? metrics.marginEdge : 0
             }
 
             color: Theme.colors.textPrimary
-            font.pixelSize: 14
+            font.pixelSize: metrics.isVertical ? metrics.fontSmall : metrics.fontNormal
             font.family: "Noto Sans"
             font.bold: true
 
             function updateTime() {
-              text = Qt.formatDateTime(new Date(), "hh:mm:ss")
+              text = Qt.formatDateTime(new Date(), metrics.isVertical ? "hh\nmm" : "hh:mm:ss")
             }
 
             Component.onCompleted: updateTime()
@@ -491,18 +596,29 @@ Scope {
             onTriggered: timeDisplay.updateTime()
           }
 
-          // System widgets (battery, temp, cpu)
-          RowLayout {
+          // System widgets (brightness, volume, cpu, temp, battery). A row across the
+          // top bar; a single stacked column above the clock on a vertical bar. Uses a
+          // Grid POSITIONER (not GridLayout) to avoid nested-layout polish loops.
+          Grid {
+            id: statsCluster
+            columns: metrics.isVertical ? 1 : 99
+            rowSpacing: metrics.spacingSmall
+            columnSpacing: metrics.spacingSmall
+            horizontalItemAlignment: Grid.AlignHCenter
+            verticalItemAlignment: Grid.AlignVCenter
             anchors {
-              right: screenCapture.left
-              verticalCenter: parent.verticalCenter
-              rightMargin: 15
+              right: metrics.isVertical ? undefined : screenCapture.left
+              bottom: metrics.isVertical ? screenCapture.top : undefined
+              verticalCenter: metrics.isVertical ? undefined : parent.verticalCenter
+              horizontalCenter: metrics.isVertical ? parent.horizontalCenter : undefined
+              rightMargin: metrics.isVertical ? 0 : metrics.marginBar
+              bottomMargin: metrics.isVertical ? metrics.marginBar : 0
             }
-            spacing: 8
 
             // Brightness widget (only if backlight exists)
             BarSliderWidget {
               visible: root.hasBrightness
+              isVertical: metrics.isVertical
               icon: "󰃠"
               value: root.brightnessValue
               displayValue: Math.round(root.brightnessValue * 100) + "%"
@@ -517,13 +633,15 @@ Scope {
 
             Rectangle {
               visible: root.hasBrightness
-              implicitWidth: bar.dividerThickness
-              implicitHeight: parent.parent.height * 0.6
+              implicitWidth: metrics.isVertical ? bar.barThickness * 0.6 : bar.dividerThickness
+              implicitHeight: metrics.isVertical ? bar.dividerThickness : bar.barThickness * 0.6
+              Layout.alignment: Qt.AlignCenter
               color: Theme.colors.textMuted
             }
 
             // Volume widget (hover to expand slider, click to mute)
             BarSliderWidget {
+              isVertical: metrics.isVertical
               icon: root.volumeIcon
               value: (Pipewire.defaultAudioSink?.audio.volume ?? 0)
               displayValue: root.volumePercent + "%"
@@ -543,36 +661,46 @@ Scope {
             }
 
             Rectangle {
-              implicitWidth: bar.dividerThickness
-              implicitHeight: parent.parent.height * 0.6
+              implicitWidth: metrics.isVertical ? bar.barThickness * 0.6 : bar.dividerThickness
+              implicitHeight: metrics.isVertical ? bar.dividerThickness : bar.barThickness * 0.6
+              Layout.alignment: Qt.AlignCenter
               color: Theme.colors.textMuted
             }
 
-            RowLayout {
-              spacing: 5
+            Grid {
+              columns: metrics.isVertical ? 1 : 99
+              rowSpacing: metrics.spacingTiny
+              columnSpacing: metrics.spacingTiny
+              horizontalItemAlignment: Grid.AlignHCenter
+              verticalItemAlignment: Grid.AlignVCenter
               Text {
                 text: "󰘚"
                 color: Theme.colors.blue
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.family: "monospace"
                 font.bold: true
               }
               Text {
                 text: parseFloat(root.cpuLoad).toFixed(0) + "%"
                 color: Theme.colors.blue
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.bold: true
               }
             }
 
             Rectangle {
-              implicitWidth: bar.dividerThickness
-              implicitHeight: parent.parent.height * 0.6
+              implicitWidth: metrics.isVertical ? bar.barThickness * 0.6 : bar.dividerThickness
+              implicitHeight: metrics.isVertical ? bar.dividerThickness : bar.barThickness * 0.6
+              Layout.alignment: Qt.AlignCenter
               color: Theme.colors.textMuted
             }
 
-            RowLayout {
-              spacing: 5
+            Grid {
+              columns: metrics.isVertical ? 1 : 99
+              rowSpacing: metrics.spacingTiny
+              columnSpacing: metrics.spacingTiny
+              horizontalItemAlignment: Grid.AlignHCenter
+              verticalItemAlignment: Grid.AlignVCenter
               Text {
                 text: "󰔏"
                 color: {
@@ -581,7 +709,7 @@ Scope {
                   if (temp > 60) return Theme.colors.orange;
                   return Theme.colors.teal;
                 }
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.family: "monospace"
                 font.bold: true
               }
@@ -593,21 +721,26 @@ Scope {
                   if (temp > 60) return Theme.colors.orange;
                   return Theme.colors.teal;
                 }
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.bold: true
               }
             }
 
             Rectangle {
               visible: root.hasBattery
-              implicitWidth: bar.dividerThickness
-              implicitHeight: parent.parent.height * 0.6
+              implicitWidth: metrics.isVertical ? bar.barThickness * 0.6 : bar.dividerThickness
+              implicitHeight: metrics.isVertical ? bar.dividerThickness : bar.barThickness * 0.6
+              Layout.alignment: Qt.AlignCenter
               color: Theme.colors.textMuted
             }
 
-            RowLayout {
+            Grid {
               visible: root.hasBattery
-              spacing: 5
+              columns: metrics.isVertical ? 1 : 99
+              rowSpacing: metrics.spacingTiny
+              columnSpacing: metrics.spacingTiny
+              horizontalItemAlignment: Grid.AlignHCenter
+              verticalItemAlignment: Grid.AlignVCenter
               Text {
                 text: root.batteryIcon
                 color: {
@@ -616,7 +749,7 @@ Scope {
                   if (level > 30) return Theme.colors.yellow;
                   return Theme.colors.red;
                 }
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.family: "monospace"
                 font.bold: true
               }
@@ -628,22 +761,25 @@ Scope {
                   if (level > 30) return Theme.colors.yellow;
                   return Theme.colors.red;
                 }
-                font.pixelSize: 14
+                font.pixelSize: metrics.fontNormal
                 font.bold: true
               }
             }
           }
         }
 
-        // Container for the 'dynamic island' dropdown widgets
+        // Container for the 'dynamic island' dropdown widgets. Grows along the long
+        // axis (dropdownWidth) and protrudes along the cross axis (dropdownHeight).
         Item {
           id: dynamicWidgetsContainer
-          width: bar.dropdownWidth
-          height: bar.barHeight + bar.dropdownHeight
+          width: metrics.isVertical ? (bar.barThickness + bar.dropdownHeight) : bar.dropdownWidth
+          height: metrics.isVertical ? bar.dropdownWidth : (bar.barThickness + bar.dropdownHeight)
 
           anchors {
-            top: parent.top
-            horizontalCenter: parent.horizontalCenter
+            top: metrics.isVertical ? undefined : parent.top
+            left: metrics.isVertical ? parent.left : undefined
+            horizontalCenter: metrics.isVertical ? undefined : parent.horizontalCenter
+            verticalCenter: metrics.isVertical ? parent.verticalCenter : undefined
           }
 
           WallpaperSelectorWidget {}
@@ -654,101 +790,157 @@ Scope {
 
           PowerMenuWidget {}
           
-          // Dashboard grid container (column-based layout)
+          // Dashboard grid container. Horizontal: 4-column row, content-driven height.
+          // Vertical: fills the tall pocket; the Loader swaps in a 2-column reflow.
           Item {
             id: dashboardGrid
             visible: bar.state === "dashboard"
-            
+
             anchors {
-              top: parent.top
-              topMargin: bar.barHeight
-              horizontalCenter: parent.horizontalCenter
+              top: metrics.isVertical ? undefined : parent.top
+              left: metrics.isVertical ? parent.left : undefined
+              topMargin: metrics.isVertical ? 0 : bar.barThickness
+              leftMargin: metrics.isVertical ? bar.barThickness : 0
+              horizontalCenter: metrics.isVertical ? undefined : parent.horizontalCenter
+              verticalCenter: metrics.isVertical ? parent.verticalCenter : undefined
             }
-            
-            width: parent.width - (bar.dropdownWidgetPadding * 2)
-            
-            property real widgetHeight: 160
-            property real colSpacing: 10
-            property real rowSpacing: 10
-            property real topPad: 5
-            property real bottomPad: 10
-            
+
+            width: metrics.isVertical
+              ? (parent.width - bar.barThickness - bar.dropdownWidgetPadding * 2)
+              : (parent.width - (bar.dropdownWidgetPadding * 2))
+            height: metrics.isVertical ? (parent.height - bar.dropdownWidgetPadding * 2) : implicitHeight
+
+            property real widgetHeight: metrics.dashWidgetHeight
+            property real colSpacing: metrics.spacingNormal
+            property real rowSpacing: metrics.spacingNormal
+            property real topPad: metrics.s(5)
+            property real bottomPad: metrics.spacingNormal
+
+            // Natural height of the portrait stack: Services(1.5) + 3 rows(1.6/1.3/1.4).
+            property real verticalContentHeight: widgetHeight * 5.8 + rowSpacing * 3
+
+            // Only used to size the horizontal pocket (content-driven).
             implicitHeight: topPad + (widgetHeight * 3) + (rowSpacing * 2) + bottomPad
-            
-            RowLayout {
-              anchors {
-                fill: parent
-                topMargin: dashboardGrid.topPad
-                bottomMargin: dashboardGrid.bottomPad
+
+            Loader {
+              anchors.fill: parent
+              anchors.topMargin: dashboardGrid.topPad
+              anchors.bottomMargin: dashboardGrid.bottomPad
+              sourceComponent: metrics.isVertical ? verticalDash : horizontalDash
+            }
+
+            // ---- Landscape: original 4-column layout (unchanged) ----
+            Component {
+              id: horizontalDash
+              RowLayout {
+                anchors.fill: parent
+                spacing: dashboardGrid.colSpacing
+
+                // Columns 1-2: Services (2-tall) + SystemStats/MiscStats side by side
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+                  Layout.preferredWidth: 2
+                  spacing: dashboardGrid.rowSpacing
+
+                  ServicesWidget {
+                    id: servicesWidget
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                  }
+
+                  RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                    spacing: dashboardGrid.colSpacing
+
+                    SystemStatsWidget {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                    }
+
+                    MiscStatsWidget {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                    }
+                  }
+                }
+
+                // Column 3: 3 widgets stacked
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+                  Layout.preferredWidth: 1
+                  spacing: dashboardGrid.rowSpacing
+
+                  QuoteWidget {
+                    id: quoteWidget
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: dashboardGrid.widgetHeight
+                  }
+
+                  WeatherWidget {
+                    id: weatherWidget
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: dashboardGrid.widgetHeight
+                  }
+
+                  NetworkStatsWidget {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: dashboardGrid.widgetHeight
+                  }
+                }
+
+                // Column 4: Profile card (2-tall) + empty space
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+                  Layout.preferredWidth: 1
+                  spacing: dashboardGrid.rowSpacing
+
+                  ProfileWidget {
+                    id: profileWidget
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                  }
+                }
               }
-              spacing: dashboardGrid.colSpacing
-              
-              // Columns 1-2: Services (2-tall) + SystemStats/MiscStats side by side
+            }
+
+            // ---- Portrait: 2-column reflow (Services spans the top) ----
+            Component {
+              id: verticalDash
               ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredWidth: 2
+                anchors.fill: parent
                 spacing: dashboardGrid.rowSpacing
 
                 ServicesWidget {
-                  id: servicesWidget
                   Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5
                 }
-                
+
                 RowLayout {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.6
                   spacing: dashboardGrid.colSpacing
+                  SystemStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
+                  MiscStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
+                }
 
-                  SystemStatsWidget {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                  }
+                RowLayout {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.3
+                  spacing: dashboardGrid.colSpacing
+                  QuoteWidget { Layout.fillWidth: true; Layout.fillHeight: true }
+                  WeatherWidget { Layout.fillWidth: true; Layout.fillHeight: true }
+                }
 
-                  MiscStatsWidget {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                  }
-                }
-              }
-              
-              // Column 3: 3 widgets stacked
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                spacing: dashboardGrid.rowSpacing
-                
-                QuoteWidget {
-                  id: quoteWidget
+                RowLayout {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight
-                }
-                
-                WeatherWidget {
-                  id: weatherWidget
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight
-                }
-                
-                NetworkStatsWidget {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight
-                }
-              }
-              
-              // Column 4: Profile card (2-tall) + empty space
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                spacing: dashboardGrid.rowSpacing
-                
-                ProfileWidget {
-                  id: profileWidget
-                  Layout.fillWidth: true
-                  Layout.fillHeight: true
+                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.4
+                  spacing: dashboardGrid.colSpacing
+                  NetworkStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
+                  ProfileWidget { Layout.fillWidth: true; Layout.fillHeight: true }
                 }
               }
             }
@@ -762,13 +954,15 @@ Scope {
         shadowEnabled: true
       }
 
-      // Exclusion zone (per-screen)
+      // Exclusion zone (per-screen): reserve the top edge (horizontal) or the
+      // left edge (vertical) so windows don't overlap the bar.
       Scope {
         PanelWindow {
           screen: barWindow.modelData
-          anchors.top: true
-          implicitWidth: 0
-          implicitHeight: bar.barHeight
+          anchors.top: !metrics.isVertical
+          anchors.left: metrics.isVertical
+          implicitWidth: metrics.isVertical ? bar.barThickness : 0
+          implicitHeight: metrics.isVertical ? 0 : bar.barThickness
         }
       }
     }

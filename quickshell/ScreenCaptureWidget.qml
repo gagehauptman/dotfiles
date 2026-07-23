@@ -11,6 +11,7 @@ Item {
   property string home: Quickshell.env("HOME")
   property string monitorName: ""
   property bool isRecording: false
+  property bool isVertical: false
 
   // Poll wf-recorder process to sync state (catches keybind-triggered recordings)
   PollProcess {
@@ -21,7 +22,7 @@ Item {
   }
 
   implicitWidth: row.implicitWidth
-  implicitHeight: parent ? parent.height : 30
+  implicitHeight: isVertical ? row.implicitHeight : (parent ? parent.height : 30)
 
   property string screenshotDir: root.home + "/Pictures/Screenshots"
   property string recordingDir: root.home + "/Videos/Recordings"
@@ -61,26 +62,29 @@ Item {
     }
   }
 
-  Row {
+  Grid {
     id: row
-    anchors.verticalCenter: parent.verticalCenter
-    spacing: 8
+    anchors.centerIn: parent
+    columns: root.isVertical ? 1 : 99
+    rowSpacing: metrics.spacingSmall
+    columnSpacing: metrics.spacingSmall
+    horizontalItemAlignment: Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
 
     Text {
       id: screenshotBtn
       text: "\uf030"
       color: screenshotMouse.containsMouse ? Theme.colors.cyan : Theme.colors.textSecondary
-      font.pixelSize: 14
+      font.pixelSize: metrics.fontNormal
       font.family: "monospace"
       font.bold: true
-      anchors.verticalCenter: parent.verticalCenter
 
       Behavior on color { ColorAnimation { duration: 100 } }
 
       MouseArea {
         id: screenshotMouse
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: -metrics.s(4)
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
@@ -102,10 +106,9 @@ Item {
         if (root.isRecording) return pulseAnim.pulseColor
         return recordMouse.containsMouse ? Theme.colors.red : Theme.colors.textSecondary
       }
-      font.pixelSize: root.isRecording ? 14 : 10
+      font.pixelSize: root.isRecording ? metrics.fontNormal : metrics.s(10)
       font.family: "monospace"
       font.bold: true
-      anchors.verticalCenter: parent.verticalCenter
 
       Timer {
         id: pulseAnim
@@ -128,7 +131,7 @@ Item {
       MouseArea {
         id: recordMouse
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: -metrics.s(4)
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor

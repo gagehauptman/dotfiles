@@ -13,6 +13,7 @@ Item {
   property string displayValue: ""
   property color accentColor: Theme.colors.violet
   property bool mutable: true     // false = display-only, no slider
+  property bool isVertical: false // vertical bar: stack icon over value, no inline slider
 
   signal moved(real newValue)
   signal clicked()
@@ -35,17 +36,17 @@ Item {
   }
 
   property bool expanded: hoverArea.containsMouse || dragging
-  property real sliderTrackWidth: 80
-  property real sliderHeight: 4
-  property real knobSize: 10
-  property real sliderWidth: (expanded && mutable) ? sliderTrackWidth + 8 : 0
+  property real sliderTrackWidth: metrics.sliderTrackWidth
+  property real sliderHeight: metrics.s(4)
+  property real knobSize: metrics.s(10)
+  property real sliderWidth: (expanded && mutable && !isVertical) ? sliderTrackWidth + metrics.s(8) : 0
 
   Behavior on sliderWidth {
     NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
   }
 
-  implicitWidth: label.implicitWidth + sliderWidth
-  implicitHeight: parent ? parent.height : 30
+  implicitWidth: isVertical ? label.implicitWidth : (label.implicitWidth + sliderWidth)
+  implicitHeight: isVertical ? label.implicitHeight : (parent ? parent.height : 30)
   clip: true
 
   MouseArea {
@@ -55,19 +56,25 @@ Item {
     acceptedButtons: Qt.NoButton
   }
 
-  // Icon + value text, pinned to the right edge
-  Row {
+  // Icon + value. Pinned right on a horizontal bar (so it stays put as the slider
+  // expands left); stacked icon-over-value and centered on a vertical bar.
+  Grid {
     id: label
+    columns: root.isVertical ? 1 : 99
+    rowSpacing: metrics.spacingTiny
+    columnSpacing: metrics.spacingTiny
+    horizontalItemAlignment: Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
     anchors {
-      right: parent.right
+      right: root.isVertical ? undefined : parent.right
+      horizontalCenter: root.isVertical ? parent.horizontalCenter : undefined
       verticalCenter: parent.verticalCenter
     }
-    spacing: 5
 
     Text {
       text: root.icon
       color: root.accentColor
-      font.pixelSize: 14
+      font.pixelSize: metrics.fontNormal
       font.family: "monospace"
       font.bold: true
     }
@@ -75,7 +82,7 @@ Item {
     Text {
       text: root.displayValue
       color: root.accentColor
-      font.pixelSize: 14
+      font.pixelSize: metrics.fontNormal
       font.bold: true
     }
   }
@@ -89,12 +96,12 @@ Item {
   // Slider track, to the left of the label
   Item {
     id: sliderContainer
-    visible: root.mutable
+    visible: root.mutable && !root.isVertical
     width: root.sliderTrackWidth
     height: root.knobSize
     anchors {
       right: label.left
-      rightMargin: 8
+      rightMargin: metrics.spacingSmall
       verticalCenter: parent.verticalCenter
     }
     opacity: root.expanded ? 1.0 : 0.0

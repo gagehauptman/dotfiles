@@ -12,9 +12,12 @@ Item {
     visible: isOpen
 
     anchors {
-        top: parent.top
-        topMargin: bar.dropdownWidgetPadding
-        horizontalCenter: parent.horizontalCenter
+        top: metrics.isVertical ? undefined : parent.top
+        left: metrics.isVertical ? parent.left : undefined
+        topMargin: metrics.isVertical ? 0 : bar.dropdownWidgetPadding
+        leftMargin: metrics.isVertical ? bar.dropdownWidgetPadding : 0
+        horizontalCenter: metrics.isVertical ? undefined : parent.horizontalCenter
+        verticalCenter: metrics.isVertical ? parent.verticalCenter : undefined
     }
 
     width: parent.width - (bar.dropdownWidgetPadding * 2)
@@ -70,19 +73,19 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.colors.panel
-        radius: 15
+        radius: metrics.radiusLarge
 
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: 15
+                margins: metrics.marginBar
             }
-            spacing: 8
+            spacing: metrics.spacingSmall
 
             Text {
                 text: "Power Options"
                 color: Theme.colors.textPrimary
-                font.pixelSize: 16
+                font.pixelSize: metrics.fontLarge
                 font.bold: true
                 font.family: "monospace"
                 Layout.fillWidth: true
@@ -91,14 +94,14 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 2
+                height: metrics.s(2)
                 color: Theme.colors.border
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 10
+                spacing: metrics.spacingNormal
 
                 Repeater {
                     model: powerMenuWidget.powerActions
@@ -110,18 +113,18 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         color: powerMenuWidget.selectedIndex === index ? Theme.colors.inset : "transparent"
-                        radius: 10
+                        radius: metrics.radiusNormal
                         border.width: powerMenuWidget.selectedIndex === index ? 2 : 0
                         border.color: modelData.color
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            spacing: 6
+                            spacing: metrics.spacingSmall
 
                             Text {
                                 text: modelData.icon
                                 color: modelData.color
-                                font.pixelSize: 28
+                                font.pixelSize: metrics.fontXL
                                 font.family: "monospace"
                                 Layout.alignment: Qt.AlignHCenter
                             }
@@ -129,7 +132,7 @@ Item {
                             Text {
                                 text: modelData.label
                                 color: Theme.colors.textPrimary
-                                font.pixelSize: 11
+                                font.pixelSize: metrics.fontTiny
                                 font.bold: true
                                 Layout.alignment: Qt.AlignHCenter
                             }

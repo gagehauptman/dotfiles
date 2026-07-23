@@ -9,19 +9,22 @@ Item {
     visible: bar.state === "app_selector"
     
     anchors {
-        top: parent.top
-        topMargin: bar.dropdownWidgetPadding
-        horizontalCenter: parent.horizontalCenter
+        top: metrics.isVertical ? undefined : parent.top
+        left: metrics.isVertical ? parent.left : undefined
+        topMargin: metrics.isVertical ? 0 : bar.dropdownWidgetPadding
+        leftMargin: metrics.isVertical ? bar.dropdownWidgetPadding : 0
+        horizontalCenter: metrics.isVertical ? undefined : parent.horizontalCenter
+        verticalCenter: metrics.isVertical ? parent.verticalCenter : undefined
     }
-    
+
     width: parent.width - (bar.dropdownWidgetPadding * 2)
     height: totalHeight
 
     // Layout constants
-    readonly property int edgePadding: 15
-    readonly property int searchBarHeight: 32
-    readonly property int separatorY: edgePadding + searchBarHeight + 8  // 8px below search bar
-    readonly property int gridY: separatorY + 2 + 8  // 8px below separator
+    readonly property int edgePadding: metrics.marginBar
+    readonly property int searchBarHeight: metrics.s(32)
+    readonly property int separatorY: edgePadding + searchBarHeight + metrics.spacingSmall  // 8px below search bar
+    readonly property int gridY: separatorY + metrics.s(2) + metrics.spacingSmall  // 8px below separator
     readonly property int gridHeight: bar.appSelectorRowsPerPage * bar.appSelectorCellHeightConst
     readonly property int totalHeight: gridHeight + gridY + edgePadding*2
 
@@ -79,47 +82,47 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.colors.panel
-        radius: 15
+        radius: metrics.radiusLarge
     }
 
     // Search bar
     Rectangle {
         id: searchBar
-        x: 15
-        y: 15
-        width: parent.width - 30
+        x: metrics.marginBar
+        y: metrics.marginBar
+        width: parent.width - metrics.s(30)
         height: appSelectorWidget.searchBarHeight
         color: Theme.colors.inset
-        radius: 8
+        radius: metrics.radiusNormal
 
         Text {
             id: searchIcon
-            x: 12
+            x: metrics.s(12)
             anchors.verticalCenter: parent.verticalCenter
             text: "󰍉"
             color: Theme.colors.blue
-            font.pixelSize: 14
+            font.pixelSize: metrics.fontNormal
             font.family: "monospace"
         }
 
         Text {
-            x: searchIcon.x + searchIcon.width + 8
+            x: searchIcon.x + searchIcon.width + metrics.spacingSmall
             anchors.verticalCenter: parent.verticalCenter
             text: "Search applications..."
             color: Theme.colors.textMuted
-            font.pixelSize: 14
+            font.pixelSize: metrics.fontNormal
             font.family: "monospace"
             visible: !searchBox.text && !searchBox.activeFocus
         }
 
         TextInput {
             id: searchBox
-            x: searchIcon.x + searchIcon.width + 8
-            width: parent.width - x - 12
+            x: searchIcon.x + searchIcon.width + metrics.spacingSmall
+            width: parent.width - x - metrics.s(12)
             anchors.verticalCenter: parent.verticalCenter
-            
+
             color: Theme.colors.textPrimary
-            font.pixelSize: 14
+            font.pixelSize: metrics.fontNormal
             font.family: "monospace"
             clip: true
             
@@ -165,7 +168,7 @@ Item {
         x: appSelectorWidget.edgePadding
         y: appSelectorWidget.separatorY
         width: parent.width - (appSelectorWidget.edgePadding*2)
-        height: 2
+        height: metrics.s(2)
         color: Theme.colors.border
     }
 
@@ -200,9 +203,9 @@ Item {
             }
         }
 
-        highlight: Rectangle { 
+        highlight: Rectangle {
             color: Theme.colors.inset
-            radius: 10
+            radius: metrics.radiusNormal
             border.width: 2
             border.color: Theme.colors.blue
         }
@@ -217,11 +220,11 @@ Item {
 
             Column {
                 anchors.centerIn: parent
-                spacing: 6
-                
+                spacing: metrics.spacingSmall
+
                 Image {
-                    width: 32
-                    height: 32
+                    width: metrics.s(32)
+                    height: metrics.s(32)
                     anchors.horizontalCenter: parent.horizontalCenter
                     source: {
                         var icon = appData.icon || "";
@@ -247,12 +250,12 @@ Item {
                 Text {
                     text: appData.name
                     color: Theme.colors.textPrimary
-                    font.pixelSize: 11
+                    font.pixelSize: metrics.fontTiny
                     font.bold: isSelected
                     font.family: "monospace"
                     anchors.horizontalCenter: parent.horizontalCenter
                     elide: Text.ElideRight
-                    width: resultsGrid.cellWidth - 16
+                    width: resultsGrid.cellWidth - metrics.s(16)
                     horizontalAlignment: Text.AlignHCenter
                 }
             }
@@ -286,7 +289,7 @@ Item {
         }
         text: (appSelectorWidget.currentPage + 1) + " / " + appSelectorWidget.totalPages
         color: Theme.colors.textMuted
-        font.pixelSize: 11
+        font.pixelSize: metrics.fontTiny
         font.family: "monospace"
         visible: appSelectorWidget.totalPages > 1
     }

@@ -8,7 +8,7 @@ Item {
   id: root
 
   visible: bar.state === "dashboard"
-  implicitHeight: 190
+  implicitHeight: metrics.dataWidgetHeight
 
   property string title: "Widget"
   property Component middleContent: null
@@ -17,22 +17,22 @@ Item {
   Rectangle {
     anchors.fill: parent
     color: Theme.colors.panel
-    radius: 15
+    radius: metrics.radiusLarge
 
     ColumnLayout {
       anchors {
         verticalCenter: parent.verticalCenter
         left: parent.left
         right: parent.right
-        margins: 15
+        margins: metrics.spacingLarge
       }
-      spacing: 8
+      spacing: metrics.spacingSmall
 
       // Title
       Text {
         text: root.title
         color: Theme.colors.textPrimary
-        font.pixelSize: 16
+        font.pixelSize: metrics.fontLarge
         font.bold: true
         font.family: "monospace"
         Layout.fillWidth: true

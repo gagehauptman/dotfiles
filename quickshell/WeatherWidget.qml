@@ -77,24 +77,24 @@ ThreeRowWidget {
 
   middleContent: Component {
     RowLayout {
-      spacing: 10
+      spacing: metrics.spacingNormal
 
       Text {
         text: weatherWidget.weatherIcon(weatherWidget.weatherCode)
         color: weatherWidget.weatherColor(weatherWidget.weatherCode)
-        font.pixelSize: 38
+        font.pixelSize: metrics.fontHuge
         font.family: "monospace"
         Layout.alignment: Qt.AlignVCenter
       }
 
       ColumnLayout {
         Layout.alignment: Qt.AlignVCenter
-        spacing: 2
+        spacing: metrics.spacingTiny
 
         Text {
           text: weatherWidget.temperature.toFixed(1) + "°C"
           color: Theme.colors.textPrimary
-          font.pixelSize: 28
+          font.pixelSize: metrics.fontXL
           font.bold: true
           font.family: "Noto Sans"
         }
@@ -102,7 +102,7 @@ ThreeRowWidget {
         Text {
           text: weatherWidget.weatherDesc(weatherWidget.weatherCode)
           color: weatherWidget.weatherColor(weatherWidget.weatherCode)
-          font.pixelSize: 12
+          font.pixelSize: metrics.fontSmall
           font.family: "Noto Sans"
         }
       }
@@ -111,18 +111,18 @@ ThreeRowWidget {
 
   footerContent: Component {
     RowLayout {
-      spacing: 15
+      spacing: metrics.spacingLarge
 
       RowLayout {
-        spacing: 4
-        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: 11 }
+        spacing: metrics.spacingTiny
+        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: metrics.fontSmall; font.family: "monospace"; font.bold: true }
+        Text { text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
       }
 
       RowLayout {
-        spacing: 4
-        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: 12; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: 11 }
+        spacing: metrics.spacingTiny
+        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: metrics.fontSmall; font.family: "monospace"; font.bold: true }
+        Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
       }
     }
   }

@@ -9,25 +9,25 @@ Item {
   id: root
 
   visible: bar.state === "dashboard"
-  implicitHeight: 190
+  implicitHeight: metrics.dataWidgetHeight
 
   property string title: "Widget"
-  property int titleSize: 14
+  property int titleSize: metrics.fontNormal
   property alias dataContent: dataPlaceholder.children
 
   Rectangle {
     anchors.fill: parent
     color: Theme.colors.panel
-    radius: 15
+    radius: metrics.radiusLarge
 
     ColumnLayout {
       anchors {
         top: parent.top
         left: parent.left
         right: parent.right
-        margins: 15
+        margins: metrics.spacingLarge
       }
-      spacing: 8
+      spacing: metrics.spacingSmall
 
       // Title
       Text {

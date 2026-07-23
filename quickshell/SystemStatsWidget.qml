@@ -9,7 +9,7 @@ DataWidget {
   id: systemWidget
 
   title: "󰻠  System Resources"
-  implicitHeight: 280
+  implicitHeight: metrics.systemWidgetHeight
 
   property real cpuUsage: 0
   property real ramUsed: 0
@@ -104,7 +104,7 @@ DataWidget {
     ColumnLayout {
       anchors.left: parent.left
       anchors.right: parent.right
-      spacing: 8
+      spacing: metrics.spacingSmall
 
       StatBar {
         label: "󰘚 CPU"
@@ -145,10 +145,10 @@ DataWidget {
           anchors.left: parent.left
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          spacing: 10
+          spacing: metrics.spacingNormal
 
           Rectangle {
-            width: 10; height: 10; radius: 5
+            width: metrics.s(10); height: metrics.s(10); radius: metrics.s(5)
             color: systemWidget.btPower === "unavailable" ? Theme.colors.red
                  : systemWidget.btDeviceConnected ? Theme.colors.green
                  : systemWidget.btPower === "on" ? Theme.colors.blue
@@ -159,7 +159,7 @@ DataWidget {
           Text {
             text: "󰂯 Bluetooth"
             color: Theme.colors.textPrimary
-            font.pixelSize: 13
+            font.pixelSize: metrics.fontSmall
             font.bold: true
             font.family: "monospace"
             Layout.fillWidth: true
@@ -184,7 +184,7 @@ DataWidget {
                  : systemWidget.btDeviceConnected ? Theme.colors.green
                  : systemWidget.btPower === "on" ? Theme.colors.blue
                  : Theme.colors.textMuted
-            font.pixelSize: 13
+            font.pixelSize: metrics.fontSmall
             font.italic: true
             font.family: "monospace"
 
@@ -209,10 +209,10 @@ DataWidget {
       // Last upgrade row (days since `pacman -Syu`)
       RowLayout {
         Layout.fillWidth: true
-        spacing: 10
+        spacing: metrics.spacingNormal
 
         Rectangle {
-          width: 10; height: 10; radius: 5
+          width: metrics.s(10); height: metrics.s(10); radius: metrics.s(5)
           color: {
             let d = parseInt(systemWidget.daysSinceUpgrade)
             if (isNaN(d)) return Theme.colors.textMuted
@@ -226,7 +226,7 @@ DataWidget {
         Text {
           text: "󰚰 Last Upgrade"
           color: Theme.colors.textPrimary
-          font.pixelSize: 13
+          font.pixelSize: metrics.fontSmall
           font.bold: true
           font.family: "monospace"
           Layout.fillWidth: true
@@ -247,7 +247,7 @@ DataWidget {
             if (d <= 30) return Theme.colors.yellow
             return Theme.colors.red
           }
-          font.pixelSize: 13
+          font.pixelSize: metrics.fontSmall
           font.italic: true
           font.family: "monospace"
 

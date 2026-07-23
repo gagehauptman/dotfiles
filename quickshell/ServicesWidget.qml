@@ -135,12 +135,12 @@ ThreeRowWidget {
 
   middleContent: Component {
     ColumnLayout {
-      spacing: 6
+      spacing: metrics.spacingSmall
 
       Text {
         text: "󰛳  Tailscale"
         color: Theme.colors.textSecondary
-        font.pixelSize: 12
+        font.pixelSize: metrics.fontSmall
         font.bold: true
         font.family: "monospace"
         Layout.fillWidth: true
@@ -151,17 +151,17 @@ ThreeRowWidget {
 
         RowLayout {
           Layout.fillWidth: true
-          spacing: 10
+          spacing: metrics.spacingNormal
 
           Rectangle {
-            width: 10; height: 10; radius: 5
+            width: metrics.s(10); height: metrics.s(10); radius: metrics.s(5)
             color: modelData.status === "online" ? Theme.colors.green : Theme.colors.red
           }
 
           Text {
             text: modelData.name
             color: Theme.colors.textPrimary
-            font.pixelSize: 14
+            font.pixelSize: metrics.fontNormal
             font.bold: true
             Layout.fillWidth: true
           }
@@ -169,7 +169,7 @@ ThreeRowWidget {
           Text {
             text: modelData.status
             color: modelData.status === "online" ? Theme.colors.green : Theme.colors.textMuted
-            font.pixelSize: 13
+            font.pixelSize: metrics.fontSmall
             font.italic: true
           }
 
@@ -182,7 +182,7 @@ ThreeRowWidget {
               if (pingValue < 100) return Theme.colors.yellow
               return Theme.colors.red
             }
-            font.pixelSize: 12
+            font.pixelSize: metrics.fontSmall
           }
         }
       }
@@ -191,7 +191,7 @@ ThreeRowWidget {
         visible: servicesWidget.devices.length === 0
         text: "Loading devices..."
         color: Theme.colors.textMuted
-        font.pixelSize: 13
+        font.pixelSize: metrics.fontSmall
         font.italic: true
         Layout.fillWidth: true
         horizontalAlignment: Text.AlignHCenter
@@ -201,13 +201,13 @@ ThreeRowWidget {
 
   footerContent: Component {
     RowLayout {
-      spacing: 8
+      spacing: metrics.spacingSmall
 
       // Status dot
       Rectangle {
         Layout.alignment: Qt.AlignVCenter
-        Layout.rightMargin: 2
-        width: 10; height: 10; radius: 5
+        Layout.rightMargin: metrics.s(2)
+        width: metrics.s(10); height: metrics.s(10); radius: metrics.s(5)
         color: {
           if (!servicesWidget.carOk)                return Theme.colors.textMuted
           if (servicesWidget.carState === "online") return Theme.colors.green
@@ -221,7 +221,7 @@ ThreeRowWidget {
       Text {
         text: "󰄋  " + servicesWidget.carName
         color: Theme.colors.textPrimary
-        font.pixelSize: 14
+        font.pixelSize: metrics.fontNormal
         font.bold: true
         font.family: "monospace"
       }
@@ -231,16 +231,16 @@ ThreeRowWidget {
         visible: !servicesWidget.carOk
         text: servicesWidget.carStatus === "loading" ? "loading..." : servicesWidget.carError
         color: Theme.colors.textMuted
-        font.pixelSize: 12
+        font.pixelSize: metrics.fontSmall
         font.italic: true
-        Layout.leftMargin: 4
+        Layout.leftMargin: metrics.s(4)
         Layout.fillWidth: true
       }
 
       // Battery (+ live charge rate when charging)
       Text {
         visible: servicesWidget.carOk
-        Layout.leftMargin: 4
+        Layout.leftMargin: metrics.s(4)
         text: {
           let icon = servicesWidget.isCharging ? "󰂄  " : "󰁹  "
           let rate = (servicesWidget.isCharging && servicesWidget.carChargePower > 0)
@@ -253,7 +253,7 @@ ThreeRowWidget {
           if (servicesWidget.carBattery > 20) return Theme.colors.yellow
           return Theme.colors.red
         }
-        font.pixelSize: 13
+        font.pixelSize: metrics.fontSmall
         font.bold: true
         font.family: "monospace"
       }
@@ -263,7 +263,7 @@ ThreeRowWidget {
         visible: servicesWidget.carOk
         text: servicesWidget.carRange + " mi"
         color: Theme.colors.textSecondary
-        font.pixelSize: 12
+        font.pixelSize: metrics.fontSmall
       }
 
       Item { visible: servicesWidget.carOk; Layout.fillWidth: true }
@@ -273,7 +273,7 @@ ThreeRowWidget {
         visible: servicesWidget.carOk
         text: servicesWidget.carTemp.toFixed(0) + "°C"
         color: Theme.colors.textSecondary
-        font.pixelSize: 12
+        font.pixelSize: metrics.fontSmall
         font.family: "monospace"
       }
 
@@ -281,8 +281,8 @@ ThreeRowWidget {
       Item {
         id: climateButton
         visible: servicesWidget.carOk
-        implicitWidth: 22
-        implicitHeight: 20
+        implicitWidth: metrics.s(22)
+        implicitHeight: metrics.s(20)
 
         opacity: climateArea.pressed ? 0.6 : (climateArea.containsMouse ? 0.85 : 1.0)
         Behavior on opacity { NumberAnimation { duration: 100 } }
@@ -291,7 +291,7 @@ ThreeRowWidget {
           anchors.centerIn: parent
           text: "󰈐"
           color: servicesWidget.carClimateOn ? Theme.colors.blue : Theme.colors.textMuted
-          font.pixelSize: 14
+          font.pixelSize: metrics.fontNormal
           font.family: "monospace"
           Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -323,8 +323,8 @@ ThreeRowWidget {
       Item {
         id: lockButton
         visible: servicesWidget.carOk
-        implicitWidth: 22
-        implicitHeight: 20
+        implicitWidth: metrics.s(22)
+        implicitHeight: metrics.s(20)
 
         opacity: lockArea.pressed ? 0.6 : (lockArea.containsMouse ? 0.85 : 1.0)
         Behavior on opacity { NumberAnimation { duration: 100 } }
@@ -341,7 +341,7 @@ ThreeRowWidget {
           anchors.centerIn: parent
           text: "󰌾"
           color: Theme.colors.green
-          font.pixelSize: 14
+          font.pixelSize: metrics.fontNormal
           font.family: "monospace"
           visible: servicesWidget.carLocked
           opacity: 1.0 - lockButton.holdProgress
@@ -351,7 +351,7 @@ ThreeRowWidget {
           anchors.centerIn: parent
           text: "󰿆"
           color: Theme.colors.red
-          font.pixelSize: 14
+          font.pixelSize: metrics.fontNormal
           font.family: "monospace"
           opacity: servicesWidget.carLocked ? lockButton.holdProgress : 1.0
           visible: opacity > 0

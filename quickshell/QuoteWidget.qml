@@ -30,7 +30,7 @@ ThreeRowWidget {
     Text {
       text: quoteWidget.quoteText || "Loading..."
       color: Theme.colors.textPrimary
-      font.pixelSize: 13
+      font.pixelSize: metrics.fontSmall
       font.italic: true
       wrapMode: Text.WordWrap
       verticalAlignment: Text.AlignVCenter
@@ -42,7 +42,7 @@ ThreeRowWidget {
       visible: quoteWidget.quoteAuthor !== ""
       text: "— " + quoteWidget.quoteAuthor
       color: Theme.colors.blue
-      font.pixelSize: 12
+      font.pixelSize: metrics.fontSmall
       font.bold: true
       horizontalAlignment: Text.AlignRight
     }

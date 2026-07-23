@@ -34,21 +34,21 @@ Item {
   Rectangle {
     anchors.fill: parent
     color: Theme.colors.panel
-    radius: 15
+    radius: metrics.radiusLarge
     ColumnLayout {
       anchors.centerIn: parent
-      spacing: 15
+      spacing: metrics.spacingLarge
 
       // Profile picture
       Item {
         Layout.alignment: Qt.AlignHCenter
-        width: 100
-        height: 100
+        width: metrics.profilePicSize
+        height: metrics.profilePicSize
 
         // Fallback placeholder
         Rectangle {
           anchors.fill: parent
-          radius: 50
+          radius: metrics.s(50)
           color: Theme.colors.inset
           border.color: Theme.colors.border
           border.width: 2
@@ -58,7 +58,7 @@ Item {
             anchors.centerIn: parent
             text: "󰀉"
             color: Theme.colors.textMuted
-            font.pixelSize: 48
+            font.pixelSize: metrics.fontHuge
             font.family: "monospace"
           }
         }
@@ -68,7 +68,7 @@ Item {
           id: pfpImage
           anchors.fill: parent
           source: "file://" + root.home + "/.face"
-          sourceSize: Qt.size(100, 100)
+          sourceSize: Qt.size(metrics.profilePicSize, metrics.profilePicSize)
           fillMode: Image.PreserveAspectCrop
           visible: false
         }
@@ -76,7 +76,7 @@ Item {
         Rectangle {
           id: pfpMask
           anchors.fill: parent
-          radius: 50
+          radius: metrics.s(50)
           visible: false
         }
 
@@ -93,7 +93,7 @@ Item {
         Layout.alignment: Qt.AlignHCenter
         text: profileWidget.username
         color: Theme.colors.textPrimary
-        font.pixelSize: 16
+        font.pixelSize: metrics.fontLarge
         font.bold: true
         font.family: "monospace"
       }
@@ -103,21 +103,21 @@ Item {
         Layout.alignment: Qt.AlignHCenter
         text: profileWidget.hostname
         color: Theme.colors.textMuted
-        font.pixelSize: 12
+        font.pixelSize: metrics.fontSmall
         font.family: "monospace"
       }
 
       // Color palette dots
       Row {
         Layout.alignment: Qt.AlignHCenter
-        spacing: 6
+        spacing: metrics.spacingSmall
 
         Repeater {
           model: [Theme.colors.red, Theme.colors.orange, Theme.colors.yellow, Theme.colors.green, Theme.colors.blue, Theme.colors.violet, Theme.colors.pink, Theme.colors.teal]
           Rectangle {
-            width: 14
-            height: 14
-            radius: 7
+            width: metrics.s(14)
+            height: metrics.s(14)
+            radius: metrics.s(7)
             color: modelData
           }
         }

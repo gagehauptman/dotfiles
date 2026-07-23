@@ -9,10 +9,12 @@ Item {
   
   property bool showWidget: bar.state === "normal" || bar.state === "dashboard"
   property bool isDashboard: bar.state === "dashboard"
-  
+  // Vertical bar is too thin for the scrolling text; show an icon only there.
+  property bool isVertical: false
+
   visible: showWidget
-  implicitWidth: isDashboard ? 600 : 400
-  implicitHeight: 30
+  implicitWidth: isVertical ? parent.width : (isDashboard ? metrics.s(600) : metrics.s(400))
+  implicitHeight: metrics.s(30)
   
   Behavior on implicitWidth {
     NumberAnimation {
@@ -187,20 +189,21 @@ Item {
       text: {
         if (musicWidget.hasMusic && musicWidget.musicText) {
           let icon = musicWidget.playbackStatus === "Paused" ? "▶ " : "⏸ "
-          return icon + musicWidget.musicText
+          return musicWidget.isVertical ? icon.trim() : (icon + musicWidget.musicText)
         } else if (musicWidget.launchName) {
+          if (musicWidget.isVertical) return "🚀"
           let display = "🚀 " + musicWidget.countdownText
           let name = musicWidget.launchName
           if (name.length > 40) name = name.substring(0, 37) + "..."
           return display + " • " + name
         }
-        return "..."
+        return musicWidget.isVertical ? "" : "..."
       }
       color: musicWidget.hasMusic ? (musicMouse.containsMouse ? Theme.colors.yellow : Theme.colors.pink) : Theme.colors.orange
-      font.pixelSize: 13
+      font.pixelSize: metrics.fontSmall
       font.bold: false
       elide: Text.ElideRight
-      width: parent.width - 20
+      width: parent.width - (musicWidget.isVertical ? metrics.s(4) : metrics.s(20))
       horizontalAlignment: Text.AlignHCenter
     }
   }

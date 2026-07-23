@@ -6,11 +6,13 @@ import "themes"
 
 Item {
   id: workspacesWidget
-  implicitWidth: 300
-  implicitHeight: parent.height
+  implicitWidth: isVertical ? parent.width : 300
+  implicitHeight: isVertical ? dotsLayout.implicitHeight : parent.height
 
   // Monitor ID this widget is bound to (set by parent bar instance)
   property int monitorId: 0
+  // Vertical bar? Dots stack in a column and the active pill elongates downward.
+  property bool isVertical: false
 
   // Find the Hyprland monitor object for this monitorId
   property var hyprMonitor: {
@@ -37,9 +39,14 @@ Item {
     return result
   }
 
-  RowLayout {
+  Grid {
+    id: dotsLayout
     anchors.centerIn: parent
-    spacing: 13
+    columns: workspacesWidget.isVertical ? 1 : 99
+    rowSpacing: metrics.s(13)
+    columnSpacing: metrics.s(13)
+    horizontalItemAlignment: Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
 
     Repeater {
       model: workspacesWidget.monitorWorkspaces
@@ -52,9 +59,9 @@ Item {
         property bool hasWindows: (modelData.toplevels?.values?.length ?? 0) > 0
         property bool isHovered: mouseArea.containsMouse
 
-        implicitWidth: isActive ? 22 : 13
-        implicitHeight: 13
-        radius: 6.5
+        implicitWidth: workspacesWidget.isVertical ? metrics.s(13) : (isActive ? metrics.s(22) : metrics.s(13))
+        implicitHeight: workspacesWidget.isVertical ? (isActive ? metrics.s(22) : metrics.s(13)) : metrics.s(13)
+        radius: metrics.s(13) / 2
 
         color: {
           let base
@@ -72,6 +79,13 @@ Item {
         }
 
         Behavior on implicitWidth {
+          NumberAnimation {
+            duration: 150
+            easing.type: Easing.OutQuad
+          }
+        }
+
+        Behavior on implicitHeight {
           NumberAnimation {
             duration: 150
             easing.type: Easing.OutQuad

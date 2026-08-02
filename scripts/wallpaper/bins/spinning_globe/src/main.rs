@@ -18,7 +18,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_output, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 use std::f32::consts::PI;
 use std::time::Instant;
@@ -34,52 +34,41 @@ fn main() {
     let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell not available");
     let shm = Shm::bind(&globals, &qh).expect("wl_shm not available");
 
-    let surface = compositor.create_surface(&qh);
-    
-    let layer_surface = layer_shell.create_layer_surface(
-        &qh,
-        surface,
-        Layer::Background,
-        Some("wargames-globe"),
-        None,
-    );
-    
-    layer_surface.set_anchor(Anchor::all());
-    layer_surface.set_exclusive_zone(-1);
-    layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
-    layer_surface.commit();
-
     let mut state = AppState {
         registry_state: RegistryState::new(&globals),
         output_state: OutputState::new(&globals, &qh),
+        compositor,
+        layer_shell,
         shm,
-        pool: None,
-        layer_surface: Some(layer_surface),
-        width: 0,
-        height: 0,
-        configured: false,
+        surfaces: Vec::new(),
         start_time: Instant::now(),
-        running: true,
-        frame_pending: false,
     };
 
-    while state.running {
+    // Surfaces are created per-output as new_output fires (covers both the
+    // outputs present at startup and any hotplugged later).
+    loop {
         event_queue.blocking_dispatch(&mut state).unwrap();
     }
+}
+
+struct GlobeSurface {
+    output: wl_output::WlOutput,
+    layer_surface: LayerSurface,
+    pool: Option<SlotPool>,
+    width: u32,
+    height: u32,
+    configured: bool,
+    frame_pending: bool,
 }
 
 struct AppState {
     registry_state: RegistryState,
     output_state: OutputState,
+    compositor: CompositorState,
+    layer_shell: LayerShell,
     shm: Shm,
-    pool: Option<SlotPool>,
-    layer_surface: Option<LayerSurface>,
-    width: u32,
-    height: u32,
-    configured: bool,
+    surfaces: Vec<GlobeSurface>,
     start_time: Instant,
-    running: bool,
-    frame_pending: bool,
 }
 
 // Catppuccin Mocha colors
@@ -96,35 +85,75 @@ const TEAL_G: u8 = 226;
 const TEAL_B: u8 = 213;
 
 impl AppState {
-    fn draw(&mut self, qh: &QueueHandle<Self>) {
-        let surface = self.layer_surface.as_ref().unwrap().wl_surface();
-        let width = self.width;
-        let height = self.height;
-        
-        if self.pool.is_none() {
-            self.pool = Some(SlotPool::new((width * height * 4) as usize, &self.shm).unwrap());
+    fn create_surface_for_output(&mut self, qh: &QueueHandle<Self>, output: wl_output::WlOutput) {
+        if self.surfaces.iter().any(|s| s.output.id() == output.id()) {
+            return;
         }
-        
-        let pool = self.pool.as_mut().unwrap();
+
+        let surface = self.compositor.create_surface(qh);
+        let layer_surface = self.layer_shell.create_layer_surface(
+            qh,
+            surface,
+            Layer::Background,
+            Some("wargames-globe"),
+            Some(&output),
+        );
+
+        layer_surface.set_anchor(Anchor::all());
+        layer_surface.set_exclusive_zone(-1);
+        layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
+        layer_surface.commit();
+
+        self.surfaces.push(GlobeSurface {
+            output,
+            layer_surface,
+            pool: None,
+            width: 0,
+            height: 0,
+            configured: false,
+            frame_pending: false,
+        });
+    }
+
+    fn surface_index(&self, wl_surface: &wl_surface::WlSurface) -> Option<usize> {
+        self.surfaces
+            .iter()
+            .position(|s| s.layer_surface.wl_surface().id() == wl_surface.id())
+    }
+
+    fn draw(&mut self, idx: usize, qh: &QueueHandle<Self>) {
+        let time = self.start_time.elapsed().as_secs_f32();
+        let shm = &self.shm;
+        let s = &mut self.surfaces[idx];
+        let width = s.width;
+        let height = s.height;
+
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        if s.pool.is_none() {
+            s.pool = Some(SlotPool::new((width * height * 4) as usize, shm).unwrap());
+        }
+
+        let pool = s.pool.as_mut().unwrap();
         let stride = width * 4;
         let size = (stride * height) as usize;
-        
+
         if pool.len() < size {
             pool.resize(size).unwrap();
         }
-        
+
         let (buffer, canvas) = pool
             .create_buffer(width as i32, height as i32, stride as i32, wl_shm::Format::Argb8888)
             .unwrap();
 
-        let time = self.start_time.elapsed().as_secs_f32();
-        
         // Globe parameters
         let globe_radius = (height.min(width) as f32 * 0.35) as i32;
         let center_x = width as f32 / 2.0;
         let center_y = height as f32 / 2.0;
-        
-        // Rotation angle
+
+        // Rotation angle (shared start_time keeps all monitors in sync)
         let rotation = time * 0.15;
 
         // Clear to background
@@ -182,15 +211,16 @@ impl AppState {
             draw_glow_pixel(canvas, width, height, x as i32, y as i32, TEAL_R, TEAL_G, TEAL_B, 0.5);
         }
 
+        let surface = s.layer_surface.wl_surface();
         surface.attach(Some(buffer.wl_buffer()), 0, 0);
         surface.damage_buffer(0, 0, width as i32, height as i32);
-        
+
         // Request next frame callback for vsync
-        if !self.frame_pending {
+        if !s.frame_pending {
             surface.frame(qh, surface.clone());
-            self.frame_pending = true;
+            s.frame_pending = true;
         }
-        
+
         surface.commit();
     }
 }
@@ -199,12 +229,12 @@ fn project_point(lat: f32, lon: f32, radius: f32, cx: f32, cy: f32) -> Option<(f
     let x = lat.cos() * lon.cos();
     let y = lat.cos() * lon.sin();
     let z = lat.sin();
-    
+
     let visible = x > 0.0;
-    
+
     let screen_x = cx + y * radius;
     let screen_y = cy - z * radius;
-    
+
     Some((screen_x, screen_y, visible))
 }
 
@@ -212,33 +242,33 @@ fn draw_continent(canvas: &mut [u8], width: u32, height: u32, points: &[(f32, f3
     if points.len() < 2 {
         return;
     }
-    
+
     for i in 0..points.len() {
         let (lon1, lat1) = points[i];
         let (lon2, lat2) = points[(i + 1) % points.len()];
-        
+
         let lat1_rad = lat1.to_radians();
         let lon1_rad = lon1.to_radians() + rotation;
         let lat2_rad = lat2.to_radians();
         let lon2_rad = lon2.to_radians() + rotation;
-        
+
         // More interpolation steps for smoother lines
         let dist = ((lat2 - lat1).powi(2) + (lon2 - lon1).powi(2)).sqrt();
         let steps = ((dist * 3.0) as i32).max(20);
-        
+
         let mut prev_x: Option<i32> = None;
         let mut prev_y: Option<i32> = None;
         let mut prev_visible = false;
-        
+
         for s in 0..=steps {
             let t = s as f32 / steps as f32;
             let lat = lat1_rad + (lat2_rad - lat1_rad) * t;
             let lon = lon1_rad + (lon2_rad - lon1_rad) * t;
-            
+
             if let Some((sx, sy, visible)) = project_point(lat, lon, radius, cx, cy) {
                 let ix = sx as i32;
                 let iy = sy as i32;
-                
+
                 if visible {
                     // Draw line from previous point if both visible
                     if prev_visible {
@@ -263,10 +293,10 @@ fn draw_line(canvas: &mut [u8], width: u32, height: u32, x0: i32, y0: i32, x1: i
     let sx = if x0 < x1 { 1 } else { -1 };
     let sy = if y0 < y1 { 1 } else { -1 };
     let mut err = dx + dy;
-    
+
     let mut x = x0;
     let mut y = y0;
-    
+
     loop {
         draw_glow_pixel(canvas, width, height, x, y, r, g, b, intensity);
         // Add slight glow
@@ -274,11 +304,11 @@ fn draw_line(canvas: &mut [u8], width: u32, height: u32, x0: i32, y0: i32, x1: i
         draw_glow_pixel(canvas, width, height, x - 1, y, r, g, b, intensity * 0.3);
         draw_glow_pixel(canvas, width, height, x, y + 1, r, g, b, intensity * 0.3);
         draw_glow_pixel(canvas, width, height, x, y - 1, r, g, b, intensity * 0.3);
-        
+
         if x == x1 && y == y1 {
             break;
         }
-        
+
         let e2 = 2 * err;
         if e2 >= dy {
             err += dy;
@@ -295,16 +325,16 @@ fn draw_glow_pixel(canvas: &mut [u8], width: u32, height: u32, x: i32, y: i32, r
     if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
         return;
     }
-    
+
     let idx = ((y as u32 * width + x as u32) * 4) as usize;
     if idx + 3 >= canvas.len() {
         return;
     }
-    
+
     let existing_b = canvas[idx] as f32;
     let existing_g = canvas[idx + 1] as f32;
     let existing_r = canvas[idx + 2] as f32;
-    
+
     canvas[idx] = ((existing_b + b as f32 * intensity).min(255.0)) as u8;
     canvas[idx + 1] = ((existing_g + g as f32 * intensity).min(255.0)) as u8;
     canvas[idx + 2] = ((existing_r + r as f32 * intensity).min(255.0)) as u8;
@@ -313,10 +343,12 @@ fn draw_glow_pixel(canvas: &mut [u8], width: u32, height: u32, x: i32, y: i32, r
 impl CompositorHandler for AppState {
     fn scale_factor_changed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: i32) {}
     fn transform_changed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: wl_output::Transform) {}
-    fn frame(&mut self, _: &Connection, qh: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: u32) {
-        self.frame_pending = false;
-        if self.configured && self.width > 0 && self.height > 0 {
-            self.draw(qh);
+    fn frame(&mut self, _: &Connection, qh: &QueueHandle<Self>, surface: &wl_surface::WlSurface, _: u32) {
+        if let Some(idx) = self.surface_index(surface) {
+            self.surfaces[idx].frame_pending = false;
+            if self.surfaces[idx].configured {
+                self.draw(idx, qh);
+            }
         }
     }
     fn surface_enter(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &wl_surface::WlSurface, _: &wl_output::WlOutput) {}
@@ -325,27 +357,38 @@ impl CompositorHandler for AppState {
 
 impl OutputHandler for AppState {
     fn output_state(&mut self) -> &mut OutputState { &mut self.output_state }
-    fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
+    fn new_output(&mut self, _: &Connection, qh: &QueueHandle<Self>, output: wl_output::WlOutput) {
+        self.create_surface_for_output(qh, output);
+    }
     fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
-    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
+    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, output: wl_output::WlOutput) {
+        // Dropping the LayerSurface destroys it
+        self.surfaces.retain(|s| s.output.id() != output.id());
+    }
 }
 
 impl LayerShellHandler for AppState {
-    fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &LayerSurface) {
-        self.running = false;
+    fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, layer: &LayerSurface) {
+        // Compositor closed this surface (usually the output went away);
+        // keep running so remaining/hotplugged outputs stay covered.
+        self.surfaces
+            .retain(|s| s.layer_surface.wl_surface().id() != layer.wl_surface().id());
     }
 
     fn configure(&mut self, _: &Connection, qh: &QueueHandle<Self>, layer: &LayerSurface, configure: LayerSurfaceConfigure, _: u32) {
-        self.width = configure.new_size.0.max(1920);
-        self.height = configure.new_size.1.max(1080);
-        self.configured = true;
-        
-        if self.width == 0 || self.height == 0 {
-            layer.set_size(1920, 1080);
-            layer.commit();
-        }
-        
-        self.draw(qh);
+        let Some(idx) = self.surface_index(layer.wl_surface()) else {
+            return;
+        };
+
+        let s = &mut self.surfaces[idx];
+        let (w, h) = configure.new_size;
+        // Anchored to all edges, so the compositor sends the output size;
+        // fall back to something sane if it sends 0.
+        s.width = if w == 0 { 1920 } else { w };
+        s.height = if h == 0 { 1080 } else { h };
+        s.configured = true;
+
+        self.draw(idx, qh);
     }
 }
 

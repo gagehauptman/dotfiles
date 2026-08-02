@@ -18,6 +18,32 @@ Item {
 
     readonly property bool isOpen: bar.state === "wallpaper_selector"
 
+    // Key navigation is broadcast from root so selectors open on several
+    // monitors step together. The first-opened window leads: it animates and
+    // queues the wallpaper script. The rest follow with queueing suppressed
+    // (the restore pattern) so the script runs exactly once per step.
+    Connections {
+        target: root
+        function onWallpaperNavCounterChanged() {
+            if (!wallpaperSelectorWidget.isOpen || carousel.count === 0)
+                return;
+
+            if (root.selectorWindows[0] === barWindow) {
+                if (root.wallpaperNavDir < 0)
+                    carousel.decrementCurrentIndex();
+                else
+                    carousel.incrementCurrentIndex();
+                return;
+            }
+
+            restoringSelection = true;
+            let next = (carousel.currentIndex + root.wallpaperNavDir + carousel.count) % carousel.count;
+            carousel.positionViewAtIndex(next, PathView.Center);
+            carousel.currentIndex = next;
+            Qt.callLater(() => restoringSelection = false);
+        }
+    }
+
     visible: isOpen
 
     anchors.fill: parent
@@ -75,7 +101,7 @@ Item {
 
     onVisibleChanged: {
         savedWallpaperReader.reload();
-        
+
         if (visible) {
             savedWallpaperPath = normalizedPath(savedWallpaperReader.text());
             
@@ -123,13 +149,13 @@ Item {
 
         focus: visible
 
-        Keys.onLeftPressed: decrementCurrentIndex()
-        Keys.onRightPressed: incrementCurrentIndex()
-        Keys.onUpPressed: decrementCurrentIndex()
-        Keys.onDownPressed: incrementCurrentIndex()
-        Keys.onReturnPressed: bar.state = "normal"
-        Keys.onEnterPressed: bar.state = "normal"
-        Keys.onEscapePressed: bar.state = "normal"
+        Keys.onLeftPressed: root.wallpaperNav(-1)
+        Keys.onRightPressed: root.wallpaperNav(1)
+        Keys.onUpPressed: root.wallpaperNav(-1)
+        Keys.onDownPressed: root.wallpaperNav(1)
+        Keys.onReturnPressed: root.closeWallpaperSelectors()
+        Keys.onEnterPressed: root.closeWallpaperSelectors()
+        Keys.onEscapePressed: root.closeWallpaperSelectors()
 
         model: wallpaperModel
         

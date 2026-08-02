@@ -150,6 +150,37 @@ Scope {
     onPressed: { root.toggleTarget = "power_menu"; root.toggleCounter++ }
   }
 
+  // === WALLPAPER SELECTOR SHARED STATE ===
+  // The selector can be open on several monitors at once (the toggle acts on the
+  // focused monitor). A single compositor grab whitelists every open selector's
+  // window — per-window grabs don't work, the newest grab dismisses the others.
+  // Arrow keys are broadcast through wallpaperNavCounter so every open carousel
+  // steps together no matter which window receives the key events.
+  property var selectorWindows: []
+  property int wallpaperNavCounter: 0
+  property int wallpaperNavDir: 0
+  property int selectorCloseCounter: 0
+
+  function setSelectorOpen(window, open) {
+    let list = selectorWindows.filter(w => w !== window)
+    if (open) list.push(window)
+    selectorWindows = list
+    // Imperative (not bound) so a compositor-side clear can't wedge the grab.
+    selectorGrab.windows = list
+    selectorGrab.active = list.length > 0
+  }
+
+  function wallpaperNav(dir) {
+    wallpaperNavDir = dir
+    wallpaperNavCounter++
+  }
+
+  function closeWallpaperSelectors() { selectorCloseCounter++ }
+
+  HyprlandFocusGrab {
+    id: selectorGrab
+  }
+
   // === PER-SCREEN BAR ===
   Variants {
     model: Quickshell.screens
@@ -261,11 +292,26 @@ Scope {
       // app_selector / power_menu need immediate keyboard (typing / arrow-select), so
       // they grab exclusively. The wallpaper selector is mouse-navigable, so it uses
       // OnDemand — an Exclusive grab is global and blocks clicks on other monitors.
+      // Its arrow keys arrive via root's shared HyprlandFocusGrab instead.
       WlrLayershell.keyboardFocus: (bar.state === "app_selector" || bar.state === "power_menu")
             ? WlrKeyboardFocus.Exclusive
             : (bar.state === "wallpaper_selector")
             ? WlrKeyboardFocus.OnDemand
             : WlrKeyboardFocus.None
+
+      readonly property bool selectorOpen: bar.state === "wallpaper_selector"
+      onSelectorOpenChanged: root.setSelectorOpen(barWindow, selectorOpen)
+      Component.onDestruction: root.setSelectorOpen(barWindow, false)
+
+      // Escape/Enter close every open selector, not just the local one.
+      Connections {
+        target: root
+        function onSelectorCloseCounterChanged() {
+          if (bar.state === "wallpaper_selector") {
+            bar.state = "normal"
+          }
+        }
+      }
       mask: Region {
         item: bar
       }

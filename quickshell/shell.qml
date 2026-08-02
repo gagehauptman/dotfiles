@@ -160,6 +160,10 @@ Scope {
   property int wallpaperNavCounter: 0
   property int wallpaperNavDir: 0
   property int selectorCloseCounter: 0
+  // Absolute carousel position shared by every open selector. Relative stepping
+  // drifts apart as soon as one carousel flaps or swallows a step; publishing
+  // the driving instance's index lets the others converge on the same item.
+  property int wallpaperSharedIndex: -1
 
   function setSelectorOpen(window, open) {
     let list = selectorWindows.filter(w => w !== window)

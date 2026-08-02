@@ -18,28 +18,44 @@ Item {
 
     readonly property bool isOpen: bar.state === "wallpaper_selector"
 
-    // Key navigation is broadcast from root so selectors open on several
-    // monitors step together. The first-opened window leads: it animates and
-    // queues the wallpaper script. The rest follow with queueing suppressed
-    // (the restore pattern) so the script runs exactly once per step.
+    // Key navigation is broadcast from root; only the leader (first-opened
+    // window) applies the step. Its index changes publish to
+    // root.wallpaperSharedIndex, which the other open selectors adopt below —
+    // absolute positions, so they can't drift apart. Only the leader queues
+    // the wallpaper script.
     Connections {
         target: root
         function onWallpaperNavCounterChanged() {
             if (!wallpaperSelectorWidget.isOpen || carousel.count === 0)
                 return;
+            if (root.selectorWindows[0] !== barWindow)
+                return;
+
+            if (root.wallpaperNavDir < 0)
+                carousel.decrementCurrentIndex();
+            else
+                carousel.incrementCurrentIndex();
+        }
+
+        function onWallpaperSharedIndexChanged() {
+            if (!wallpaperSelectorWidget.isOpen || carousel.count === 0)
+                return;
+
+            let idx = root.wallpaperSharedIndex;
+            if (idx < 0 || idx >= carousel.count || idx === carousel.currentIndex)
+                return;
 
             if (root.selectorWindows[0] === barWindow) {
-                if (root.wallpaperNavDir < 0)
-                    carousel.decrementCurrentIndex();
-                else
-                    carousel.incrementCurrentIndex();
+                // Another monitor drove the selection (e.g. by mouse); adopt it
+                // unsuppressed so this instance queues the wallpaper change.
+                carousel.positionViewAtIndex(idx, PathView.Center);
+                carousel.currentIndex = idx;
                 return;
             }
 
             restoringSelection = true;
-            let next = (carousel.currentIndex + root.wallpaperNavDir + carousel.count) % carousel.count;
-            carousel.positionViewAtIndex(next, PathView.Center);
-            carousel.currentIndex = next;
+            carousel.positionViewAtIndex(idx, PathView.Center);
+            carousel.currentIndex = idx;
             Qt.callLater(() => restoringSelection = false);
         }
     }
@@ -74,17 +90,19 @@ Item {
     }
 
     function runPendingWallpaper() {
-        if (pendingWallpaperPath.length === 0 || wallpaperProcess.running)
+        if (pendingWallpaperPath.length === 0)
             return;
 
         let cleanPath = pendingWallpaperPath;
         pendingWallpaperPath = "";
         savedWallpaperPath = cleanPath;
-        wallpaperProcess.command = [
+        // Fire-and-forget: a tracked Process re-couples the selector to daemon
+        // startup time (a booting dynamic wallpaper blocks the queue for
+        // seconds). The script serializes concurrent runs itself via flock.
+        Quickshell.execDetached([
             Quickshell.env("HOME") + "/.config/scripts/wallpaper/wallpaper_select.sh",
             cleanPath
-        ];
-        wallpaperProcess.running = true;
+        ]);
     }
 
     FileView {
@@ -92,11 +110,25 @@ Item {
         path: Quickshell.env("HOME") + "/.config/scripts/wallpaper/wpsave.txt"
     }
 
+    // While the view is still settling (animation or drag), StrictlyEnforceRange
+    // keeps rewriting currentIndex from the view position, so firing on the raw
+    // debounce can run the script for transient indices — under load (e.g. a
+    // dynamic wallpaper booting) that cascades into a kill/spawn war between
+    // wallpaper daemons. Re-arm until the offset stops moving, then run once.
+    property real debounceLastOffset: -1
+
     Timer {
         id: wallpaperDebounce
         interval: 150
         repeat: false
-        onTriggered: runPendingWallpaper()
+        onTriggered: {
+            if (carousel.offset !== wallpaperSelectorWidget.debounceLastOffset) {
+                wallpaperSelectorWidget.debounceLastOffset = carousel.offset;
+                restart();
+                return;
+            }
+            runPendingWallpaper();
+        }
     }
 
     onVisibleChanged: {
@@ -105,16 +137,25 @@ Item {
         if (visible) {
             savedWallpaperPath = normalizedPath(savedWallpaperReader.text());
             
-            let findIndex = () => {
+            let applySelection = () => {
                 restoringSelection = true;
                 let found = false;
 
-                for (let i = 0; i < wallpaperModel.count; i++) {
-                    if (normalizedPath(wallpaperModel.get(i, "filePath")) === savedWallpaperPath) {
-                        carousel.positionViewAtIndex(i, PathView.Center);
-                        carousel.currentIndex = i;
-                        found = true;
-                        break;
+                // A selector already open on another monitor wins over the save
+                // file — its position can be ahead of the last completed script.
+                let shared = root.wallpaperSharedIndex;
+                if (root.selectorWindows[0] !== barWindow && shared >= 0 && shared < wallpaperModel.count) {
+                    carousel.positionViewAtIndex(shared, PathView.Center);
+                    carousel.currentIndex = shared;
+                    found = true;
+                } else {
+                    for (let i = 0; i < wallpaperModel.count; i++) {
+                        if (normalizedPath(wallpaperModel.get(i, "filePath")) === savedWallpaperPath) {
+                            carousel.positionViewAtIndex(i, PathView.Center);
+                            carousel.currentIndex = i;
+                            found = true;
+                            break;
+                        }
                     }
                 }
 
@@ -123,6 +164,10 @@ Item {
                 else
                     restoringSelection = false;
             };
+
+            // Deferred so the window registry (leader order) settles before the
+            // leader-vs-follower decision — both react to the same state change.
+            let findIndex = () => Qt.callLater(applySelection);
 
             if (wallpaperModel.status === FolderListModel.Ready) {
                 findIndex();
@@ -171,13 +216,16 @@ Item {
 
         clip: true
 
-        Process {
-            id: wallpaperProcess
-            onExited: (code, status) => runPendingWallpaper()
-        }
-
         onCurrentIndexChanged: {
-            if (restoringSelection || currentIndex < 0 || currentIndex >= model.count)
+            if (currentIndex < 0 || currentIndex >= model.count)
+                return;
+
+            // Publish even suppressed changes: followers re-publish the value
+            // they were told (a no-op), while restores seed the shared state.
+            if (wallpaperSelectorWidget.isOpen)
+                root.wallpaperSharedIndex = currentIndex;
+
+            if (restoringSelection || root.selectorWindows[0] !== barWindow)
                 return;
 
             queueWallpaper(model.get(currentIndex, "filePath"));

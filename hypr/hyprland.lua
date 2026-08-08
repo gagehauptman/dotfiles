@@ -136,6 +136,8 @@ for i = 1, smw.get_amount_of_workspaces() do
     -- Switch to / silently move the active window to the Nth workspace on the focused monitor
     hl.bind(mainMod .. " + " .. key,            smw.workspace(ws))
     hl.bind(mainMod .. " + SHIFT + " .. key,    smw.move_to_workspace_silent(ws))
+    -- Move the active window to the Nth workspace and follow it there
+    hl.bind("ALT + " .. key,                    smw.move_to_workspace(ws))
 end
 
 local perdevice = os.getenv("HOME") .. "/.config/hypr/perdevice.lua"

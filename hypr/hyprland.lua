@@ -121,26 +121,21 @@ hl.bind(mainMod .. " + R",            hl.dsp.global("quickshell:toggleAppSelecto
 hl.bind(mainMod .. " + mouse:272",    hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273",    hl.dsp.window.resize(), { mouse = true })
 
-hl.config({
-    plugin = {
-        split_monitor_workspaces = {
-            count                        = 10,
-            keep_focused                 = true,
-            enable_notifications         = false,
-            enable_persistent_workspaces = true,
-        },
-    },
+package.path = package.path .. ";./?.lua;./?/init.lua"
+local smw = require("plugins.split-monitor-workspaces")
+
+smw.setup({
+    workspace_count = 10,
+    keep_focused = true,
+    enable_persistent_workspaces = true,
 })
 
-local smw = hl.plugin.split_monitor_workspaces
-
-for i = 0, 9 do
-    local key = tostring(i)
-    hl.bind(mainMod .. " + " .. key, function() return smw.workspace(i) end)
-    hl.bind("ALT + " .. key, function()
-        smw.move_to_workspace_silent(i)
-        smw.workspace(i)
-    end)
+for i = 1, smw.get_amount_of_workspaces() do
+    local ws = tostring(i)
+    local key = ws == "10" and "0" or ws -- workspace 10 on SUPER + 0
+    -- Switch to / silently move the active window to the Nth workspace on the focused monitor
+    hl.bind(mainMod .. " + " .. key,            smw.workspace(ws))
+    hl.bind(mainMod .. " + SHIFT + " .. key,    smw.move_to_workspace_silent(ws))
 end
 
 local perdevice = os.getenv("HOME") .. "/.config/hypr/perdevice.lua"

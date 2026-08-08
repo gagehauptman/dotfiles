@@ -55,19 +55,22 @@ ln -sf ~/dotfiles/wallpapers ~/.config/wallpapers
 
 ### Hyprland Plugins
 
-**[split-monitor-workspaces](https://github.com/Duckonaut/split-monitor-workspaces)** - Gives each monitor its own independent workspace namespace (1-10 per monitor instead of shared global workspaces). Essential for multi-monitor setups.
+**[split-monitor-workspaces](https://github.com/zjeffer/split-monitor-workspaces)** - Gives each monitor its own independent workspace namespace (1-10 per monitor instead of shared global workspaces). Essential for multi-monitor setups. Requires Hyprland >= 0.55.0 with the Lua config.
+
+It's a Lua package that `hyprland.lua` requires from `hypr/plugins/`, so clone it there (through the `~/.config/hypr` symlink):
 
 ```bash
-# Install via hyprpm (Hyprland's built-in plugin manager)
-hyprpm update
-hyprpm add https://github.com/Duckonaut/split-monitor-workspaces
-hyprpm enable split-monitor-workspaces
+mkdir -p ~/.config/hypr/plugins
+cd ~/.config/hypr/plugins
+git clone https://github.com/zjeffer/split-monitor-workspaces
 
-# Verify it's loaded
-hyprpm list
+# On a Hyprland release build, check out the matching release branch
+# (stay on main if you're running hyprland-git):
+cd split-monitor-workspaces
+git fetch -Ppft && git checkout release/0.55.x
 ```
 
-> **Note:** Plugins must be rebuilt after every Hyprland update. Run `hyprpm update` after upgrading Hyprland.
+> **Note:** Run `git pull` in the plugin repo after Hyprland updates, and check out the new `release/0.XX.x` branch whenever Hyprland has a new major release.
 
 ## Arch Packages
 

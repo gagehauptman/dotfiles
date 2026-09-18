@@ -11,3 +11,6 @@ bytemuck = { version = "1", features = ["derive"] }
 glam = "0.29"
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["vulkan", "wgsl"] }
+wayland-backend = { version = "0.3.17", features = ["client_system"] }
+rustix = { version = "1.1.5", features = ["event"] }

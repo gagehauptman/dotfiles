@@ -1,0 +1,58 @@
+{
+  "$comment": "Dashboard presets. Schema: README.md in this folder. Per-device overrides go in presets.local.json (gitignored); the last preset chosen over IPC is remembered in ~/.local/state/quickshell/dashboard.json.",
+  "active": "default",
+  "presets": {
+    "default": {
+      "columns": 4,
+      "widthPercent": 60,
+      "widgets": [
+        { "type": "services",    "col": 0, "row": 0,   "colSpan": 2, "rowSpan": 1.5 },
+        { "type": "systemstats", "col": 0, "row": 1.5, "rowSpan": 1.5 },
+        { "type": "miscstats",   "col": 1, "row": 1.5, "rowSpan": 1.5 },
+        { "type": "quote",       "col": 2, "row": 0 },
+        { "type": "weather",     "col": 2, "row": 1 },
+        { "type": "network",     "col": 2, "row": 2 },
+        { "type": "profile",     "col": 3, "row": 0, "rowSpan": 3 }
+      ],
+      "portrait": {
+        "columns": 2,
+        "widgets": [
+          { "type": "services",    "col": 0, "row": 0,   "colSpan": 2, "rowSpan": 1.5 },
+          { "type": "systemstats", "col": 0, "row": 1.5, "rowSpan": 1.6 },
+          { "type": "miscstats",   "col": 1, "row": 1.5, "rowSpan": 1.6 },
+          { "type": "quote",       "col": 0, "row": 3.1, "rowSpan": 1.3 },
+          { "type": "weather",     "col": 1, "row": 3.1, "rowSpan": 1.3 },
+          { "type": "network",     "col": 0, "row": 4.4, "rowSpan": 1.4 },
+          { "type": "profile",     "col": 1, "row": 4.4, "rowSpan": 1.4 }
+        ]
+      }
+    },
+    "minimal": {
+      "columns": 2,
+      "widthPercent": 40,
+      "widgets": [
+        { "type": "music",       "rowSpan": 1.5, "options": { "size": "large" } },
+        { "type": "systemstats", "rowSpan": 1.5, "options": { "show": ["cpu", "ram", "disk"] } }
+      ]
+    },
+    "focus": {
+      "columns": 3,
+      "widthPercent": 50,
+      "widgets": [
+        { "type": "services", "col": 0, "row": 0, "colSpan": 2, "rowSpan": 2 },
+        { "type": "weather",  "col": 2, "row": 0 },
+        { "type": "quote",    "col": 2, "row": 1 }
+      ]
+    },
+    "bevy": {
+      "columns": 3,
+      "widthPercent": 55,
+      "widgets": [
+        { "type": "bevy",    "col": 0, "row": 0, "colSpan": 2, "rowSpan": 3, "options": { "app": "planet", "title": "Planet" } },
+        { "type": "weather", "col": 2, "row": 0 },
+        { "type": "network", "col": 2, "row": 1 },
+        { "type": "quote",   "col": 2, "row": 2 }
+      ]
+    }
+  }
+}

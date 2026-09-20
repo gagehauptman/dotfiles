@@ -11,6 +11,10 @@ DataWidget {
   title: "󰻠  System Resources"
   implicitHeight: metrics.systemWidgetHeight
 
+  // Preset options: { "show": ["cpu", "ram", "disk", "bluetooth", "upgrade"] } — rows to display.
+  readonly property var showRows: Array.isArray(options.show) ? options.show : ["cpu", "ram", "disk", "bluetooth", "upgrade"]
+  function shows(row) { return showRows.indexOf(row) !== -1 }
+
   property real cpuUsage: 0
   property real ramUsed: 0
   property real ramTotal: 0
@@ -51,6 +55,7 @@ DataWidget {
     id: btProc
     command: ["bash", root.home + "/.config/scripts/polls/bluetoothpoll.sh"]
     interval: 5000
+    poll: systemWidget.shows("bluetooth")
     onOutput: text => {
         let lines = text.split('\n').filter(l => l.trim())
         let pwr = "off"
@@ -97,6 +102,7 @@ DataWidget {
     id: updatesProc
     command: ["bash", root.home + "/.config/scripts/polls/updatespoll.sh"]
     interval: 300000
+    poll: systemWidget.shows("upgrade")
     onOutput: text => systemWidget.daysSinceUpgrade = text || "NA"
   }
 
@@ -107,6 +113,7 @@ DataWidget {
       spacing: metrics.spacingSmall
 
       StatBar {
+        visible: systemWidget.shows("cpu")
         label: "󰘚 CPU"
         valueText: systemWidget.cpuUsage.toFixed(1) + "%"
         percent: systemWidget.cpuUsage
@@ -114,6 +121,7 @@ DataWidget {
       }
 
       StatBar {
+        visible: systemWidget.shows("ram")
         label: "󰍛 RAM"
         valueText: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
         percent: systemWidget.ramPercent
@@ -121,6 +129,7 @@ DataWidget {
       }
 
       StatBar {
+        visible: systemWidget.shows("disk")
         label: "󰋊 Disk"
         valueText: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
         percent: systemWidget.diskPercent
@@ -129,6 +138,7 @@ DataWidget {
 
       // Separator
       Rectangle {
+        visible: systemWidget.shows("bluetooth") || systemWidget.shows("upgrade")
         Layout.fillWidth: true
         height: 1
         color: Theme.colors.inset
@@ -136,6 +146,7 @@ DataWidget {
 
       // Bluetooth status row
       Rectangle {
+        visible: systemWidget.shows("bluetooth")
         Layout.fillWidth: true
         implicitHeight: btRow.implicitHeight
         color: "transparent"
@@ -208,6 +219,7 @@ DataWidget {
 
       // Last upgrade row (days since `pacman -Syu`)
       RowLayout {
+        visible: systemWidget.shows("upgrade")
         Layout.fillWidth: true
         spacing: metrics.spacingNormal
 

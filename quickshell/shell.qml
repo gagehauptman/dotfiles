@@ -129,25 +129,83 @@ Scope {
   // === GLOBAL SHORTCUTS (registered once) ===
   property int toggleCounter: 0
   property string toggleTarget: ""
+  property string toggleMonitor: ""   // monitor name from IPC, "" = the focused monitor
 
   GlobalShortcut {
     name: "toggleDashboard"
-    onPressed: { root.toggleTarget = "dashboard"; root.toggleCounter++ }
+    onPressed: { root.toggleTarget = "dashboard"; root.toggleMonitor = ""; root.toggleCounter++ }
+  }
+
+  // Fullscreen dashboard: opens it full-size if closed, else toggles the size.
+  // Per monitor like the other toggles — only the focused monitor's bar reacts.
+  property int fullCounter: 0
+  property string fullTarget: ""      // monitor name from IPC, "" = the focused monitor
+  GlobalShortcut {
+    name: "toggleDashboardFullscreen"
+    onPressed: { root.fullTarget = ""; root.fullCounter++ }
   }
 
   GlobalShortcut {
     name: "toggleWallpaperSelector"
-    onPressed: { root.toggleTarget = "wallpaper_selector"; root.toggleCounter++ }
+    onPressed: { root.toggleTarget = "wallpaper_selector"; root.toggleMonitor = ""; root.toggleCounter++ }
   }
 
   GlobalShortcut {
     name: "toggleAppSelector"
-    onPressed: { root.toggleTarget = "app_selector"; root.toggleCounter++ }
+    onPressed: { root.toggleTarget = "app_selector"; root.toggleMonitor = ""; root.toggleCounter++ }
   }
 
   GlobalShortcut {
     name: "togglePowerMenu"
-    onPressed: { root.toggleTarget = "power_menu"; root.toggleCounter++ }
+    onPressed: { root.toggleTarget = "power_menu"; root.toggleMonitor = ""; root.toggleCounter++ }
+  }
+
+  // === DASHBOARD PRESETS (shared; presets.json + presets.local.json + IPC) ===
+  DashboardConfig {
+    id: dashboardConfig
+  }
+  // === VOICE ASSISTANT STATE (written by scripts/nova_voice.py; shown by VoiceBarWidget) ===
+  // Off by default: the indicator only exists on a machine that has the
+  // assistant's per-device config, ~/.config/nova-voice/env (nova_voice.sh setup).
+  readonly property bool voiceEnabled: voiceConf.loaded
+  FileView {
+    id: voiceConf
+    path: (Quickshell.env("XDG_CONFIG_HOME") || (root.home + "/.config")) + "/nova-voice/env"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+  }
+  property string voiceState: "idle"
+  property string voiceText: ""
+  property string voiceReply: ""
+  property bool voiceActive: false   // true while a turn is in flight, plus a short linger so the reply stays readable
+
+  FileView {
+    id: voiceStateFile
+    path: root.voiceEnabled ? Quickshell.env("XDG_RUNTIME_DIR") + "/nova-voice/state.json" : ""
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.applyVoiceState()
+  }
+  // The runtime dir is empty after boot, so the watcher may start before the
+  // file exists; a slow reload catches its creation.
+  Timer { interval: 1500; repeat: true; running: root.voiceEnabled; onTriggered: voiceStateFile.reload() }
+  Timer { id: voiceCloseTimer; interval: 6000; onTriggered: root.voiceActive = false }
+
+  function applyVoiceState() {
+    let s
+    try { s = JSON.parse(voiceStateFile.text()) } catch (e) { return }
+    let prev = root.voiceState
+    root.voiceText = s.text ?? ""
+    root.voiceReply = s.reply ?? ""
+    root.voiceState = s.state ?? "idle"
+    if (root.voiceState !== "idle") {
+      voiceCloseTimer.stop()
+      root.voiceActive = true
+    } else if (prev !== "idle") {
+      voiceCloseTimer.restart()
+    }
   }
 
   // === WALLPAPER SELECTOR SHARED STATE ===
@@ -204,6 +262,9 @@ Scope {
       }
       property int monitorId: hyprMonitor?.id ?? 0
       property bool isFocused: Hyprland.focusedMonitor?.id === monitorId
+      // Dashboard filling this screen (the pocket grows to the whole monitor and
+      // the grid's rows scale to fit). Forgotten when the dashboard closes.
+      property bool dashboardFull: false
 
       // === PER-MONITOR METRICS (scale + orientation) ===
       // One instance per screen. Reached by every widget via QML dynamic
@@ -271,13 +332,18 @@ Scope {
       Connections {
         target: root
         function onToggleCounterChanged() {
-          if (barWindow.isFocused) {
+          if (root.toggleMonitor === "" ? barWindow.isFocused : barWindow.modelData.name === root.toggleMonitor) {
             if (bar.state !== root.toggleTarget) {
               bar.state = root.toggleTarget
             } else {
               bar.state = "normal"
             }
           }
+        }
+        function onFullCounterChanged() {
+          if (root.fullTarget === "" ? !barWindow.isFocused : barWindow.modelData.name !== root.fullTarget) return
+          if (bar.state !== "dashboard") { barWindow.dashboardFull = true; bar.state = "dashboard" }
+          else barWindow.dashboardFull = !barWindow.dashboardFull
         }
       }
 
@@ -419,6 +485,7 @@ Scope {
         Shape {
           id: bar
           state: "normal"
+          onStateChanged: if (state !== "dashboard") barWindow.dashboardFull = false
 
           layer.enabled: true
           layer.samples: 4
@@ -523,10 +590,12 @@ Scope {
               name: "dashboard"
               PropertyChanges {
                 target: bar;
-                dropdownWidth: metrics.isVertical ? (dashboardGrid.verticalContentHeight + dashboardGrid.topPad + dashboardGrid.bottomPad + bar.dropdownWidgetPadding * 2) : metrics.longPct(60);
-                dropdownHeight: metrics.isVertical ? metrics.crossPct(72) : (dashboardGrid.implicitHeight + (bar.dropdownWidgetPadding * 2) - bar.barThickness);
-                dropdownFilletRadius: metrics.radiusXL;
-                dropdownCornerRadius: metrics.radiusXL
+                dropdownWidth: barWindow.dashboardFull ? metrics.longPct(100)
+                    : metrics.isVertical ? (dashboardGrid.verticalContentHeight + dashboardGrid.topPad + dashboardGrid.bottomPad + bar.dropdownWidgetPadding * 2) : metrics.longPct(dashboardGrid.widthPercent);
+                dropdownHeight: barWindow.dashboardFull ? (metrics.crossPct(100) - bar.barThickness)
+                    : metrics.isVertical ? metrics.crossPct(72) : (dashboardGrid.implicitHeight + (bar.dropdownWidgetPadding * 2) - bar.barThickness);
+                dropdownFilletRadius: barWindow.dashboardFull ? 0 : metrics.radiusXL;
+                dropdownCornerRadius: barWindow.dashboardFull ? 0 : metrics.radiusXL
               }
             },
             State {
@@ -591,6 +660,15 @@ Scope {
 
           // Music/Weather widget centered on the long axis
           MusicWidget {
+            isVertical: metrics.isVertical
+            anchors {
+              horizontalCenter: parent.horizontalCenter
+              verticalCenter: parent.verticalCenter
+            }
+          }
+
+          // Voice assistant indicator takes over the same slot while a voice turn is in flight
+          VoiceBarWidget {
             isVertical: metrics.isVertical
             anchors {
               horizontalCenter: parent.horizontalCenter
@@ -840,8 +918,10 @@ Scope {
 
           PowerMenuWidget {}
           
-          // Dashboard grid container. Horizontal: 4-column row, content-driven height.
-          // Vertical: fills the tall pocket; the Loader swaps in a 2-column reflow.
+          // Dashboard grid container, built from the active preset
+          // (DashboardConfig.qml / presets.json). Horizontal: `columns` equal-width
+          // columns, content-driven height. Vertical: fills the tall pocket using the
+          // preset's portrait block, or an automatic re-pack into fewer columns.
           Item {
             id: dashboardGrid
             visible: bar.state === "dashboard"
@@ -858,139 +938,73 @@ Scope {
             width: metrics.isVertical
               ? (parent.width - bar.barThickness - bar.dropdownWidgetPadding * 2)
               : (parent.width - (bar.dropdownWidgetPadding * 2))
-            height: metrics.isVertical ? (parent.height - bar.dropdownWidgetPadding * 2) : implicitHeight
+            height: metrics.isVertical ? (parent.height - bar.dropdownWidgetPadding * 2) : (full ? fullGridHeight : implicitHeight)
 
-            property real widgetHeight: metrics.dashWidgetHeight
+            // Fullscreen: the grid gets the whole monitor (minus the bar and the
+            // pocket padding) and the row pitch is solved from that height, so a
+            // preset's rows fill it; columns already follow the pocket width.
+            // Computed from the screen size only — the pocket is sized from the
+            // grid in the normal state, so the other direction would loop.
+            readonly property bool full: barWindow.dashboardFull
+            readonly property real fullGridHeight: metrics.isVertical
+              ? metrics.longPct(100) - bar.dropdownWidgetPadding * 2
+              : metrics.crossPct(100) - bar.barThickness - bar.dropdownWidgetPadding
+            readonly property real fullWidgetHeight: Math.max(metrics.s(60),
+              (fullGridHeight - topPad - bottomPad - rowSpacing * Math.max(0, layout.rows - 1)) / Math.max(1, layout.rows))
+            property real widgetHeight: full ? fullWidgetHeight : metrics.dashWidgetHeight
+            Behavior on widgetHeight { NumberAnimation { duration: 100; easing.type: Easing.OutQuint } }
             property real colSpacing: metrics.spacingNormal
             property real rowSpacing: metrics.spacingNormal
             property real topPad: metrics.s(5)
             property real bottomPad: metrics.spacingNormal
 
-            // Natural height of the portrait stack: Services(1.5) + 3 rows(1.6/1.3/1.4).
-            property real verticalContentHeight: widgetHeight * 5.8 + rowSpacing * 3
+            // Cells resolved for this screen's orientation. Re-evaluates when the
+            // preset changes (hot reload / IPC) or the monitor rotates.
+            readonly property var layout: dashboardConfig.layoutFor(dashboardConfig.activePreset, metrics.isVertical)
+            readonly property int columns: Math.max(1, layout.columns)
+            readonly property real colWidth: (width - colSpacing * (columns - 1)) / columns
+            // Pocket length along the bar when horizontal (% of the long axis).
+            readonly property real widthPercent: dashboardConfig.activePreset?.widthPercent ?? 60
+
+            // Row r starts r pitches down; a span of s rows is s widgets + (s-1) gaps.
+            // Same for columns. Rows may be fractional (Services is 1.5 rows tall).
+            function rowY(row) { return row * (widgetHeight + rowSpacing) }
+            function rowH(span) { return span * widgetHeight + (span - 1) * rowSpacing }
+            function colX(col) { return col * (colWidth + colSpacing) }
+            function colW(span) { return span * colWidth + (span - 1) * colSpacing }
+
+            // Natural height of the portrait stack (content-driven pocket).
+            property real verticalContentHeight: rowH(layout.rows)
 
             // Only used to size the horizontal pocket (content-driven).
-            implicitHeight: topPad + (widgetHeight * 3) + (rowSpacing * 2) + bottomPad
+            implicitHeight: topPad + rowH(layout.rows) + bottomPad
 
-            Loader {
+            Item {
               anchors.fill: parent
               anchors.topMargin: dashboardGrid.topPad
               anchors.bottomMargin: dashboardGrid.bottomPad
-              sourceComponent: metrics.isVertical ? verticalDash : horizontalDash
-            }
 
-            // ---- Landscape: original 4-column layout (unchanged) ----
-            Component {
-              id: horizontalDash
-              RowLayout {
-                anchors.fill: parent
-                spacing: dashboardGrid.colSpacing
+              Repeater {
+                model: dashboardGrid.layout.widgets
 
-                // Columns 1-2: Services (2-tall) + SystemStats/MiscStats side by side
-                ColumnLayout {
-                  Layout.fillWidth: true
-                  Layout.fillHeight: true
-                  Layout.preferredWidth: 2
-                  spacing: dashboardGrid.rowSpacing
+                // One Loader per preset entry; the registry maps `type` to a file.
+                // The Loader's size drives the widget's size. `options` is read
+                // from the layout object by index rather than from modelData:
+                // the model conversion turns JS arrays into Qt sequences, which
+                // would fail Array.isArray inside the widgets.
+                Loader {
+                  required property int index
+                  required property var modelData
+                  x: dashboardGrid.colX(modelData.col)
+                  y: dashboardGrid.rowY(modelData.row)
+                  width: dashboardGrid.colW(modelData.colSpan)
+                  height: dashboardGrid.rowH(modelData.rowSpan)
 
-                  ServicesWidget {
-                    id: servicesWidget
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
+                  Component.onCompleted: {
+                    let cell = dashboardGrid.layout.widgets[index]
+                    let entry = dashboardConfig.registry[cell.type]
+                    setSource(Qt.resolvedUrl(entry.file), Object.assign({ options: cell.options }, entry.props ?? {}))
                   }
-
-                  RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5 + dashboardGrid.rowSpacing * 0.5
-                    spacing: dashboardGrid.colSpacing
-
-                    SystemStatsWidget {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                    }
-
-                    MiscStatsWidget {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                    }
-                  }
-                }
-
-                // Column 3: 3 widgets stacked
-                ColumnLayout {
-                  Layout.fillWidth: true
-                  Layout.fillHeight: true
-                  Layout.preferredWidth: 1
-                  spacing: dashboardGrid.rowSpacing
-
-                  QuoteWidget {
-                    id: quoteWidget
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: dashboardGrid.widgetHeight
-                  }
-
-                  WeatherWidget {
-                    id: weatherWidget
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: dashboardGrid.widgetHeight
-                  }
-
-                  NetworkStatsWidget {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: dashboardGrid.widgetHeight
-                  }
-                }
-
-                // Column 4: Profile card (2-tall) + empty space
-                ColumnLayout {
-                  Layout.fillWidth: true
-                  Layout.fillHeight: true
-                  Layout.preferredWidth: 1
-                  spacing: dashboardGrid.rowSpacing
-
-                  ProfileWidget {
-                    id: profileWidget
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                  }
-                }
-              }
-            }
-
-            // ---- Portrait: 2-column reflow (Services spans the top) ----
-            Component {
-              id: verticalDash
-              ColumnLayout {
-                anchors.fill: parent
-                spacing: dashboardGrid.rowSpacing
-
-                ServicesWidget {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.5
-                }
-
-                RowLayout {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.6
-                  spacing: dashboardGrid.colSpacing
-                  SystemStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
-                  MiscStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
-                }
-
-                RowLayout {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.3
-                  spacing: dashboardGrid.colSpacing
-                  QuoteWidget { Layout.fillWidth: true; Layout.fillHeight: true }
-                  WeatherWidget { Layout.fillWidth: true; Layout.fillHeight: true }
-                }
-
-                RowLayout {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: dashboardGrid.widgetHeight * 1.4
-                  spacing: dashboardGrid.colSpacing
-                  NetworkStatsWidget { Layout.fillWidth: true; Layout.fillHeight: true }
-                  ProfileWidget { Layout.fillWidth: true; Layout.fillHeight: true }
                 }
               }
             }

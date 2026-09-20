@@ -10,6 +10,11 @@ ThreeRowWidget {
 
   title: "󰋜  " + cityName
 
+  // Preset options: { "location": "lat,lon" | "Place name", "label": "Shown name" }.
+  // Empty location = geolocate by IP (the script's default).
+  readonly property string location: typeof options.location === "string" ? options.location : ""
+  readonly property string label: typeof options.label === "string" ? options.label : ""
+
   property string cityName: "..."
   property int weatherCode: 0
   property real temperature: 0
@@ -61,7 +66,7 @@ ThreeRowWidget {
 
   PollProcess {
     id: weatherProc
-    command: ["bash", root.home + "/.config/scripts/polls/weatherpoll.sh"]
+    command: ["bash", root.home + "/.config/scripts/polls/weatherpoll.sh", weatherWidget.location, weatherWidget.label]
     interval: 300000
     onOutput: text => {
       let parts = text.split('|')

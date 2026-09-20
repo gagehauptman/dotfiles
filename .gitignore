@@ -5,3 +5,10 @@ hypr/perdevice.lua
 hypr/plugins/
 wallpapers/goes_earth_live.png
 scripts/wallpaper/bins/spinning_globe/target
+quickshell/presets.local.json
+
+# in-process Bevy widget: build outputs and the installed QML module
+bevy/target
+bevy/build
+quickshell/modules/
+__pycache__/

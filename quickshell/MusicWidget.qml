@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import "templates"
@@ -7,12 +8,22 @@ import "themes"
 Item {
   id: musicWidget
   
-  property bool showWidget: bar.state === "normal" || bar.state === "dashboard"
+  property bool showWidget: (bar.state === "normal" || bar.state === "dashboard") && !root.voiceActive
   property bool isDashboard: bar.state === "dashboard"
   // Vertical bar is too thin for the scrolling text; show an icon only there.
   property bool isVertical: false
 
-  visible: showWidget
+  // Dashboard card mode (set through the "music" entry of the widget registry
+  // in DashboardConfig.qml): draws a panel with title/track/launch rows
+  // instead of the bare bar text. The grid sizes the card; only the text
+  // size is configurable: options.size = "small" | "normal" | "large".
+  property bool card: false
+  property var options: ({})
+  readonly property real cardFontSize: options.size === "large" ? metrics.fontXL
+                                     : options.size === "small" ? metrics.fontSmall
+                                     : metrics.fontLarge
+
+  visible: card ? isDashboard : showWidget
   implicitWidth: isVertical ? parent.width : (isDashboard ? metrics.s(600) : metrics.s(400))
   implicitHeight: metrics.s(30)
   
@@ -172,7 +183,8 @@ Item {
   
   Rectangle {
     anchors.fill: parent
-    color: "transparent"
+    color: musicWidget.card ? Theme.colors.panel : "transparent"
+    radius: musicWidget.card ? metrics.radiusLarge : 0
     
     MouseArea {
       id: musicMouse
@@ -185,6 +197,7 @@ Item {
     }
     
     Text {
+      visible: !musicWidget.card
       anchors.centerIn: parent
       text: {
         if (musicWidget.hasMusic && musicWidget.musicText) {
@@ -205,6 +218,66 @@ Item {
       elide: Text.ElideRight
       width: parent.width - (musicWidget.isVertical ? metrics.s(4) : metrics.s(20))
       horizontalAlignment: Text.AlignHCenter
+    }
+
+    // Card layout (dashboard presets only)
+    ColumnLayout {
+      visible: musicWidget.card
+      anchors {
+        verticalCenter: parent.verticalCenter
+        left: parent.left
+        right: parent.right
+        margins: metrics.spacingLarge
+      }
+      spacing: metrics.spacingSmall
+
+      Text {
+        text: "󰎆  Now Playing"
+        color: Theme.colors.textPrimary
+        font.pixelSize: metrics.fontLarge
+        font.bold: true
+        font.family: "monospace"
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+      }
+
+      Rectangle {
+        Layout.fillWidth: true
+        height: bar.dividerThickness
+        color: Theme.colors.border
+      }
+
+      Text {
+        Layout.fillWidth: true
+        text: (musicWidget.hasMusic && musicWidget.musicText) ? musicWidget.musicText : "Nothing playing"
+        color: musicWidget.hasMusic ? (musicMouse.containsMouse ? Theme.colors.yellow : Theme.colors.pink) : Theme.colors.textMuted
+        font.pixelSize: musicWidget.cardFontSize
+        font.bold: true
+        wrapMode: Text.WordWrap
+        maximumLineCount: 3
+        elide: Text.ElideRight
+      }
+
+      Text {
+        visible: musicWidget.hasMusic
+        text: (musicWidget.playbackStatus === "Paused" ? "▶ Paused" : "⏸ Playing") + " · " + musicWidget.activePlayer
+        color: Theme.colors.textSecondary
+        font.pixelSize: metrics.fontSmall
+      }
+
+      Rectangle {
+        Layout.fillWidth: true
+        height: bar.dividerThickness
+        color: Theme.colors.border
+      }
+
+      Text {
+        Layout.fillWidth: true
+        text: "🚀 " + musicWidget.countdownText + " • " + musicWidget.launchName
+        color: Theme.colors.orange
+        font.pixelSize: metrics.fontSmall
+        elide: Text.ElideRight
+      }
     }
   }
   

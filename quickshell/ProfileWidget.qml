@@ -10,6 +10,8 @@ Item {
 
   visible: bar.state === "dashboard"
 
+  // Per-widget options from the active dashboard preset (unused so far).
+  property var options: ({})
   property string username: ""
   property string hostname: ""
 

@@ -11,6 +11,8 @@ Item {
   implicitHeight: metrics.dataWidgetHeight
 
   property string title: "Widget"
+  // Per-widget options from the active dashboard preset (see presets.json).
+  property var options: ({})
   property Component middleContent: null
   property Component footerContent: null
 

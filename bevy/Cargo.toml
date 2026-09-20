@@ -1,0 +1,13 @@
+# Workspace: the reusable harness plus one cdylib per dashboard app (apps/*).
+# `bevy/build.sh` builds everything and installs it for Quickshell.
+[workspace]
+resolver = "2"
+members = ["harness", "apps/*"]
+
+[workspace.dependencies]
+bevy = { version = "0.16", default-features = false, features = ["bevy_pbr", "bevy_render", "bevy_core_pipeline", "bevy_asset", "bevy_color", "bevy_log", "bevy_window", "multi_threaded", "std"] }
+quickshell-bevy = { path = "harness" }
+
+[profile.release]
+opt-level = 3
+debug = false

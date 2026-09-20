@@ -1,0 +1,12 @@
+[package]
+name = "quickshell-bevy"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Run a Bevy app inside a Quickshell dashboard card, in-process on Qt's Vulkan device"
+
+[dependencies]
+bevy = { workspace = true }
+ash = "0.38"
+wgpu = "24"
+wgpu-hal = { version = "24", features = ["vulkan"] }

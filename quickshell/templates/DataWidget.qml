@@ -13,6 +13,8 @@ Item {
 
   property string title: "Widget"
   property int titleSize: metrics.fontNormal
+  // Per-widget options from the active dashboard preset (see presets.json).
+  property var options: ({})
   property alias dataContent: dataPlaceholder.children
 
   Rectangle {

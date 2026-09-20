@@ -1,5 +1,12 @@
 local mainMod = "SUPER"
 
+-- Per-device knobs, filled in by ~/.config/hypr/perdevice.lua (gitignored;
+-- see perdevice.example.lua): monitors and machine-only keybinds live there,
+-- and `startup` lists extra commands to run when Hyprland starts on this
+-- machine only. Optional features (the voice assistant, a streaming host…)
+-- are enabled per device that way and are off otherwise.
+DEVICE = { mainMod = mainMod, startup = {} }
+
 hl.config({
     general = {
         gaps_in     = 5,
@@ -61,10 +68,12 @@ hl.animation({ leaf = "workspaces", enabled = true, speed = 4, bezier = "UWU1", 
 
 hl.on("hyprland.start", function()
     hl.exec_cmd("hyprpm reload -n")
-    hl.exec_cmd("QT_QPA_PLATFORMTHEME=qt6ct quickshell")
+    -- Vulkan scene graph + module path: needed by the in-process Bevy dashboard widget (bevy/build.sh)
+    hl.exec_cmd("QT_QPA_PLATFORMTHEME=qt6ct QSG_RHI_BACKEND=vulkan QML2_IMPORT_PATH=" .. os.getenv("HOME") .. "/.config/quickshell/modules quickshell")
     hl.exec_cmd("~/.config/scripts/init/wallpaper.sh")
     hl.exec_cmd("nm-applet")
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
+    for _, cmd in ipairs(DEVICE.startup) do hl.exec_cmd(cmd) end
 end)
 
 hl.env("GTK_THEME",                "Material-DeepOcean-Borderless")
@@ -115,6 +124,7 @@ hl.bind("F3",                         hl.dsp.exec_cmd("pactl set-sink-volume @DE
 hl.bind(mainMod .. " + F4",           hl.dsp.exec_cmd("pactl set-source-mute @DEFAULT_SOURCE@ toggle"))
 
 hl.bind(mainMod .. " + N",            hl.dsp.global("quickshell:toggleDashboard"))
+hl.bind(mainMod .. " + SHIFT + N",    hl.dsp.global("quickshell:toggleDashboardFullscreen"))
 hl.bind(mainMod .. " + W",            hl.dsp.global("quickshell:toggleWallpaperSelector"))
 hl.bind(mainMod .. " + R",            hl.dsp.global("quickshell:toggleAppSelector"))
 

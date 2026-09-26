@@ -53,6 +53,16 @@
         { "type": "network", "col": 2, "row": 1 },
         { "type": "quote",   "col": 2, "row": 2 }
       ]
+    },
+    "globe": {
+      "columns": 3,
+      "widthPercent": 55,
+      "widgets": [
+        { "type": "globe",   "col": 0, "row": 0, "colSpan": 2, "rowSpan": 3, "options": { "title": "Globe" } },
+        { "type": "weather", "col": 2, "row": 0 },
+        { "type": "network", "col": 2, "row": 1 },
+        { "type": "quote",   "col": 2, "row": 2 }
+      ]
     }
   }
 }

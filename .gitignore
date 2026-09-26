@@ -6,6 +6,7 @@ hypr/plugins/
 wallpapers/goes_earth_live.png
 scripts/wallpaper/bins/spinning_globe/target
 quickshell/presets.local.json
+quickshell/secrets.env
 
 # in-process Bevy widget: build outputs and the installed QML module
 bevy/target

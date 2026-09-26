@@ -39,7 +39,8 @@ Item {
     "network":     { file: "NetworkStatsWidget.qml" },
     "profile":     { file: "ProfileWidget.qml" },
     "music":       { file: "MusicWidget.qml", props: { card: true } },
-    "bevy":        { file: "BevyWidget.qml" }
+    "bevy":        { file: "BevyWidget.qml" },
+    "globe":       { file: "BevyWidget.qml", props: { app: "globe" }, service: ["python3", root.home + "/.config/scripts/globeserver.py"] }
   })
 
   readonly property string configDir: root.home + "/.config/quickshell"

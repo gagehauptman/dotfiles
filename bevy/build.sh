@@ -13,13 +13,18 @@ cmake --build build
 out="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/modules/Bevy"
 mkdir -p "$out/apps"
 rm -f "$out"/libbevy_widget.so
-cp build/Bevy/qmldir build/Bevy/libbevyqml.so "$out"/
-cp build/Bevy/*.qmltypes "$out"/ 2>/dev/null || true
+# Libraries are replaced by rename, never overwritten in place: a running shell
+# has them mapped and would crash on the next instruction fetch otherwise. It
+# keeps the old copy until it restarts.
+put() { cp "$1" "$2.new" && mv -f "$2.new" "$2"; }
+put build/Bevy/qmldir "$out/qmldir"
+put build/Bevy/libbevyqml.so "$out/libbevyqml.so"
+for f in build/Bevy/*.qmltypes; do [ -f "$f" ] && put "$f" "$out/$(basename "$f")"; done
 for dir in apps/*/; do
   name=$(basename "$dir")
   [ -f "$dir/Cargo.toml" ] || continue
   mkdir -p "$out/apps/$name"
-  cp "target/release/lib$name.so" "$out/apps/$name/"
+  put "target/release/lib$name.so" "$out/apps/$name/lib$name.so"
   if [ -d "$dir/assets" ]; then rm -rf "$out/apps/$name/assets"; cp -r "$dir/assets" "$out/apps/$name/"; fi
   echo "installed app $name"
 done

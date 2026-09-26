@@ -1,0 +1,20 @@
+[package]
+name = "globe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+ureq = { version = "2", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png"] }
+ab_glyph = "0.2"
+sgp4 = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }

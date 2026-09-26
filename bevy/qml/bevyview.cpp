@@ -27,8 +27,11 @@ bool loadApi(const QString &path, BevyApi &api, QString &err)
     a.create = reinterpret_cast<bevy_create_fn>(dlsym(h, "bevy_widget_create"));
     a.frame = reinterpret_cast<bevy_frame_fn>(dlsym(h, "bevy_widget_frame"));
     a.pointer = reinterpret_cast<bevy_pointer_fn>(dlsym(h, "bevy_widget_pointer"));
+    a.scroll = reinterpret_cast<bevy_scroll_fn>(dlsym(h, "bevy_widget_scroll"));
+    a.ui = reinterpret_cast<bevy_ui_fn>(dlsym(h, "bevy_widget_ui"));
+    a.event = reinterpret_cast<bevy_event_fn>(dlsym(h, "bevy_widget_event"));
     a.destroy = reinterpret_cast<bevy_destroy_fn>(dlsym(h, "bevy_widget_destroy"));
-    if (!a.create || !a.frame || !a.pointer || !a.destroy) {
+    if (!a.create || !a.frame || !a.pointer || !a.scroll || !a.ui || !a.event || !a.destroy) {
         err = path + " is not a quickshell-bevy app (missing bevy_widget_* symbols)";
         return false;
     }
@@ -82,6 +85,16 @@ void BevyView::setLibrary(const QString &path)
 void BevyView::pointer(qreal x, qreal y, bool down)
 {
     if (m_bevy && m_api.pointer) m_api.pointer(m_bevy, float(x), float(y), down);
+}
+
+void BevyView::scroll(qreal dy)
+{
+    if (m_bevy && m_api.scroll) m_api.scroll(m_bevy, float(dy));
+}
+
+void BevyView::send(const QString &id, const QString &value)
+{
+    if (m_bevy && m_api.event) m_api.event(m_bevy, id.toUtf8().constData(), value.toUtf8().constData());
 }
 
 void BevyView::itemChange(ItemChange change, const ItemChangeData &value)
@@ -166,6 +179,8 @@ void BevyView::beforeRendering()
         init.instance_extensions = extPtrs.data();
         init.instance_extension_count = uint32_t(extPtrs.size());
         init.assets_dir = assets.constData();
+        const QByteArray opts = m_options.toUtf8();
+        init.options = opts.constData();
         char cerr[512] = {0};
         m_bevy = m_api.create(&init, cerr, sizeof cerr);
         if (!m_bevy) {
@@ -180,6 +195,14 @@ void BevyView::beforeRendering()
     if (image) {
         m_frameImage = image;
         m_frameSize = px;
+    }
+    // Controls and readouts changed by the app this frame
+    uint64_t gen = m_uiGen;
+    const char *json = m_api.ui(m_bevy, &gen);
+    if (json && gen != m_uiGen) {
+        m_uiGen = gen;
+        const QString s = QString::fromUtf8(json);
+        QMetaObject::invokeMethod(this, [this, s] { m_ui = s; emit uiChanged(); }, Qt::QueuedConnection);
     }
 }
 

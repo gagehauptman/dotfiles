@@ -21,6 +21,7 @@ the other groups are only needed for the feature they belong to.
 | Fonts | `noto-fonts` (Noto Sans and Noto Sans Mono), `ttf-nerd-fonts-symbols` (the icons) |
 | Bar and dashboard widgets | `playerctl`, `bluez-utils`, `lm_sensors`, `acpi`, `jq`, `curl`, `hyprlock`, `libnotify`, `awww` (wallpapers), `wl-clipboard`, `grim`, `slurp`, `wf-recorder`, `ffmpeg` (screenshot and recording buttons). Optional: `brightnessctl` for the brightness slider on laptops, `tailscale` for the Tailscale row, `network-manager-applet` for the tray applet started with Hyprland |
 | Bevy widgets | `rustup` (or `rust`), `cmake`, `ninja`, `gcc` or `clang`, `vulkan-headers`, `vulkan-icd-loader` and your Vulkan driver (`vulkan-radeon`, `vulkan-intel` or `nvidia-utils`) |
+| Globe widget | `python-numpy`, `python-pillow`, `hdf5` (its `h5dump` reads the NOAA weather mosaic), plus the Bevy group |
 | Voice assistant | `whisper-cpp`, `uv`, `pipewire`, `ffmpeg`, `libnotify`, `playerctl`, `openssh`. For offline speech, `piper` is not packaged: put the release binary in `~/.local/bin` (or install `piper-tts-bin` from the AUR) and a voice model in `~/.local/share/piper` |
 
 `scripts/nova_voice.sh status` and the build script for Bevy both tell you
@@ -121,6 +122,7 @@ re-packed into `portraitColumns` ignoring `col` and `row`.
 | `profile` | ProfileWidget.qml | – |
 | `music` | MusicWidget.qml (card mode) | `size`: `"small"`, `"normal"`, `"large"` (text size) |
 | `bevy` | BevyWidget.qml | `app`: an app under `bevy/apps/` (default `planet`), `title`. A Rust/Bevy scene running inside the shell; shows a hint if the module or the app is not built |
+| `globe` | BevyWidget.qml (app `globe`) | Live weather, light pollution, aircraft and satellites on a vector globe with Natural Earth coastlines, borders, names, cities and airports by zoom level. Aircraft are filled airliner silhouettes coloured by altitude band, airports discs with a plane cut-out, cities dots (capitals ringed), satellites body-and-panels icons; all grow as you zoom in. Zoomed out only the high traffic shows, zoomed in each aircraft has a tail of recent positions and its callsign. Drag to orbit, wheel to zoom (out to the geostationary belt while orbits are on); click an aircraft for its flight, route and path, a satellite for its orbit and a Follow pill. Pills toggle Weather, Lights, Aircraft and Orbits, Home flies home. Options: see "Globe options" below. Starts its service (below) |
 
 Per-device example: a laptop that wants a smaller dashboard with its own
 weather location, without touching the committed file, gets a
@@ -142,6 +144,64 @@ weather location, without touching the committed file, gets a
 }
 ```
 
+### Globe options
+
+The gear at the end of the globe's pill row opens a short settings panel:
+weather and lights opacity, the grid, which satellite groups to show and
+which of those groups get orbit lines, the aircraft altitude cutoff, the
+city size names start at and whether airports show. Changes apply at once and
+are remembered per device in `$XDG_STATE_HOME/quickshell/bevy-globe.json`
+(so are the pill toggles); "Reset to the preset" forgets them. Everything
+else lives in the preset. All of it has a default, so `"options": {}`
+works. A fuller example:
+
+```jsonc
+{
+  "title": "Globe",
+  "layers": ["weather", "sats"],            // start on: weather, lp (lights), air (aircraft), sats
+  "home": [48.86, 2.35],                    // or "Paris, France", or { "location": "...", "label": "Paris" }; default: geolocate by IP
+  "view": { "type": "focus", "lat": 48.86, "lon": 2.35, "dist": 1.8 },
+  // or { "type": "chase", "satellite": "ISS", "target": [48.86, 2.35], "standoff": 0.45 } (no target: home)
+  "satellites": {
+    "groups": ["stations", "visual", "weather", "gnss"],   // CelesTrak groups; also science, starlink
+    "extra": [20580, "NOAA 19"],            // single objects: NORAD numbers or CelesTrak name searches
+    "show": ["ISS", "HST", "group:gnss", "NOAA*"],   // only these (patterns); default everything loaded
+    "hide": ["STARLINK*"],
+    "track_groups": ["stations"],           // whole groups that get orbit lines (the panel's "Orbit lines")
+    "tracks": ["NOAA 19"],                  // single satellites with an orbit line on top of that; default none
+    "labels": ["ISS", "HST"],               // names; default the ISS, Tiangong and Hubble
+    "track": { "orbits": 1.0, "points": 128, "alpha": 0.45 },
+    "style": [                              // first match wins; colours are theme names or hex
+      { "match": "ISS", "color": "pink", "size": 1.6 },
+      { "match": "group:gnss", "color": "blue", "size": 0.8, "track_color": "lavender", "track_alpha": 0.3 }
+    ],
+    "size": 1.0                             // icon size multiplier (icons also grow with the zoom)
+  },
+  "weather": { "opacity": 0.75, "saturation": 0.55 },
+  "lights": { "opacity": 0.8, "day": 0.25 },   // day: how much shows on the sunlit side
+  "aircraft": { "min_speed": 40, "min_altitude": 500, "size": 1.0, "bands": [10000, 25000, 36000],
+                "declutter": true,      // zoomed out only the high traffic shows
+                "tails": true,          // a few minutes of positions behind each, when zoomed in
+                "labels": true },       // callsigns beside them, when zoomed in
+  "labels": { "countries": true, "regions": true, "cities": true, "airports": true, "min_population": 100000, "size": 1.0 },
+  "graticule": { "show": true, "step": 15 },
+  "colors": { "coast": "teal", "borders": "lavender", "regions": "textMuted", "grid": "#6c708648",
+              "rim": "teal", "home": "pink", "fill": "panelDeep",
+              "countries": "textPrimary", "region_names": "textPrimary", "cities": "textSecondary", "capitals": "textPrimary",
+              "aircraft_low": "green", "aircraft_mid": "yellow", "aircraft_high": "orange", "aircraft_cruise": "blue" },
+  "controls": true, "info": true
+}
+```
+
+A satellite pattern is a NORAD number, `group:NAME`, or a case-insensitive
+glob on the name (`*` any run, `?` one character); a bare word matches the
+name or its first word, so `"ISS"` finds `ISS (ZARYA)`. `"satellites":
+["stations", "visual"]` is shorthand for just the groups. Colours take a
+theme name (`teal`, `textMuted`, ...), `#rrggbb` or `#rrggbbaa`. A `view`
+control event switches camera rigs at runtime: `orbit`, `focus:lat,lon[,dist]`,
+`chase:NAME[:lat,lon][:standoff]`; `select` with a hex or `sat:NAME` picks
+an aircraft or satellite.
+
 ### Widget services
 
 A registry entry may declare `service: [command...]`. DashboardConfig runs
@@ -149,8 +209,30 @@ the command once per shell (shared by every screen) while the active preset
 uses that widget type, restarts it if it exits, and marks it ready when it
 prints `ready` on stdout. Widgets read `dashboardConfig.serviceReady[type]`.
 This is for a widget that needs a long-running local helper, such as a cache
-or a local server, so that one copy serves every screen. No committed widget
-uses one at the moment.
+or a local server, so that one copy serves every screen.
+
+The `globe` widget uses one: `scripts/globeserver.py` listens on
+`127.0.0.1:38471` and serves
+
+| path | what |
+|---|---|
+| `/geo.json` | home position by IP (cached) |
+| `/weather.json`, `/weather/<t>.png`, `/weather/<t>/inset.png?z=&x0=&y0=&n=` | hourly frame times and the global cloud layer for one, 4096x2048 equirectangular, as cloud-top index plus coverage. The global layer is NOAA's GMGSI, NESDIS's hourly mosaic of every geostationary infrared imager (8 km, open data on AWS, about 40 minutes behind). The inset is a Mercator window at the satellites' best zoom from their own 10-minute imagery (NASA GIBS for GOES and Himawari, EUMETView for Meteosat), blended by viewing angle; the app asks for 16x16 tiles at zoom 6 around home |
+| `/weather/lut.png` | the 256-entry palette the index is drawn through |
+| `/lp.png`, `/lp/inset.png?z=&x0=&y0=&n=` | light pollution zones (Lorenz atlas) as an 8192x4096 index, and a window at atlas resolution (16x16 tiles at zoom 8 around home) |
+| `/lp/lut.png?pal=&tint=` | the zone palette in the shell's colours |
+| `/adsb.json` | every aircraft OpenSky knows about, dead-reckoned to one instant, plus adsb.lol detail near home |
+| `/aircraft/<hex>.json` | one aircraft: state, type and registration, its route from adsbdb.com (origin, destination, airline) and its path (OpenSky's track of the flight plus positions seen locally) |
+| `/tle.json?groups=&catnr=&names=` | two-line elements from CelesTrak for the named groups, single objects by NORAD number and name searches, refreshed every 12 hours |
+| `/vectors.bin` | coastlines and borders at the 50m and 10m scales plus country, region, place and airport labels, from Natural Earth (public domain), simplified and packed once (about 49 MB downloaded, a 6 MB bundle) |
+
+The app blends each inset over the global texture in the shader, so home
+gets two zoom levels more than the rest of the globe. Tiles and built frames
+are cached under `~/.cache/quickshell/globe`. OpenSky
+works anonymously with a small request budget; put `OPENSKY_CLIENT_ID` and
+`OPENSKY_CLIENT_SECRET` in `quickshell/secrets.env` (gitignored) for the
+authenticated rate. The globe app polls the service in a background thread,
+so a slow first weather frame never blocks the shell.
 
 ## Making a widget
 
@@ -181,8 +263,12 @@ window. `bevy/` is a cargo workspace:
   keeps the tagged camera aimed at it, submits two layout barriers per frame
   so wgpu and Qt agree on the image's state, and passes pointer input on.
   Its `widget!` macro exports the C entry points the Qt side looks up.
-- `apps/<name>/` holds one cdylib per app. `planet` is the demo and
-  `apps/README.md` has the minimal template.
+- `apps/<name>/` holds one cdylib per app. `planet` is the demo, `globe` is
+  the weather and aircraft globe, and `apps/README.md` has the minimal
+  template.
+- `snapshot/` builds `bevy-snapshot`, which runs an app library on a Vulkan
+  device of its own and writes a frame as PNG, for checking an app with no
+  shell running.
 - `qml/` is the Qt QML plugin with `BevyView`. It loads the app library a
   card names with `dlopen`, runs the app in `beforeRendering` on Qt's render
   thread so its queue work lands before Qt's own frame, and shows the same
@@ -213,11 +299,52 @@ fn setup(mut commands: Commands) {
                     Transform::from_xyz(0.0, 2.0, 6.0).looking_at(Vec3::ZERO, Vec3::Y)));
 }
 
-fn tick(input: Res<WidgetInput>) {
+fn tick(input: Res<WidgetInput>, options: Res<WidgetOptions>) {
     // input.x, input.y: pointer over the card in 0..1; input.down while held;
-    // input.width, input.height: card size in pixels
+    // input.scroll: wheel steps since the last frame; input.width, input.height:
+    // card size in pixels. options.0 is the card's preset `options` object as
+    // JSON, with a `theme` object of the shell's colours added (`#rrggbb`).
 }
 ```
+
+Controls and readouts: declare them in `WidgetUi` and the card draws them,
+toggles and buttons as pills along the bottom, readouts as `label value` in
+the title line, and settings (sliders, choices, multiple choices, text and
+toggles, grouped in sections) behind a gear. Input arrives as
+`WidgetEvent`s and the control's own state follows it. The card remembers
+settings and toggles per device in `$XDG_STATE_HOME/quickshell/bevy-<app>.json`
+and hands them back at the next start in the options as
+`"settings": { id: value }`; a `settings.reset` button clears them.
+
+```rust
+fn setup(mut ui: ResMut<WidgetUi>) {
+    ui.toggle("grid", "Grid", true).button("reset", "Reset").info("fps", "fps", "60");
+    ui.setting("Look", Control::slider("glow", "Glow", 0.0, 1.0, 0.05, 0.3))
+        .setting("Look", Control::select("style", "Style", &["flat", "shaded"], "flat"))
+        .setting("", Control::button("settings.reset", "Reset"));
+}
+
+fn presses(mut events: EventReader<WidgetEvent>, ui: Res<WidgetUi>) {
+    for e in events.read() {
+        match e.id.as_str() {
+            "grid" => { let on = e.on(); /* same as ui.is_on("grid") */ }
+            "reset" => {}
+            _ => {}
+        }
+    }
+}
+```
+
+`ui.info(...)` with an unchanged value costs nothing, so it is fine to call
+every frame. A preset can hide the pills or the readouts of any Bevy card
+with `"controls": false` or `"info": false` in its options.
+
+Camera rigs: `quickshell_bevy::rig` has `above(dir, dist)` for looking
+straight down at a point of a body at the origin, `chase(subject, target,
+standoff)` for a view from behind one object towards another, `on_sphere(lat,
+lon)` and `approach(current, goal, dt, tau)` to glide between poses. They
+are plain functions over `Transform`, so an app keeps its own input handling
+around them; the globe's Home button and Follow pill are built on them.
 
 Files such as glTF models, textures and fonts go in `bevy/apps/myapp/assets/`
 and load through `AssetServer` as usual. Keep the clear colour transparent so
@@ -230,7 +357,20 @@ bevy/build.sh      # harness, every app and the Qt plugin, installed to
 
 and point a card at it: `{ "type": "bevy", "options": { "app": "myapp", "title": "My app" } }`.
 Different cards can run different apps, each with its own Bevy instance on
-the shared device.
+the shared device. An app that deserves its own widget type gets a registry
+entry with `props: { app: "myapp" }`, as `globe` does, which is also where a
+`service` goes.
+
+To look at an app without the shell (or on a locked screen):
+
+```sh
+bevy/target/release/bevy-snapshot ~/.config/quickshell/modules/Bevy/apps/myapp/libmyapp.so out.png \
+    --size 1400x900 --seconds 10 --bg 1e1e2e --scroll 2 --drag 0.5,0.5,0.6,0.5 \
+    --send grid=false --options '{"theme": {"teal": "#94e2d5"}}'
+```
+
+`--send id=value` presses a control the app declares, and the controls and
+readouts are printed when the frame is written.
 
 Quickshell must run on the Vulkan backend with the module path set.
 `hypr/hyprland.lua` starts it as

@@ -15,7 +15,10 @@
 //!
 //! Tag a camera with [`WidgetCamera`] and the harness keeps it pointed at the
 //! card's image (a default transparent 3D camera is spawned if the plugin adds
-//! none); read [`WidgetInput`] for the pointer and the card size.
+//! none); read [`WidgetInput`] for the pointer and the card size, and
+//! [`WidgetOptions`] for the card's preset options. Declare toggles, buttons
+//! and readouts in [`WidgetUi`]; the card draws them and presses come back as
+//! [`WidgetEvent`]s.
 //!
 //! How it works: Quickshell (Qt Quick on the Vulkan RHI) hands over its
 //! VkInstance, physical device, VkDevice and graphics queue; wgpu adopts them,
@@ -26,7 +29,7 @@
 //! as SHADER_READ_ONLY_OPTIMAL. Two explicit barriers per frame, submitted on
 //! the shared queue in order, keep both sides' view of the layout true.
 //! Everything runs on Qt's render thread.
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, CString};
 use std::sync::{Arc, Mutex};
 
 use ash::vk;
@@ -43,11 +46,53 @@ use bevy::render::settings::{RenderCreation, RenderResources};
 use bevy::render::texture::GpuImage;
 use bevy::render::{RenderApp, RenderPlugin};
 use bevy::window::{ExitCondition, WindowPlugin};
+use serde::Serialize;
 use wgpu_hal::api::Vulkan;
 
 pub mod prelude {
     pub use crate::widget;
-    pub use crate::{WidgetCamera, WidgetInput, WidgetTarget};
+    pub use crate::{rig, Control, Info, Setting, WidgetCamera, WidgetEvent, WidgetInput, WidgetOptions, WidgetTarget, WidgetUi};
+}
+
+/// Camera rigs for scenes built around a body at the origin: an overhead
+/// view of a point on it, a chase view from behind one object towards
+/// another, and smoothing between poses. Pure functions over `Transform`,
+/// so an app can mix them with its own input handling.
+pub mod rig {
+    use bevy::prelude::*;
+
+    /// Looking straight down at the point of the body in direction `dir`
+    /// (a unit vector) from `dist` away from the centre, north (+Y) up.
+    pub fn above(dir: Vec3, dist: f32) -> Transform {
+        let dir = dir.normalize_or(Vec3::Z);
+        let up = if dir.y.abs() > 0.999 { Vec3::Z } else { Vec3::Y };
+        Transform::from_translation(dir * dist).looking_at(Vec3::ZERO, up)
+    }
+
+    /// Behind `subject` on the line from `target` through it, `standoff`
+    /// further out, looking at `target`; up is away from the body's centre
+    /// so the horizon reads naturally. Both positions are in scene units.
+    pub fn chase(subject: Vec3, target: Vec3, standoff: f32) -> Transform {
+        let away = (subject - target).normalize_or(subject.normalize_or(Vec3::Z));
+        let eye = subject + away * standoff;
+        let up = eye.normalize_or(Vec3::Y);
+        let up = if up.cross(target - eye).length_squared() < 1e-6 { Vec3::Y } else { up };
+        Transform::from_translation(eye).looking_at(target, up)
+    }
+
+    /// The point of a unit sphere at a latitude and longitude in radians
+    /// (y north, x through longitude 0, east towards -z).
+    pub fn on_sphere(lat: f32, lon: f32) -> Vec3 {
+        Vec3::new(lat.cos() * lon.cos(), lat.sin(), -lat.cos() * lon.sin())
+    }
+
+    /// Moves `current` a step towards `goal` with time constant `tau`
+    /// seconds (exponential approach of position and orientation).
+    pub fn approach(current: &mut Transform, goal: &Transform, dt: f32, tau: f32) {
+        let a = if tau <= 0.0 { 1.0 } else { 1.0 - (-dt / tau).exp() };
+        current.translation = current.translation.lerp(goal.translation, a);
+        current.rotation = current.rotation.slerp(goal.rotation, a);
+    }
 }
 
 // ------------------------------------------------------------------ app-facing API
@@ -57,15 +102,311 @@ pub mod prelude {
 #[derive(Component, Default, Debug, Clone, Copy)]
 pub struct WidgetCamera;
 
-/// Pointer over the card (0..1 of its size, `down` while the button is held)
-/// and the card size in pixels. Updated every frame before `PreUpdate` systems.
+/// Pointer over the card (0..1 of its size, `down` while the button is held),
+/// wheel steps since the last frame (positive = away from the user) and the
+/// card size in pixels. Updated every frame before `PreUpdate` systems.
 #[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct WidgetInput {
     pub x: f32,
     pub y: f32,
     pub down: bool,
+    pub scroll: f32,
     pub width: u32,
     pub height: u32,
+}
+
+/// The preset entry's `options` object for this card, as JSON text (the
+/// widget adds a `theme` object with the shell's colours as `#rrggbb`).
+#[derive(Resource, Default, Debug, Clone)]
+pub struct WidgetOptions(pub String);
+
+/// Controls and readouts the card draws around the scene: toggles and
+/// buttons along the bottom, `label value` readouts in the title line, and
+/// settings (any control type, grouped in sections) behind a gear. Add or
+/// update entries from any system, in any order; only real changes reach
+/// the shell. A control's state follows the user's input on its own, and
+/// the card remembers settings and toggles per device, handing them back at
+/// the next start in the options as `"settings": { id: value }`.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct WidgetUi {
+    controls: Vec<Control>,
+    settings: Vec<Setting>,
+    info: Vec<Info>,
+    changed: bool,
+}
+
+impl WidgetUi {
+    /// Add a toggle, or update its label and state.
+    pub fn toggle(&mut self, id: &str, label: &str, on: bool) -> &mut Self {
+        self.put(Control::Toggle { id: id.into(), label: label.into(), on })
+    }
+
+    /// Add a button, or update its label.
+    pub fn button(&mut self, id: &str, label: &str) -> &mut Self {
+        self.put(Control::Button { id: id.into(), label: label.into() })
+    }
+
+    /// Add a control to the settings panel under `section`, or update it.
+    pub fn setting(&mut self, section: &str, control: Control) -> &mut Self {
+        match self.settings.iter_mut().find(|s| s.control.id() == control.id()) {
+            Some(s) => {
+                if s.section != section || s.control != control {
+                    s.section = section.into();
+                    s.control = control;
+                    self.changed = true;
+                }
+            }
+            None => {
+                self.settings.push(Setting { section: section.into(), control });
+                self.changed = true;
+            }
+        }
+        self
+    }
+
+    pub fn settings(&self) -> &[Setting] {
+        &self.settings
+    }
+
+    /// The state of any control (pill or setting) as the string an event
+    /// would carry: "true"/"false", a number, a choice, comma-joined choices, text.
+    pub fn value(&self, id: &str) -> Option<String> {
+        self.controls.iter().chain(self.settings.iter().map(|s| &s.control)).find(|c| c.id() == id).and_then(Control::value)
+    }
+
+    /// Set a control's state from an event string; true when something changed.
+    pub fn set_value(&mut self, id: &str, value: &str) -> bool {
+        let mut changed = false;
+        for c in self.controls.iter_mut().chain(self.settings.iter_mut().map(|s| &mut s.control)) {
+            if c.id() == id && c.set_value(value) {
+                changed = true;
+            }
+        }
+        if changed {
+            self.changed = true;
+        }
+        changed
+    }
+
+    /// Add a readout, or update its value. An empty label shows the value alone.
+    pub fn info(&mut self, id: &str, label: &str, value: impl Into<String>) -> &mut Self {
+        let value = value.into();
+        match self.info.iter_mut().find(|i| i.id == id) {
+            Some(i) => {
+                if i.label != label || i.value != value {
+                    i.label = label.into();
+                    i.value = value;
+                    self.changed = true;
+                }
+            }
+            None => {
+                self.info.push(Info { id: id.into(), label: label.into(), value });
+                self.changed = true;
+            }
+        }
+        self
+    }
+
+    /// Drop the control, setting or readout with this id.
+    pub fn remove(&mut self, id: &str) -> &mut Self {
+        let n = self.controls.len() + self.settings.len() + self.info.len();
+        self.controls.retain(|c| c.id() != id);
+        self.settings.retain(|s| s.control.id() != id);
+        self.info.retain(|i| i.id != id);
+        if self.controls.len() + self.settings.len() + self.info.len() != n {
+            self.changed = true;
+        }
+        self
+    }
+
+    /// State of a toggle, if there is one with this id.
+    pub fn is_on(&self, id: &str) -> Option<bool> {
+        self.controls.iter().find_map(|c| match c {
+            Control::Toggle { id: i, on, .. } if i == id => Some(*on),
+            _ => None,
+        })
+    }
+
+    pub fn set_on(&mut self, id: &str, on: bool) -> &mut Self {
+        for c in &mut self.controls {
+            if let Control::Toggle { id: i, on: o, .. } = c {
+                if i == id && *o != on {
+                    *o = on;
+                    self.changed = true;
+                }
+            }
+        }
+        self
+    }
+
+    pub fn controls(&self) -> &[Control] {
+        &self.controls
+    }
+
+    pub fn infos(&self) -> &[Info] {
+        &self.info
+    }
+
+    fn put(&mut self, next: Control) -> &mut Self {
+        match self.controls.iter_mut().find(|c| c.id() == next.id()) {
+            Some(c) => {
+                if *c != next {
+                    *c = next;
+                    self.changed = true;
+                }
+            }
+            None => {
+                self.controls.push(next);
+                self.changed = true;
+            }
+        }
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Control {
+    Toggle { id: String, label: String, on: bool },
+    Button { id: String, label: String },
+    /// a number in [min, max]; the event carries it as text
+    Slider { id: String, label: String, min: f32, max: f32, step: f32, value: f32 },
+    /// one of `options`; the event carries the choice
+    Select { id: String, label: String, options: Vec<String>, value: String },
+    /// any of `options`; the event carries the choices comma-separated
+    Multi { id: String, label: String, options: Vec<String>, values: Vec<String> },
+    /// free text with a placeholder; the event carries the text
+    Text { id: String, label: String, value: String, hint: String },
+}
+
+impl Control {
+    pub fn toggle(id: &str, label: &str, on: bool) -> Control {
+        Control::Toggle { id: id.into(), label: label.into(), on }
+    }
+    pub fn button(id: &str, label: &str) -> Control {
+        Control::Button { id: id.into(), label: label.into() }
+    }
+    pub fn slider(id: &str, label: &str, min: f32, max: f32, step: f32, value: f32) -> Control {
+        Control::Slider { id: id.into(), label: label.into(), min, max, step, value }
+    }
+    pub fn select(id: &str, label: &str, options: &[&str], value: &str) -> Control {
+        Control::Select { id: id.into(), label: label.into(), options: options.iter().map(|o| o.to_string()).collect(), value: value.into() }
+    }
+    pub fn multi(id: &str, label: &str, options: &[&str], values: &[String]) -> Control {
+        Control::Multi { id: id.into(), label: label.into(), options: options.iter().map(|o| o.to_string()).collect(), values: values.to_vec() }
+    }
+    pub fn text(id: &str, label: &str, value: &str, hint: &str) -> Control {
+        Control::Text { id: id.into(), label: label.into(), value: value.into(), hint: hint.into() }
+    }
+
+    pub fn id(&self) -> &str {
+        match self {
+            Control::Toggle { id, .. }
+            | Control::Button { id, .. }
+            | Control::Slider { id, .. }
+            | Control::Select { id, .. }
+            | Control::Multi { id, .. }
+            | Control::Text { id, .. } => id,
+        }
+    }
+
+    /// The state as the string an event carries (buttons have none).
+    pub fn value(&self) -> Option<String> {
+        match self {
+            Control::Toggle { on, .. } => Some(on.to_string()),
+            Control::Button { .. } => None,
+            Control::Slider { value, .. } => Some(value.to_string()),
+            Control::Select { value, .. } => Some(value.clone()),
+            Control::Multi { values, .. } => Some(values.join(",")),
+            Control::Text { value, .. } => Some(value.clone()),
+        }
+    }
+
+    /// Take the state from an event string; true when it changed.
+    pub fn set_value(&mut self, v: &str) -> bool {
+        match self {
+            Control::Toggle { on, .. } => match v {
+                "true" if !*on => {
+                    *on = true;
+                    true
+                }
+                "false" if *on => {
+                    *on = false;
+                    true
+                }
+                _ => false,
+            },
+            Control::Button { .. } => false,
+            Control::Slider { value, min, max, .. } => match v.trim().parse::<f32>() {
+                Ok(n) if (n.clamp(*min, *max) - *value).abs() > 1e-6 => {
+                    *value = n.clamp(*min, *max);
+                    true
+                }
+                _ => false,
+            },
+            Control::Select { value, options, .. } => {
+                if options.iter().any(|o| o == v) && value != v {
+                    *value = v.to_string();
+                    true
+                } else {
+                    false
+                }
+            }
+            Control::Multi { values, options, .. } => {
+                let next: Vec<String> = v.split(',').map(str::trim).filter(|x| options.iter().any(|o| o == x)).map(String::from).collect();
+                if next != *values {
+                    *values = next;
+                    true
+                } else {
+                    false
+                }
+            }
+            Control::Text { value, .. } => {
+                if value != v {
+                    *value = v.to_string();
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
+/// A control in the settings panel and the section it sits under.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Setting {
+    pub section: String,
+    #[serde(flatten)]
+    pub control: Control,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Info {
+    pub id: String,
+    pub label: String,
+    pub value: String,
+}
+
+/// A control the user pressed. A toggle carries its new state (`"true"` or
+/// `"false"`, see [`WidgetEvent::on`]), a button an empty value.
+#[derive(Event, Debug, Clone)]
+pub struct WidgetEvent {
+    pub id: String,
+    pub value: String,
+}
+
+impl WidgetEvent {
+    pub fn on(&self) -> bool {
+        self.value == "true"
+    }
+}
+
+#[derive(Serialize)]
+struct UiJson<'a> {
+    controls: &'a [Control],
+    settings: &'a [Setting],
+    info: &'a [Info],
 }
 
 /// The image the card shows. Managed by the harness; read-only for apps.
@@ -100,6 +441,18 @@ macro_rules! widget {
             $crate::ffi::pointer(w, x, y, down)
         }
         #[no_mangle]
+        pub unsafe extern "C" fn bevy_widget_scroll(w: *mut $crate::ffi::Widget, dy: f32) {
+            $crate::ffi::scroll(w, dy)
+        }
+        #[no_mangle]
+        pub unsafe extern "C" fn bevy_widget_ui(w: *mut $crate::ffi::Widget, generation: *mut u64) -> *const ::core::ffi::c_char {
+            $crate::ffi::ui(w, generation)
+        }
+        #[no_mangle]
+        pub unsafe extern "C" fn bevy_widget_event(w: *mut $crate::ffi::Widget, id: *const ::core::ffi::c_char, value: *const ::core::ffi::c_char) {
+            $crate::ffi::event(w, id, value)
+        }
+        #[no_mangle]
         pub unsafe extern "C" fn bevy_widget_destroy(w: *mut $crate::ffi::Widget) {
             $crate::ffi::destroy(w)
         }
@@ -108,8 +461,25 @@ macro_rules! widget {
 
 // ------------------------------------------------------------------ harness plugin
 
+#[derive(Default)]
+struct InputState {
+    x: f32,
+    y: f32,
+    down: bool,
+    scroll: f32,                   // accumulated wheel steps, drained each frame
+    events: Vec<(String, String)>, // control presses, drained each frame
+    /// button changes not yet seen by a frame, with where they happened:
+    /// delivered one per frame, so a press and release inside one frame
+    /// interval still reach the app as a press, then a release
+    edges: std::collections::VecDeque<(f32, f32, bool)>,
+}
+
 #[derive(Resource, Clone)]
-struct SharedInput(Arc<Mutex<(f32, f32, bool)>>);
+struct SharedInput(Arc<Mutex<InputState>>);
+
+/// Latest UI JSON and its generation, read by the Qt side after each frame.
+#[derive(Resource, Clone)]
+struct SharedUi(Arc<Mutex<(u64, String)>>);
 
 struct HarnessPlugin;
 
@@ -117,14 +487,50 @@ impl Plugin for HarnessPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WidgetInput>()
             .init_resource::<WidgetTarget>()
+            .init_resource::<WidgetUi>()
+            .add_event::<WidgetEvent>()
             .add_systems(PostStartup, ensure_camera)
-            .add_systems(PreUpdate, (sync_input, aim_cameras));
+            .add_systems(PreUpdate, (sync_input, aim_cameras))
+            .add_systems(Last, publish_ui);
     }
 }
 
-fn sync_input(shared: Res<SharedInput>, target: Res<WidgetTarget>, mut input: ResMut<WidgetInput>) {
-    let (x, y, down) = shared.0.lock().map(|p| *p).unwrap_or((0.5, 0.5, false));
-    *input = WidgetInput { x, y, down, width: target.width, height: target.height };
+fn sync_input(
+    shared: Res<SharedInput>,
+    target: Res<WidgetTarget>,
+    mut input: ResMut<WidgetInput>,
+    mut ui: ResMut<WidgetUi>,
+    mut events: EventWriter<WidgetEvent>,
+) {
+    let (x, y, down, scroll, pending) = match shared.0.lock() {
+        Ok(mut s) => {
+            let (x, y, down) = s.edges.pop_front().unwrap_or((s.x, s.y, s.down));
+            let out = (x, y, down, s.scroll, std::mem::take(&mut s.events));
+            s.scroll = 0.0;
+            out
+        }
+        Err(_) => (0.5, 0.5, false, 0.0, Vec::new()),
+    };
+    *input = WidgetInput { x, y, down, scroll, width: target.width, height: target.height };
+    for (id, value) in pending {
+        // The control follows the input; the app then reads its new state or the event
+        ui.set_value(&id, &value);
+        events.write(WidgetEvent { id, value });
+    }
+}
+
+fn publish_ui(mut ui: ResMut<WidgetUi>, shared: Res<SharedUi>) {
+    if !ui.changed {
+        return;
+    }
+    ui.changed = false;
+    let json = serde_json::to_string(&UiJson { controls: &ui.controls, settings: &ui.settings, info: &ui.info }).unwrap_or_default();
+    if let Ok(mut s) = shared.0.lock() {
+        if s.1 != json {
+            s.0 += 1;
+            s.1 = json;
+        }
+    }
 }
 
 fn aim_cameras(target: Res<WidgetTarget>, mut cams: Query<&mut Camera, With<WidgetCamera>>) {
@@ -167,15 +573,22 @@ pub mod ffi {
         pub instance_extensions: *const *const c_char,
         pub instance_extension_count: u32,
         pub assets_dir: *const c_char,
+        pub options: *const c_char,   // JSON, may be null
     }
 
     pub struct Widget {
-        input: Arc<Mutex<(f32, f32, bool)>>,
+        input: Arc<Mutex<InputState>>,
+        ui: Arc<Mutex<(u64, String)>>,
+        ui_json: CString,
+        ui_gen: u64,
         app: App,
         sync: QueueSync,
         target: Option<Target>,
         retired: Vec<(Handle<Image>, u64)>,
         frame: u64,
+        /// A system panicked: the schedules are gone, so the app is frozen on
+        /// its last frame instead of panicking again every frame.
+        dead: bool,
     }
 
     struct Target {
@@ -225,10 +638,14 @@ pub mod ffi {
             return 0;
         }
         let w = &mut *w;
+        if w.dead {
+            return w.target.as_ref().map(|t| t.image.as_raw()).unwrap_or(0);
+        }
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| w.frame(width, height))) {
             Ok(img) => img.as_raw(),
             Err(_) => {
-                eprintln!("bevy: frame panicked");
+                eprintln!("bevy: a system panicked; the app is frozen on its last frame");
+                w.dead = true;
                 0
             }
         }
@@ -241,7 +658,65 @@ pub mod ffi {
             return;
         }
         if let Ok(mut p) = (*w).input.lock() {
-            *p = (x, y, down);
+            if down != p.down {
+                if p.edges.len() >= 64 {
+                    p.edges.pop_front();
+                }
+                p.edges.push_back((x, y, down));
+            }
+            p.x = x;
+            p.y = y;
+            p.down = down;
+        }
+    }
+
+    /// Wheel movement in steps (one notch = 1). # Safety: any thread.
+    pub unsafe fn scroll(w: *mut Widget, dy: f32) {
+        if w.is_null() {
+            return;
+        }
+        if let Ok(mut p) = (*w).input.lock() {
+            p.scroll += dy;
+        }
+    }
+
+    /// The app's controls and readouts as JSON (`{"controls": [...], "info": [...]}`)
+    /// with their generation, so a caller only re-parses when the number
+    /// changes. Null until the app declares something. The pointer stays valid
+    /// until the next call.
+    /// # Safety
+    /// Render thread only (the thread that calls `frame`).
+    pub unsafe fn ui(w: *mut Widget, generation: *mut u64) -> *const c_char {
+        if w.is_null() {
+            return std::ptr::null();
+        }
+        let w = &mut *w;
+        if let Ok(s) = w.ui.lock() {
+            if s.0 != w.ui_gen {
+                w.ui_gen = s.0;
+                w.ui_json = CString::new(s.1.as_str()).unwrap_or_default();
+            }
+        }
+        if !generation.is_null() {
+            *generation = w.ui_gen;
+        }
+        if w.ui_gen == 0 {
+            std::ptr::null()
+        } else {
+            w.ui_json.as_ptr()
+        }
+    }
+
+    /// A control press: the control id and, for a toggle, its new state as
+    /// "true"/"false". # Safety: any thread.
+    pub unsafe fn event(w: *mut Widget, id: *const c_char, value: *const c_char) {
+        if w.is_null() || id.is_null() {
+            return;
+        }
+        let id = CStr::from_ptr(id).to_string_lossy().into_owned();
+        let value = if value.is_null() { String::new() } else { CStr::from_ptr(value).to_string_lossy().into_owned() };
+        if let Ok(mut p) = (*w).input.lock() {
+            p.events.push((id, value));
         }
     }
 
@@ -338,15 +813,16 @@ pub mod ffi {
             RenderAdapter(Arc::new(WgpuWrapper::new(adapter))),
             RenderInstance(Arc::new(WgpuWrapper::new(instance))),
         );
-        let assets_dir = if init.assets_dir.is_null() {
-            String::new()
-        } else {
-            unsafe { CStr::from_ptr(init.assets_dir) }.to_string_lossy().into_owned()
-        };
+        let cstring = |p: *const c_char| if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned() };
+        let assets_dir = cstring(init.assets_dir);
+        let options = cstring(init.options);
 
-        let input = Arc::new(Mutex::new((0.5f32, 0.5f32, false)));
+        let input = Arc::new(Mutex::new(InputState { x: 0.5, y: 0.5, ..Default::default() }));
+        let ui = Arc::new(Mutex::new((0u64, String::new())));
         let mut app = App::new();
         app.insert_resource(SharedInput(input.clone()));
+        app.insert_resource(SharedUi(ui.clone()));
+        app.insert_resource(WidgetOptions(options));
         let mut plugins = DefaultPlugins
             .set(RenderPlugin { render_creation: RenderCreation::Manual(resources), synchronous_pipeline_compilation: true, ..default() })
             .set(WindowPlugin { primary_window: None, exit_condition: ExitCondition::DontExit, close_when_requested: false })
@@ -363,7 +839,7 @@ pub mod ffi {
         }
         app.finish();
         app.cleanup();
-        Ok(Widget { input, app, sync, target: None, retired: Vec::new(), frame: 0 })
+        Ok(Widget { input, ui, ui_json: CString::default(), ui_gen: 0, app, sync, target: None, retired: Vec::new(), frame: 0, dead: false })
     }
 
     impl Widget {

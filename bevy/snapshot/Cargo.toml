@@ -1,0 +1,16 @@
+[package]
+name = "snapshot"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Render a dashboard app library headlessly and save a frame as PNG"
+
+[[bin]]
+name = "bevy-snapshot"
+path = "src/main.rs"
+
+[dependencies]
+quickshell-bevy = { workspace = true }
+ash = "0.38"
+libloading = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }

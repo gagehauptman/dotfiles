@@ -72,6 +72,13 @@ git fetch -Ppft && git checkout release/0.55.x
 
 > **Note:** Run `git pull` in the plugin repo after Hyprland updates, and check out the new `release/0.XX.x` branch whenever Hyprland has a new major release.
 
+On a multi-monitor machine, set `DEVICE.monitor_priority` in `perdevice.lua` (see
+`perdevice.example.lua`) to pin which monitor owns which workspace range. The plugin
+otherwise hands the ranges out in the order monitors *connect*, so a screen that wakes
+up first after being switched off takes over workspaces 1-10. `hyprland.lua` also
+remembers what each monitor was showing and puts it back when the monitor returns,
+since powering a monitor off drops its link and looks like an unplug to the compositor.
+
 ## Arch Packages
 
 ```bash

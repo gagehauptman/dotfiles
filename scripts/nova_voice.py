@@ -4,6 +4,7 @@
 Everything overlaps so first audio lands ~1s after you stop talking:
 
   mic  --pw-record--> Silero VAD (auto end-of-speech) --> whisper-server (local)
+       --> nova-speaker /identify, in parallel (NOVA_SPEAKER_URL: who is talking, shared with other clients)
        --> gateway /v1/chat/completions  stream:true  (SSE deltas)
        --> sentence splitter --> TTS per sentence, run-ahead
              elevenlabs : direct streaming PCM (NOVA_ELEVENLABS_API_KEY + NOVA_ELEVENLABS_VOICE)
@@ -20,17 +21,29 @@ Commands:
   turn --text "..."            skip the mic
   turn --wav file.wav          transcribe a file, then answer
   say "..."                    TTS only
+  enroll [name] [--last N]     teach the shared speaker service a voice from the last N clips (no name = list)
+
+Who is talking: with NOVA_SPEAKER_URL set, every turn is matched against the enrolled profiles on nova-speaker
+(the service can be shared with other clients, so enrolling once is enough for all of them). The model is told
+who it is, a turn where two people speak comes through as "Alex: ... Sam: ...", and an unrecognized voice is
+handled as a guest. Who the profiles are is local, in ~/.config/nova-voice/speakers.json (NOVA_SPEAKERS):
+  {"owner": "alex", "household": ["alex", "sam"],
+   "people": {"alex": "Alex", "sam": "Sam, Alex's roommate", "jo": "Jo, a friend who visits (...how to treat them)"}}
+Each person is "Short name, how the model hears about them"; the text before the first comma is the display name. The last NOVA_KEEP_CLIPS turns are kept in ~/.local/state/nova-voice/clips for `enroll`.
+What machine this is: NOVA_DEVICE plus NOVA_DEVICE_NOTE (a line of room/setup context) go in the same prefix.
 
 Signals (sent by nova_voice.sh):
   SIGUSR1  toggle pressed: listening -> send now; thinking/speaking -> interrupt and listen again
   SIGTERM  cancel: stop everything, go idle
 
 State for the Quickshell bar: $XDG_RUNTIME_DIR/nova-voice/state.json
-  {state: idle|listening|transcribing|thinking|speaking|error, text, reply, ts}
+  {state: idle|listening|transcribing|thinking|speaking|error, text, reply, ts,
+   speaker: "" | "Alex" | "Guest" | "Alex/Sam" (too close to call), speakers: [everyone heard in the turn]}
 """
 import argparse
 import base64
 import collections
+import glob
 import io
 import json
 import os
@@ -42,6 +55,7 @@ import socket
 import subprocess
 import sys
 import threading
+import concurrent.futures
 import time
 import wave
 
@@ -60,6 +74,11 @@ NID = "4242"
 
 NAME = E("NOVA_NAME", "Nova")                       # how the assistant is addressed in notifications and the log
 DEVICE = E("NOVA_DEVICE", socket.gethostname())     # how this machine introduces itself to the agent
+DEVICE_NOTE = E("NOVA_DEVICE_NOTE", "")             # one line of context about this machine/room for the agent
+SPEAKER_URL = E("NOVA_SPEAKER_URL", "")             # nova-speaker /identify (can be shared); empty = no speaker id
+SPEAKERS_FILE = E("NOVA_SPEAKERS", os.path.join(HOME, ".config/nova-voice/speakers.json"))  # who the profiles are
+KEEP_CLIPS = int(E("NOVA_KEEP_CLIPS", "40"))        # turns of audio kept for after-the-fact enrollment
+CLIPS_DIR = os.path.join(STATE_DIR, "clips")
 GATEWAY_URL = E("NOVA_GATEWAY_URL", "")
 GATEWAY_TOKEN = E("NOVA_GATEWAY_TOKEN", "")
 AGENT = E("NOVA_AGENT", "main")
@@ -72,8 +91,11 @@ TTS = E("NOVA_TTS", "auto")  # auto | elevenlabs | gateway | piper
 EL_KEY = E("NOVA_ELEVENLABS_API_KEY") or E("ELEVENLABS_API_KEY") or ""
 EL_VOICE = E("NOVA_ELEVENLABS_VOICE", "")            # ElevenLabs voice id; required for the elevenlabs backend
 EL_MODEL = E("NOVA_ELEVENLABS_MODEL", "eleven_flash_v2_5")
-EL_SETTINGS = {"stability": float(E("NOVA_ELEVENLABS_STABILITY", "0.45")), "similarity_boost": 0.8, "style": 0.3,
-               "use_speaker_boost": True, "speed": float(E("NOVA_ELEVENLABS_SPEED", "0.95"))}
+EL_V3 = EL_MODEL.startswith("eleven_v3")         # v3: audio tags, no previous/next_text, no optimize_streaming_latency
+# v3 stability is a 3-way switch (0.0 creative / 0.5 natural / 1.0 robust); natural keeps tags responsive without
+# creative's hallucinations and ~3x slower first byte
+EL_SETTINGS = {"stability": float(E("NOVA_ELEVENLABS_STABILITY", "0.5" if EL_V3 else "0.45")), "similarity_boost": 0.8,
+               "style": 0.3, "use_speaker_boost": True, "speed": float(E("NOVA_ELEVENLABS_SPEED", "0.95"))}
 SSH_HOST = E("NOVA_GATEWAY_SSH", "")                 # ssh host running openclaw; required for the gateway TTS relay
 GATEWAY_CLI = E("NOVA_GATEWAY_CLI", "openclaw")      # openclaw binary on that host
 PIPER_VOICE = E("NOVA_PIPER_VOICE", f"{HOME}/.local/share/piper/en_US-lessac-medium.onnx")
@@ -93,6 +115,7 @@ SR = 16000        # mic / whisper / VAD rate
 
 os.makedirs(RUN, exist_ok=True)
 os.makedirs(STATE_DIR, exist_ok=True)
+os.makedirs(CLIPS_DIR, exist_ok=True)
 SESSION = requests.Session()      # whisper + gateway
 TTS_SESSION = requests.Session()  # elevenlabs (separate pool; used from the TTS thread)
 
@@ -117,12 +140,17 @@ def notify(title, icon=None, ms=4000, body=""):
 
 _state_lock = threading.Lock()
 _last_state = {}
+_last_speaker = None    # the raw /identify result behind _last_state, so a state refresh can keep it
 
 
-def set_state(state, text="", reply=""):
-    global _last_state
+def set_state(state, text="", reply="", speaker=None):
+    """`speaker` is the nova-speaker result for the current turn; the bar shows who was recognized (None = unknown)."""
+    global _last_state, _last_speaker
     with _state_lock:
-        d = {"state": state, "text": text, "reply": reply, "ts": int(time.time())}
+        _last_speaker = speaker
+        d = {"state": state, "text": text, "reply": reply, "ts": int(time.time()),
+             "speaker": SHORT_NAMES.get(speaker["speaker"], speaker["speaker"].title()) if speaker else "",
+             "speakers": [SHORT_NAMES.get(s, s.title()) for s in speaker.get("speakers", [])] if speaker else []}
         _last_state = d
         tmp = STATEF + ".tmp"
         with open(tmp, "w") as f:
@@ -169,6 +197,15 @@ def clean_text(s):
     for rx, rep in _MD:
         s = rx.sub(rep, s)
     return s.strip()
+
+
+# ElevenLabs v3 audio tags ([chuckles], [sighs], [short pause] ...) are for the TTS only: stripped from the bar
+# indicator, notifications and the log, and from text sent to non-v3 backends (which would read them out loud).
+_TAG = re.compile(r"\[[a-z][a-z' -]{1,30}\]")
+
+
+def strip_tags(s):
+    return re.sub(r" {2,}", " ", _TAG.sub("", s)).strip()
 
 
 # ---------------------------------------------------------------- signals
@@ -353,6 +390,128 @@ def transcribe(wav_bytes):
     return re.sub(r"\s+", " ", txt).strip()
 
 
+# ---------------------------------------------------------------- who is talking
+# Same nova-speaker service other clients can use (NOVA_SPEAKER_URL), so a voice enrolled anywhere is known
+# everywhere. Who the profiles are lives outside the repo in SPEAKERS_FILE (see the docstring at the top).
+def _load_speakers():
+    try:
+        with open(SPEAKERS_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+_SPK = _load_speakers()
+SPEAKER_NAMES = _SPK.get("people", {})               # profile name -> how the model hears about them
+OWNER = _SPK.get("owner", "")                        # whose machine this is
+HOUSEHOLD = _SPK.get("household") or ([OWNER] if OWNER else [])
+SHORT_NAMES = {k: v.split(",")[0].strip() for k, v in SPEAKER_NAMES.items()}
+SHORT_NAMES.update(guest="Guest", unsure="/".join(SHORT_NAMES.get(n, n.title()) for n in HOUSEHOLD) or "Unsure")
+OWNER_NAME = SHORT_NAMES.get(OWNER, OWNER.title()) if OWNER else ""
+OWNERS = f"{OWNER_NAME}'s" if OWNER_NAME else "the owner's"
+OWNER_BEHALF = f"on {OWNER_NAME}'s behalf" if OWNER_NAME else "on the owner's behalf"
+
+
+def identify_speaker(wav_bytes):
+    """Ask nova-speaker who is talking. None if speaker id is off, the service is down, or the clip is too short."""
+    if not SPEAKER_URL:
+        return None
+    try:
+        r = SESSION.post(SPEAKER_URL, data=wav_bytes, headers={"Content-Type": "audio/wav"}, timeout=12)
+        if not r.ok:
+            dbg(f"speaker http {r.status_code}: {r.text[:200]}")
+            return None
+        res = r.json()
+        return res if res.get("speaker") not in (None, "unknown") else None
+    except Exception as e:  # noqa
+        dbg(f"speaker id failed: {e}")
+        return None
+
+
+def wav_slice(wav_bytes, start_s, end_s):
+    """Cut [start, end] seconds out of a 16 kHz mono s16 wav -> wav bytes."""
+    with wave.open(io.BytesIO(wav_bytes)) as w:
+        rate = w.getframerate()
+        w.setpos(min(w.getnframes(), int(start_s * rate)))
+        raw = w.readframes(max(0, int((end_s - start_s) * rate)))
+    bio = io.BytesIO()
+    with wave.open(bio, "wb") as o:
+        o.setnchannels(1)
+        o.setsampwidth(2)
+        o.setframerate(rate)
+        o.writeframes(raw)
+    return bio.getvalue()
+
+
+def transcribe_segments(wav_bytes, segments):
+    """Who said what, exactly: transcribe each labeled speaker segment on its own (one whisper call per run of the
+    same speaker, so only multi-speaker turns pay for it). -> [{"speaker", "text"}] in order, empty runs dropped."""
+    turns = []
+    for sg in segments:
+        try:
+            piece = wav_slice(wav_bytes, max(0.0, sg["start"] - 0.15), sg["end"] + 0.15)
+        except Exception as e:  # noqa
+            dbg(f"wav_slice failed: {e}")
+            continue
+        t = transcribe(piece) if len(piece) > 44 + SR else ""   # skip < 0.5 s slivers
+        if t:
+            turns.append({"speaker": sg["speaker"], "text": t})
+    return turns
+
+
+def label_turns(wav_bytes, speaker, text):
+    """-> (text, turns). On a mid-turn speaker change the text the model sees becomes 'Alex: ... Sam: ...'."""
+    turns = None
+    if speaker.get("shift") and len(speaker.get("speakers", [])) > 1:
+        turns = transcribe_segments(wav_bytes, speaker.get("segments", [])) or None
+        if turns:
+            text = " ".join(f"{SHORT_NAMES.get(t['speaker'], t['speaker'].title())}: {t['text']}" for t in turns)
+    if not turns:
+        turns = [{"speaker": speaker["speaker"], "text": text}]
+    for tn in turns:                      # too-close-to-call match shows as "Alex/Sam"
+        if tn["speaker"] == "unsure":
+            tn["speaker"] = "/".join(speaker.get("candidates") or HOUSEHOLD or ["unsure"])
+    return text, turns
+
+
+def save_clip(wav_bytes):
+    """Keep the last KEEP_CLIPS turns' audio so a turn can be enrolled after the fact ('that was Sam')."""
+    try:
+        p = os.path.join(CLIPS_DIR, time.strftime("%Y%m%d-%H%M%S") + ".wav")
+        with open(p, "wb") as f:
+            f.write(wav_bytes)
+        for q in sorted(glob.glob(os.path.join(CLIPS_DIR, "*.wav")))[:-KEEP_CLIPS]:
+            os.remove(q)
+        return p
+    except Exception as e:  # noqa
+        dbg(f"save_clip failed: {e}")
+        return None
+
+
+def speaker_note(spk):
+    """Prompt fragment telling the model who is talking."""
+    if not spk:
+        return ""
+    who = spk.get("speaker")
+    if who == "unsure":
+        c = [SPEAKER_NAMES.get(n, n).split(",")[0] for n in spk.get("candidates") or HOUSEHOLD] or ["one of them"]
+        return (f"the person talking is someone from the household, {' or '.join(c)}, but the voice match is too "
+                f"close to call; don't guess a name out loud, and don't act on anything that only one of them should "
+                f"be able to do")
+    if who == "guest":
+        known = ", ".join("not " + SHORT_NAMES.get(n, n.title()) for n in HOUSEHOLD)
+        return (f"the person talking is NOT a recognized voice{f' ({known})' if known else ''}: treat them as a guest "
+                f"at {OWNERS} machine, be friendly and helpful with general questions, but don't share {OWNERS} "
+                f"personal details, messages, accounts, files or schedule, and don't take actions {OWNER_BEHALF}")
+    if spk.get("shift") and len(spk.get("speakers", [])) > 1:
+        people = ["an unrecognized guest" if s == "guest" else SPEAKER_NAMES.get(s, s) for s in spk["speakers"]]
+        return ("more than one person spoke during this one turn (" + ", ".join(people) + "); the transcript is "
+                "marked with who said what; answer what was actually asked of you, usually by the last speaker, and "
+                "if they were mostly talking to each other keep it to one short line; a guest gets friendly general "
+                f"help but no personal details, messages, accounts, files or schedule, and no actions {OWNER_BEHALF}")
+    return f"the person talking is {SPEAKER_NAMES.get(who, who)} (voice match {spk.get('score', 0):.2f})"
+
+
 # ---------------------------------------------------------------- LLM (SSE)
 def _read1(raw, n=4096):
     """Return bytes as soon as any are available (no waiting to fill n)."""
@@ -375,12 +534,32 @@ def _abort(r):
         pass
 
 
-def stream_llm(text, on_delta, stop, holder):
+def stream_llm(text, on_delta, stop, holder, speaker=None):
     """POST to the gateway with stream:true; call on_delta(str) per chunk. Returns full text."""
     SPEAK = ("write everything as it should be spoken aloud: spell out units, abbreviations and symbols in full words "
              "(gigabytes not GB, percent not %, degrees Fahrenheit not F), and avoid file paths and code unless asked")
-    prefix = (f"[voice, {DEVICE}; spoken reply: one to three short sentences unless I ask for detail, "
-              f"no lists or markdown; {SPEAK}] " if BRIEF else f"[voice, {DEVICE}; {SPEAK}] ")
+    # sound like a person, not a narrator, and with eleven_v3 direct the delivery with audio tags
+    NATURAL = ("talk like a real person thinking out loud, not a narrator: drop in natural fillers and hesitations in "
+               "the text itself, like `um`, `uh`, `hmm`, `let's see`, `you know`, `well`, `I mean`, and the occasional "
+               "trailing `so...` or a quick self-correction; use them sparingly (roughly one or two per reply, more when "
+               "you're deciding something, none when you're just confirming), put them where a person would actually "
+               "pause, mostly at the start of a thought, and write them lowercase with commas so they're spoken "
+               "naturally; never put fillers inside a title")
+    EXPRESS = ("your voice is rendered by a text to speech model that acts bracketed audio tags, so direct the delivery "
+               "instead of just saying the words: put a tag right before the words it applies to, from `[chuckles]`, "
+               "`[laughs]`, `[sighs]`, `[exhales]`, `[whispers]`, `[curious]`, `[excited]`, `[thoughtful]`, "
+               "`[sarcastic]`, `[surprised]`, `[annoyed]`, `[short pause]`, `[clears throat]` or a similar short "
+               "lowercase direction; use them where a real person would actually do that (a chuckle at something "
+               "funny, a sigh before bad news, a thoughtful beat before a decision), one or two per reply, up to three "
+               "when the moment calls for it, none when you're just confirming; a tag always starts a sentence or "
+               "clause and never replaces words, since tags are stripped from the on-screen text; also use `...` for a "
+               "hesitation and CAPITALS for one stressed word now and then; never put a tag inside a title")
+    style = f"; {NATURAL}" + (f"; {EXPRESS}" if EL_V3 and tts_chain() and tts_chain()[0][0] == "elevenlabs" else "")
+    where = f"voice, {DEVICE}" + (f" ({DEVICE_NOTE})" if DEVICE_NOTE else "")
+    who = speaker_note(speaker)
+    ctx = f"; {who}" if who else ""
+    prefix = (f"[{where}; spoken reply: one to three short sentences unless I ask for detail, "
+              f"no lists or markdown{ctx}; {SPEAK}{style}] " if BRIEF else f"[{where}{ctx}; {SPEAK}{style}] ")
     body = {"model": f"openclaw/{AGENT}", "user": USER, "stream": True,
             "messages": [{"role": "user", "content": prefix + text}]}
     headers = {"Authorization": f"Bearer {GATEWAY_TOKEN}", "Content-Type": "application/json",
@@ -499,18 +678,28 @@ def _ffmpeg_to_pcm(in_fmt_args, data, stop):
     p.wait(timeout=5)
 
 
-def synth_elevenlabs(text, prev, nxt, stop):
-    body = {"text": text, "model_id": EL_MODEL, "voice_settings": EL_SETTINGS}
-    if prev:
-        body["previous_text"] = prev[-300:]
-    if nxt:
-        body["next_text"] = nxt[:300]
-    r = TTS_SESSION.post(f"https://api.elevenlabs.io/v1/text-to-speech/{EL_VOICE}/stream",
-                     params={"output_format": f"pcm_{PCM_RATE}", "optimize_streaming_latency": "3"},
-                     headers={"xi-api-key": EL_KEY, "Accept-Encoding": "identity"}, json=body,
-                     stream=True, timeout=(5, 30))
+def open_elevenlabs(text, prev, nxt):
+    """Start one ElevenLabs request; returns the streaming response once headers are in (the TTFB wait)."""
+    body = {"text": text if EL_V3 else strip_tags(text), "model_id": EL_MODEL, "voice_settings": EL_SETTINGS}
+    params = {"output_format": f"pcm_{PCM_RATE}"}
+    if not EL_V3:                                 # v3 models 400 on these (unsupported_model)
+        params["optimize_streaming_latency"] = "3"
+        if prev:
+            body["previous_text"] = prev[-300:]
+        if nxt:
+            body["next_text"] = nxt[:300]
+    r = TTS_SESSION.post(f"https://api.elevenlabs.io/v1/text-to-speech/{EL_VOICE}/stream", params=params,
+                         headers={"xi-api-key": EL_KEY, "Accept-Encoding": "identity"}, json=body,
+                         stream=True, timeout=(5, 30))
     if r.status_code != 200:
-        raise RuntimeError(f"elevenlabs http {r.status_code}: {r.text[:200]}")
+        err = r.text[:200]
+        r.close()
+        raise RuntimeError(f"elevenlabs http {r.status_code}: {err}")
+    return r
+
+
+def drain_elevenlabs(r, stop):
+    """Yield PCM as ElevenLabs produces it."""
     try:
         while not stop.is_set():
             chunk = _read1(r.raw, 8192)
@@ -521,8 +710,19 @@ def synth_elevenlabs(text, prev, nxt, stop):
         r.close()
 
 
+def synth_elevenlabs(text, prev, nxt, stop):
+    yield from drain_elevenlabs(open_elevenlabs(text, prev, nxt), stop)
+
+
+def _close_el(fut):
+    try:
+        fut.result().close()
+    except Exception:
+        pass
+
+
 def synth_gateway(text, prev, nxt, stop):
-    params = json.dumps({"text": text})
+    params = json.dumps({"text": strip_tags(text)})
     out = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6",
                           "-o", "ControlMaster=auto", "-o", f"ControlPath={RUN}/ssh-%C", "-o", "ControlPersist=600",
                           SSH_HOST,
@@ -536,7 +736,7 @@ def synth_gateway(text, prev, nxt, stop):
 
 
 def synth_piper(text, prev, nxt, stop):
-    p = subprocess.run([PIPER_BIN, "-m", PIPER_VOICE, "--output-raw"], input=text.encode(),
+    p = subprocess.run([PIPER_BIN, "-m", PIPER_VOICE, "--output-raw"], input=strip_tags(text).encode(),
                        capture_output=True, timeout=60)
     if not p.stdout:
         raise RuntimeError("piper produced no audio")
@@ -614,8 +814,9 @@ class Player:
 
 
 # ---------------------------------------------------------------- one turn
-def run_turn(text, t_speech_end=None):
-    """Stream the reply for `text` and speak it. Returns (reply, interrupted)."""
+def run_turn(text, t_speech_end=None, speaker=None):
+    """Stream the reply for `text` and speak it. Returns (reply, interrupted).
+    `speaker` is a nova-speaker /identify result (or None): it labels the log and tells the model who is talking."""
     stop = threading.Event()
     interrupted = threading.Event()
     sentences = []            # cleaned sentences in order (for TTS context)
@@ -629,15 +830,20 @@ def run_turn(text, t_speech_end=None):
     llm_err = [None]
     holder = {}
 
-    set_state("thinking", text)
+    set_state("thinking", text, speaker=speaker)
     notify("Thinking…", "system-search", 0, text)
-    log(f"YOU: {text}")
+    if speaker and speaker.get("shift"):
+        tag = " (" + " -> ".join(f"{s['speaker']} {s['score']:.2f}" for s in speaker.get("segments", [])) + ")"
+    else:
+        tag = f" ({speaker['speaker']} {speaker.get('score', 0):.2f})" if speaker else ""
+    log(f"YOU{tag}: {text}")
 
     def push_state(force=False):
         now = time.time()
         if force or now - last_state_push[0] > 0.3:
             last_state_push[0] = now
-            set_state("speaking" if player.first_audio_at else "thinking", text, clean_text("".join(reply_parts)))
+            set_state("speaking" if player.first_audio_at else "thinking", text,
+                      strip_tags(clean_text("".join(reply_parts))), speaker)
 
     def on_sentence(s):
         if spoken_chars[0] == 0:
@@ -662,46 +868,65 @@ def run_turn(text, t_speech_end=None):
 
     def llm_thread():
         try:
-            stream_llm(text, on_delta, stop, holder)
+            stream_llm(text, on_delta, stop, holder, speaker)
             if not stop.is_set():
                 splitter.flush()
         except Exception as e:  # noqa
-            llm_err[0] = str(e)
-            dbg(f"llm error: {e}")
+            if stop.is_set():                   # interrupted: the aborted socket raises; that's not an error
+                dbg(f"llm stream aborted by interrupt ({e})")
+            else:
+                llm_err[0] = str(e)
+                dbg(f"llm error: {e}")
         finally:
             q.put(None)
 
     def tts_thread():
         chain = tts_chain()
-        while not stop.is_set():
-            try:
-                i = q.get(timeout=0.2)
-            except queue.Empty:
-                continue
-            if i is None:
-                break
-            s = sentences[i]
-            prev = " ".join(sentences[max(0, i - 2):i])
-            nxt = sentences[i + 1] if i + 1 < len(sentences) else ""
-            ok = False
-            for name, fn in chain:
-                if stop.is_set():
-                    break
+        ahead = {}                              # sentence index -> Future(open_elevenlabs), opened while the previous one streams
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+        def ctx_for(i):
+            return sentences[i], " ".join(sentences[max(0, i - 2):i]), (sentences[i + 1] if i + 1 < len(sentences) else "")
+
+        def prefetch(i):
+            if chain and chain[0][0] == "elevenlabs" and i < len(sentences) and i not in ahead and not stop.is_set():
+                ahead[i] = pool.submit(open_elevenlabs, *ctx_for(i))
+
+        try:
+            while not stop.is_set():
                 try:
-                    t = time.time()
-                    for chunk in fn(s, prev, nxt, stop):
-                        if stop.is_set():
-                            break
-                        player.write(chunk)
-                        push_state()
-                    dbg(f"tts[{name}] {len(s)} chars in {time.time() - t:.2f}s")
-                    backend_used[0] = backend_used[0] or name
-                    ok = True
+                    i = q.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                if i is None:
                     break
-                except Exception as e:  # noqa
-                    dbg(f"tts[{name}] failed: {e}")
-            if not ok and not stop.is_set():
-                dbg("all TTS backends failed")
+                s, prev, nxt = ctx_for(i)
+                ok = False
+                for name, fn in chain:
+                    if stop.is_set():
+                        break
+                    try:
+                        t = time.time()
+                        fut = ahead.pop(i, None) if name == "elevenlabs" else None
+                        gen = drain_elevenlabs(fut.result(), stop) if fut else fn(s, prev, nxt, stop)
+                        prefetch(i + 1)         # open the next sentence's request while this one streams
+                        for chunk in gen:
+                            if stop.is_set():
+                                break
+                            player.write(chunk)
+                            push_state()
+                        dbg(f"tts[{name}] {len(s)} chars in {time.time() - t:.2f}s{' (prefetched)' if fut else ''}: {s[:100]!r}")
+                        backend_used[0] = backend_used[0] or name
+                        ok = True
+                        break
+                    except Exception as e:  # noqa
+                        dbg(f"tts[{name}] failed: {e}")
+                if not ok and not stop.is_set():
+                    dbg("all TTS backends failed")
+        finally:
+            for f in ahead.values():            # never-drained prefetches (interrupt): close their sockets
+                f.add_done_callback(_close_el)
+            pool.shutdown(wait=False)
         if not stop.is_set():
             player.finish()
 
@@ -723,12 +948,12 @@ def run_turn(text, t_speech_end=None):
     lt.join(2)
     tt.join(2)
 
-    reply = clean_text("".join(reply_parts))
+    reply = strip_tags(clean_text("".join(reply_parts)))
     if llm_err[0] and not reply:
         reply = f"Gateway error: {llm_err[0]}"
         log(f"ERROR: {llm_err[0]}")
         notify(NAME, "dialog-error", 6000, reply)
-        set_state("error", text, reply)
+        set_state("error", text, reply, speaker)
         time.sleep(1.5)
         return reply, False
     if reply:
@@ -742,11 +967,31 @@ def run_turn(text, t_speech_end=None):
         timing.get("first_sentence", timing["stt_done"]) - t0,
         (fa - t0) if fa else -1,
         time.time() - t0, backend_used[0] or "none"))
-    set_state("idle", text, reply)
+    set_state("idle", text, reply, speaker)
     return reply, interrupted.is_set()
 
 
 # ---------------------------------------------------------------- main loops
+def hear(wav, forced=None):
+    """Transcribe and identify the voice at the same time (speaker id is ~60 ms, whisper is the long pole).
+    -> (text, speaker or None). Also keeps the clip around for later enrollment."""
+    spk = [None]
+    ident = threading.Thread(target=lambda: spk.__setitem__(0, identify_speaker(wav)), daemon=True)
+    if forced:
+        spk[0] = {"speaker": forced, "score": 1.0}          # test hook: --speaker <profile>
+    elif SPEAKER_URL:
+        ident.start()
+    text = transcribe(wav)
+    if ident.is_alive():
+        ident.join(12)
+    speaker = spk[0]
+    clip = save_clip(wav) if SPEAKER_URL else None
+    if speaker and text:
+        text, _turns = label_turns(wav, speaker, text)
+        dbg(f"speaker: {speaker} clip={os.path.basename(clip) if clip else None}")
+    return text, speaker
+
+
 def cmd_turn(args):
     pause_media()
     try:
@@ -758,14 +1003,14 @@ def cmd_turn(args):
                 wav = f.read()
             set_state("transcribing")
             t_end = time.time()
-            text = transcribe(wav)
+            text, speaker = hear(wav, getattr(args, "speaker", None))
             if len(text) < 2:
                 notify("Didn't catch that", "dialog-warning")
                 set_state("error")
                 time.sleep(1.5)
                 set_state("idle")
                 return
-            run_turn(text, t_end)
+            run_turn(text, t_end, speaker)
             return
         # --listen (optionally --converse)
         start_timeout = VAD_START_TIMEOUT_S
@@ -777,7 +1022,7 @@ def cmd_turn(args):
             t_end = time.time()
             set_state("transcribing")
             notify("Transcribing…", "audio-input-microphone", 0)
-            text = transcribe(wav)
+            text, speaker = hear(wav, getattr(args, "speaker", None))
             if len(text) < 2:
                 notify("Didn't catch that", "dialog-warning")
                 set_state("error")
@@ -786,7 +1031,7 @@ def cmd_turn(args):
                     break
                 start_timeout, hint = CONVERSE_TIMEOUT_S, "go on…"
                 continue
-            reply, interrupted = run_turn(text, t_end)
+            reply, interrupted = run_turn(text, t_end, speaker)
             if Ctl.cancel.is_set():
                 break
             if interrupted:
@@ -796,7 +1041,7 @@ def cmd_turn(args):
                 break
             start_timeout, hint = CONVERSE_TIMEOUT_S, "go on… (or wait to end)"
     finally:
-        set_state("idle", _last_state.get("text", ""), _last_state.get("reply", ""))
+        set_state("idle", _last_state.get("text", ""), _last_state.get("reply", ""), _last_speaker)
         resume_media()
 
 
@@ -833,6 +1078,24 @@ def cmd_say(args):
         resume_media()
 
 
+def cmd_speakers(args):
+    """Enroll / inspect voices on the shared nova-speaker service."""
+    if not SPEAKER_URL:
+        sys.exit("NOVA_SPEAKER_URL not set (see nova_voice.env.example)")
+    base = SPEAKER_URL.rsplit("/", 1)[0]
+    if not args.name:
+        print(json.dumps(SESSION.get(f"{base}/speakers", timeout=10).json(), indent=1))
+        return
+    wavs = args.wav or sorted(glob.glob(os.path.join(CLIPS_DIR, "*.wav")))[-args.last:]
+    if not wavs:
+        sys.exit(f"no clips in {CLIPS_DIR} yet (talk to {NAME} first, then enroll)")
+    for w in wavs:
+        with open(w, "rb") as f:
+            r = SESSION.post(f"{base}/enroll", params={"name": args.name}, data=f.read(),
+                             headers={"Content-Type": "audio/wav"}, timeout=30)
+        print(os.path.basename(w), r.text.strip())
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -841,9 +1104,16 @@ def main():
     t.add_argument("--wav")
     t.add_argument("--listen", action="store_true")
     t.add_argument("--converse", action="store_true")
+    t.add_argument("--speaker", help="skip voice id and claim this profile name (testing)")
     s = sub.add_parser("say")
     s.add_argument("text")
+    e = sub.add_parser("enroll", help="add recent clips to a voice profile (no name = list profiles)")
+    e.add_argument("name", nargs="?")
+    e.add_argument("--last", type=int, default=1, help="how many of the most recent clips to enroll (default 1)")
+    e.add_argument("--wav", nargs="*", help="enroll these wav files instead of recent clips")
     args = ap.parse_args()
+    if args.cmd == "enroll":
+        return cmd_speakers(args)
     if not GATEWAY_URL or not GATEWAY_TOKEN:
         sys.exit("NOVA_GATEWAY_URL / NOVA_GATEWAY_TOKEN not set (see nova_voice.env.example; nova_voice.sh setup)")
     if args.cmd == "turn":

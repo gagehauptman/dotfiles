@@ -10,12 +10,15 @@
 #   nova_voice.sh cancel       # (SUPER+SHIFT+T) stop everything, go idle
 #   nova_voice.sh ask "text"   # skip the mic: send text, speak the reply
 #   nova_voice.sh say "text"   # TTS only
+#   nova_voice.sh enroll alex  # teach the speaker service this voice from the last clip (no name = list profiles)
 #   nova_voice.sh status       # what is running, what is configured, recent timings
 #   nova_voice.sh setup        # one-time: venv, Silero VAD model, config file from the example
 #   nova_voice.sh setup whisper  # also: whisper model + a user service running whisper-server
 #
 # Pipeline (all overlapped, see nova_voice.py): pw-record + Silero VAD -> whisper-server (local)
 #   -> gateway /v1/chat/completions stream:true -> sentence chunks -> streaming TTS -> pw-play
+# Voice id (optional, NOVA_SPEAKER_URL): each turn also goes to nova-speaker /identify, so the agent is told
+#   whether it is you, someone else in the house, or a guest (names: ~/.config/nova-voice/speakers.json).
 # State for the Quickshell bar indicator: $XDG_RUNTIME_DIR/nova-voice/state.json
 # Logs: ~/.local/state/nova-voice/conversation.log (turns + TIMING lines), engine.log (debug)
 
@@ -115,7 +118,8 @@ case "${1:-toggle}" in
         need_conf && exec "$NOVA_PY" "$NOVA_ENGINE" turn --text "$*" ;;
   say)  shift; [ -n "${*:-}" ] || { echo "usage: $0 say <text>"; exit 2; }
         exec "$NOVA_PY" "$NOVA_ENGINE" say "$*" ;;
+  enroll) shift; exec "$NOVA_PY" "$NOVA_ENGINE" enroll "$@" ;;
   status) status ;;
   setup)  shift; setup "${1:-}" ;;
-  *) echo "usage: $0 {toggle|cancel|ask <text>|say <text>|status|setup [whisper]}"; exit 2 ;;
+  *) echo "usage: $0 {toggle|cancel|ask <text>|say <text>|enroll [name] [--last N]|status|setup [whisper]}"; exit 2 ;;
 esac

@@ -58,10 +58,13 @@
       "columns": 3,
       "widthPercent": 55,
       "widgets": [
-        { "type": "globe",   "col": 0, "row": 0, "colSpan": 2, "rowSpan": 3, "options": { "title": "Globe" } },
-        { "type": "weather", "col": 2, "row": 0 },
-        { "type": "network", "col": 2, "row": 1 },
-        { "type": "quote",   "col": 2, "row": 2 }
+        { "type": "globe",       "col": 0, "row": 0,   "colSpan": 2, "rowSpan": 2, "options": { "title": "Globe" } },
+        { "type": "services",    "col": 0, "row": 2,   "colSpan": 2, "rowSpan": 1.3 },
+        { "type": "quote",       "col": 0, "row": 3.3, "rowSpan": 1 },
+        { "type": "network",     "col": 1, "row": 3.3, "rowSpan": 1 },
+        { "type": "weather",     "col": 2, "row": 0,   "rowSpan": 1.5 },
+        { "type": "miscstats",   "col": 2, "row": 1.5, "rowSpan": 1.5 },
+        { "type": "systemstats", "col": 2, "row": 3,   "rowSpan": 1.3 }
       ]
     }
   }

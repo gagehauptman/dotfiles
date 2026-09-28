@@ -319,20 +319,29 @@ struct Gpu {
 
 impl Gpu {
     fn new(instance: &wgpu::Instance, surface: &wgpu::Surface<'_>) -> Result<Self, String> {
-        // WGPU_ADAPTER_NAME / WGPU_POWER_PREF are honoured if set.
+        // WGPU_ADAPTER_NAME / WGPU_POWER_PREF are honoured if set. Otherwise
+        // the first GPU that can present here: Mesa's device-select layer
+        // lists the compositor's GPU first, so on a hybrid laptop that's the
+        // integrated one driving the panel. Asking for HighPerformance took
+        // the discrete GPU there, kept it awake for a wallpaper and copied
+        // every frame across to the other GPU.
         let adapter = pollster::block_on(async {
-            match wgpu::util::initialize_adapter_from_env(instance, Some(surface)).await {
-                Ok(a) => Ok(a),
-                Err(_) => {
-                    instance
-                        .request_adapter(&wgpu::RequestAdapterOptions {
-                            power_preference: wgpu::PowerPreference::HighPerformance,
-                            compatible_surface: Some(surface),
-                            ..Default::default()
-                        })
-                        .await
+            if let Ok(a) = wgpu::util::initialize_adapter_from_env(instance, Some(surface)).await {
+                return Ok(a);
+            }
+            if std::env::var_os("WGPU_POWER_PREF").is_none() {
+                let adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN).await;
+                if let Some(a) = adapters.into_iter().find(|a| a.is_surface_supported(surface)) {
+                    return Ok(a);
                 }
             }
+            instance
+                .request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::from_env().unwrap_or_default(),
+                    compatible_surface: Some(surface),
+                    ..Default::default()
+                })
+                .await
         })
         .map_err(|e| format!("no Vulkan adapter that can present to this Wayland surface ({e})"))?;
 

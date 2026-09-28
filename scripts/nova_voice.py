@@ -90,12 +90,17 @@ WHISPER_MODEL = E("NOVA_WHISPER_MODEL", f"{HOME}/.local/share/whisper/ggml-base.
 TTS = E("NOVA_TTS", "auto")  # auto | elevenlabs | gateway | piper
 EL_KEY = E("NOVA_ELEVENLABS_API_KEY") or E("ELEVENLABS_API_KEY") or ""
 EL_VOICE = E("NOVA_ELEVENLABS_VOICE", "")            # ElevenLabs voice id; required for the elevenlabs backend
-EL_MODEL = E("NOVA_ELEVENLABS_MODEL", "eleven_flash_v2_5")
-EL_V3 = EL_MODEL.startswith("eleven_v3")         # v3: audio tags, no previous/next_text, no optimize_streaming_latency
+EL_MODEL = E("NOVA_ELEVENLABS_MODEL", "eleven_v4_turbo")  # v4 turbo: expressive + ~100 ms, for the live voice loop
+EL_V4 = EL_MODEL.startswith("eleven_v4")         # v4: audio tags, accepts previous/next_text, no optimize_streaming_latency
+EL_V3 = EL_V4 or EL_MODEL.startswith("eleven_v3")  # "expressive": acts audio tags (v3: no previous/next_text either)
 # v3 stability is a 3-way switch (0.0 creative / 0.5 natural / 1.0 robust); natural keeps tags responsive without
-# creative's hallucinations and ~3x slower first byte
-EL_SETTINGS = {"stability": float(E("NOVA_ELEVENLABS_STABILITY", "0.5" if EL_V3 else "0.45")), "similarity_boost": 0.8,
-               "style": 0.3, "use_speaker_boost": True, "speed": float(E("NOVA_ELEVENLABS_SPEED", "0.95"))}
+# creative's hallucinations and ~3x slower first byte. v4 stability is continuous (lower = more varied delivery) and
+# v4 only has Stability + Similarity (no style/speed sliders, no SSML).
+if EL_V4:
+    EL_SETTINGS = {"stability": float(E("NOVA_ELEVENLABS_STABILITY", "0.45")), "similarity_boost": 0.8}
+else:
+    EL_SETTINGS = {"stability": float(E("NOVA_ELEVENLABS_STABILITY", "0.5" if EL_V3 else "0.45")), "similarity_boost": 0.8,
+                   "style": 0.3, "use_speaker_boost": True, "speed": float(E("NOVA_ELEVENLABS_SPEED", "0.95"))}
 SSH_HOST = E("NOVA_GATEWAY_SSH", "")                 # ssh host running openclaw; required for the gateway TTS relay
 GATEWAY_CLI = E("NOVA_GATEWAY_CLI", "openclaw")      # openclaw binary on that host
 PIPER_VOICE = E("NOVA_PIPER_VOICE", f"{HOME}/.local/share/piper/en_US-lessac-medium.onnx")
@@ -199,9 +204,11 @@ def clean_text(s):
     return s.strip()
 
 
-# ElevenLabs v3 audio tags ([chuckles], [sighs], [short pause] ...) are for the TTS only: stripped from the bar
-# indicator, notifications and the log, and from text sent to non-v3 backends (which would read them out loud).
-_TAG = re.compile(r"\[[a-z][a-z' -]{1,30}\]")
+# ElevenLabs v3/v4 audio tags ([chuckles], [sighs], [quietly curious], [pause, dry amusement] ...) are for the TTS
+# only: stripped from the bar indicator, notifications and the log, and from text sent to non-expressive backends
+# (which would read them out loud). v4 takes free-form directions, so commas and a leading capital are allowed; an
+# all-caps bracket like "[REC]" is left alone.
+_TAG = re.compile(r"\[[A-Za-z][a-z' ,-]{1,48}\]")
 
 
 def strip_tags(s):
@@ -538,14 +545,14 @@ def stream_llm(text, on_delta, stop, holder, speaker=None):
     """POST to the gateway with stream:true; call on_delta(str) per chunk. Returns full text."""
     SPEAK = ("write everything as it should be spoken aloud: spell out units, abbreviations and symbols in full words "
              "(gigabytes not GB, percent not %, degrees Fahrenheit not F), and avoid file paths and code unless asked")
-    # sound like a person, not a narrator, and with eleven_v3 direct the delivery with audio tags
+    # sound like a person, not a narrator, and with eleven_v3/v4 direct the delivery with audio tags
     NATURAL = ("talk like a real person thinking out loud, not a narrator: drop in natural fillers and hesitations in "
                "the text itself, like `um`, `uh`, `hmm`, `let's see`, `you know`, `well`, `I mean`, and the occasional "
                "trailing `so...` or a quick self-correction; use them sparingly (roughly one or two per reply, more when "
                "you're deciding something, none when you're just confirming), put them where a person would actually "
                "pause, mostly at the start of a thought, and write them lowercase with commas so they're spoken "
                "naturally; never put fillers inside a title")
-    EXPRESS = ("your voice is rendered by a text to speech model that acts bracketed audio tags, so direct the delivery "
+    EXPRESS_V3 = ("your voice is rendered by a text to speech model that acts bracketed audio tags, so direct the delivery "
                "instead of just saying the words: put a tag right before the words it applies to, from `[chuckles]`, "
                "`[laughs]`, `[sighs]`, `[exhales]`, `[whispers]`, `[curious]`, `[excited]`, `[thoughtful]`, "
                "`[sarcastic]`, `[surprised]`, `[annoyed]`, `[short pause]`, `[clears throat]` or a similar short "
@@ -554,6 +561,24 @@ def stream_llm(text, on_delta, stop, holder, speaker=None):
                "when the moment calls for it, none when you're just confirming; a tag always starts a sentence or "
                "clause and never replaces words, since tags are stripped from the on-screen text; also use `...` for a "
                "hesitation and CAPITALS for one stressed word now and then; never put a tag inside a title")
+    # Eleven v4 (2026-09-28): free-form bracketed directions (emotion, delivery, pacing, reactions); per ElevenLabs'
+    # v4 prompting guide, tags that describe the voice beat ones that could read as a sound effect
+    EXPRESS_V4 = ("your voice is rendered by an expressive text to speech model that performs bracketed stage "
+                  "directions, so direct HOW you say things instead of just saying the words: put a short lowercase "
+                  "direction in square brackets right before the words it applies to; it can be an emotion or attitude "
+                  "(`[warm]`, `[curious]`, `[excited]`, `[amused]`, `[sarcastic]`, `[dry]`, `[sympathetic]`, "
+                  "`[annoyed]`, `[mischievously]`), a delivery or pacing direction (`[whispers]`, `[softly]`, "
+                  "`[under your breath]`, `[quick, playful]`, `[slower, thoughtful]`, `[matter-of-fact]`), or a human "
+                  "reaction (`[chuckles]`, `[soft laugh]`, `[laughs]`, `[sighs]`, `[exhales]`, `[clears throat]`, "
+                  "`[hmm]`), and you can combine two ideas with a comma like `[quietly curious]` or "
+                  "`[pause, dry amusement]`; describe the voice, never a sound effect (no gunshots, applause or music); "
+                  "use them where a real person would actually shift (a chuckle at something funny, a sigh before bad "
+                  "news, a thoughtful beat before a decision, a playful lift when teasing), one to three per reply, none "
+                  "when you're just confirming; a tag always starts a sentence or clause and never replaces words, since "
+                  "tags are stripped from the on-screen text; pace with punctuation too: `...` for a hesitation or a "
+                  "weighty beat, an em dash for a quick cut-off, CAPITALS for one stressed word now and then; never put "
+                  "a tag inside a title")
+    EXPRESS = EXPRESS_V4 if EL_V4 else EXPRESS_V3
     style = f"; {NATURAL}" + (f"; {EXPRESS}" if EL_V3 and tts_chain() and tts_chain()[0][0] == "elevenlabs" else "")
     where = f"voice, {DEVICE}" + (f" ({DEVICE_NOTE})" if DEVICE_NOTE else "")
     who = speaker_note(speaker)
@@ -682,8 +707,9 @@ def open_elevenlabs(text, prev, nxt):
     """Start one ElevenLabs request; returns the streaming response once headers are in (the TTFB wait)."""
     body = {"text": text if EL_V3 else strip_tags(text), "model_id": EL_MODEL, "voice_settings": EL_SETTINGS}
     params = {"output_format": f"pcm_{PCM_RATE}"}
-    if not EL_V3:                                 # v3 models 400 on these (unsupported_model)
+    if not EL_V3:                                 # v3 and v4 models 400 on this (unsupported_model)
         params["optimize_streaming_latency"] = "3"
+    if not EL_V3 or EL_V4:                        # v3 400s on previous/next_text too; v4 accepts them
         if prev:
             body["previous_text"] = prev[-300:]
         if nxt:

@@ -5,6 +5,8 @@ hypr/perdevice.lua
 hypr/plugins/
 wallpapers/goes_earth_live.png
 scripts/wallpaper/bins/spinning_globe/target
+# Rust build outputs anywhere in the tree
+target/
 quickshell/presets.local.json
 quickshell/secrets.env
 

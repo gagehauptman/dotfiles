@@ -8,6 +8,19 @@ gets a widget type of its own in `DashboardConfig.qml` (`globe` does, with
 `props: { app: "globe" }` and its service).
 
 - `planet`: the demo, a low-poly planet with moons.
+- `spinning_globe`: the live preview of the spinning globe wallpaper in the
+  wallpaper selector (not a dashboard card). It draws the wallpaper's own
+  scene, the `globe_scene` crate in `scripts/wallpaper/bins/spinning_globe/scene`
+  (shader, geometry, layout), with raw wgpu at the monitor's size and
+  box-filters it down to the card. The selector lists
+  `wallpapers/<stem>.live` descriptors and previews each with the app named
+  `<stem>`; only while the selector is open and the entry is on screen.
+- `space_shuttle`: the live preview of the space shuttle wallpaper, built
+  the same way from its `shuttle_scene` crate in
+  `scripts/wallpaper/bins/space_shuttle/scene` (a wireframe orbiter wobbling
+  over the Earth's limb, on the wall clock like the wallpaper), with the
+  globe preview's downsample shader. The wallpaper itself is a second scene
+  of the globe's renderer, so the two switch without restarting it.
 - `globe`: weather, light pollution and live aircraft on a cube-sphere with
   Natural Earth coastlines, borders, names and cities by zoom level, fed by
   `scripts/globeserver.py`. Its labels are quads on the sphere from a glyph

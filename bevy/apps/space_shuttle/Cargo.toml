@@ -1,0 +1,16 @@
+[package]
+name = "space_shuttle"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+# The wallpaper's scene: shader, geometry, layout and clock
+shuttle_scene = { path = "../../../scripts/wallpaper/bins/space_shuttle/scene" }
+wgpu = "24"
+serde_json = "1"

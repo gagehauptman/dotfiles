@@ -1,0 +1,16 @@
+[package]
+name = "spinning_globe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+# The wallpaper's scene: shader, geometry and layout
+globe_scene = { path = "../../../scripts/wallpaper/bins/spinning_globe/scene" }
+wgpu = "24"
+serde_json = "1"

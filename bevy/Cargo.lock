@@ -1795,6 +1795,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "globe_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "glow"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3086,6 +3093,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
+name = "shuttle_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "globe_scene",
+]
+
+[[package]]
 name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3158,12 +3173,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "space_shuttle"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "quickshell-bevy",
+ "serde_json",
+ "shuttle_scene",
+ "wgpu",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
 dependencies = [
  "portable-atomic",
+]
+
+[[package]]
+name = "spinning_globe"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "globe_scene",
+ "quickshell-bevy",
+ "serde_json",
+ "wgpu",
 ]
 
 [[package]]

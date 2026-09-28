@@ -1,5 +1,3 @@
-mod continents;
-
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_layer, delegate_output, delegate_registry,
@@ -19,23 +17,74 @@ use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Proxy, QueueHandle,
 };
+use smithay_client_toolkit::reexports::protocols::wp::viewporter::client::{wp_viewport, wp_viewporter};
 use wgpu::rwh::{RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle};
 use wgpu::util::DeviceExt;
 use rustix::event::{poll, PollFd, PollFlags, Timespec};
-use std::f32::consts::PI;
+use std::fs::File;
+use std::io::Read;
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::PathBuf;
 use std::ptr::NonNull;
 use std::time::{Duration, Instant};
 
-use continents::ALL_LANDMASSES;
+// Shader, geometry and layout are shared with the selector preview
+// (bevy/apps/spinning_globe) so both draw the same globe.
+use globe_scene::{build_continent_lines, build_points, bytemuck, Globals, LineInstance, PointInstance, SHADER};
 
-const SHADER: &str = include_str!("globe.wgsl");
+// The other scene this renderer hosts (bins/space_shuttle), on the same
+// layers, so switching between them is only a redraw.
+mod shuttle;
 
 // The globe rotates slowly, so 30 fps is plenty. Override with `--fps N` or
 // the GLOBE_FPS env var; 0 disables the cap (frame callbacks still pace us).
 const DEFAULT_FPS: u32 = 30;
 
+/// The wallpapers this renderer draws, named like their bins/<stem> dirs.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Scene {
+    Globe,
+    Shuttle,
+}
+
+impl Scene {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "spinning_globe" | "globe" => Some(Scene::Globe),
+            "space_shuttle" | "shuttle" => Some(Scene::Shuttle),
+            _ => None,
+        }
+    }
+}
+
+/// `--scene NAME` or WALLPAPER_SCENE; the globe by default.
+fn scene_from_args() -> Scene {
+    let mut name = std::env::var("WALLPAPER_SCENE").ok();
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--scene" {
+            name = args.next();
+        } else if let Some(v) = arg.strip_prefix("--scene=") {
+            name = Some(v.to_owned());
+        }
+    }
+    name.and_then(|n| {
+        let scene = Scene::from_name(&n);
+        if scene.is_none() {
+            eprintln!("spinning_globe: unknown scene {n:?}, showing the globe");
+        }
+        scene
+    })
+    .unwrap_or(Scene::Globe)
+}
+
 fn main() {
+    let launched = Instant::now();
     let frame_interval = fps_cap_from_args();
+    let scene = scene_from_args();
+    let start_hidden = std::env::args().any(|a| a == "--hidden")
+        || std::env::var("GLOBE_HIDDEN").is_ok_and(|v| v == "1");
+    let mut control = open_control_fifo();
 
     let conn = Connection::connect_to_env().expect("Failed to connect to Wayland");
     let (globals, mut event_queue) = registry_queue_init(&conn).expect("Failed to init registry");
@@ -43,6 +92,10 @@ fn main() {
 
     let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell not available");
+    let viewporter: Option<wp_viewporter::WpViewporter> = globals.bind(&qh, 1..=1, ()).ok();
+    if viewporter.is_none() {
+        eprintln!("spinning_globe: no wp_viewporter; hidden = full-size transparent frame");
+    }
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
@@ -54,20 +107,26 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         compositor,
         layer_shell,
+        viewporter,
         conn: conn.clone(),
         instance,
         gpu: None,
         surfaces: Vec::new(),
-        start_time: Instant::now(),
         frame_interval,
         frozen_rotation: std::env::var("GLOBE_ROTATION").ok().and_then(|v| v.parse().ok()),
+        frozen_time: std::env::var("WALLPAPER_TIME").ok().and_then(|v| v.parse().ok()),
+        scene,
+        visible: !start_hidden,
+        launched,
+        first_frame_logged: false,
     };
 
     // Surfaces are created per-output as new_output fires (covers both the
     // outputs present at startup and any hotplugged later).
     //
-    // Event loop: draw whatever is due, then sleep on the Wayland socket until
-    // either an event arrives or the next capped frame is due.
+    // Event loop: draw whatever is due, then sleep on the Wayland socket (and
+    // the control FIFO) until either an event arrives or the next capped frame
+    // is due.
     loop {
         let timeout = state.draw_due(&qh);
 
@@ -83,11 +142,17 @@ fn main() {
             tv_sec: d.as_secs() as i64,
             tv_nsec: d.subsec_nanos() as i64,
         });
-        let ready = {
-            let mut fds = [PollFd::from_borrowed_fd(guard.connection_fd(), PollFlags::IN)];
+        let (ready, control_ready) = {
+            let mut fds = vec![PollFd::from_borrowed_fd(guard.connection_fd(), PollFlags::IN)];
+            if let Some((file, _)) = &control {
+                fds.push(PollFd::new(file, PollFlags::IN));
+            }
             match poll(&mut fds, timeout.as_ref()) {
-                Ok(n) => n > 0,
-                Err(rustix::io::Errno::INTR) => false,
+                Ok(_) => (
+                    !fds[0].revents().is_empty(),
+                    fds.get(1).is_some_and(|f| !f.revents().is_empty()),
+                ),
+                Err(rustix::io::Errno::INTR) => (false, false),
                 Err(e) => panic!("poll on Wayland socket failed: {e}"),
             }
         };
@@ -99,7 +164,71 @@ fn main() {
         }
 
         event_queue.dispatch_pending(&mut state).unwrap();
+
+        if control_ready {
+            if let Some((file, _)) = &mut control {
+                for cmd in read_commands(file) {
+                    let mut words = cmd.split_whitespace();
+                    match (words.next(), words.next()) {
+                        (Some("show"), None) => state.set_visible(true, &qh),
+                        (Some("show"), Some(name)) => match Scene::from_name(name) {
+                            Some(scene) => state.show_scene(scene, &qh),
+                            None => eprintln!("spinning_globe: unknown scene {name:?}"),
+                        },
+                        (Some("hide"), None) => state.set_visible(false, &qh),
+                        _ => eprintln!("spinning_globe: unknown command {cmd:?}"),
+                    }
+                }
+            }
+        }
     }
+}
+
+/// Control FIFO for keeping the globe warm: `show`, `show <scene>` (switch
+/// to that scene and show it) or `hide`, one per line.
+/// Opened read-write so it never sees EOF and writers never block while the
+/// globe is alive. Path: $GLOBE_CONTROL or $XDG_RUNTIME_DIR/spinning_globe.ctl.
+fn open_control_fifo() -> Option<(File, PathBuf)> {
+    let path = std::env::var_os("GLOBE_CONTROL").map(PathBuf::from).or_else(|| {
+        std::env::var_os("XDG_RUNTIME_DIR").map(|d| PathBuf::from(d).join("spinning_globe.ctl"))
+    })?;
+    let _ = std::fs::remove_file(&path);
+    if let Err(e) = rustix::fs::mknodat(
+        rustix::fs::CWD,
+        &path,
+        rustix::fs::FileType::Fifo,
+        rustix::fs::Mode::from_raw_mode(0o600),
+        0,
+    ) {
+        eprintln!("spinning_globe: can't create control FIFO {}: {e}", path.display());
+        return None;
+    }
+    match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(rustix::fs::OFlags::NONBLOCK.bits() as i32)
+        .open(&path)
+    {
+        Ok(f) => Some((f, path)),
+        Err(e) => {
+            eprintln!("spinning_globe: can't open control FIFO {}: {e}", path.display());
+            None
+        }
+    }
+}
+
+fn read_commands(file: &mut File) -> Vec<String> {
+    let mut buf = [0u8; 256];
+    let mut text = String::new();
+    loop {
+        match file.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => text.push_str(&String::from_utf8_lossy(&buf[..n])),
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => break, // WouldBlock: drained
+        }
+    }
+    text.lines().map(str::trim).filter(|l| !l.is_empty()).map(str::to_owned).collect()
 }
 
 fn fps_cap_from_args() -> Option<Duration> {
@@ -125,12 +254,18 @@ struct GlobeSurface {
     gpu_surface: wgpu::Surface<'static>,
     uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
+    // Made the first time this output shows the shuttle
+    shuttle: Option<shuttle::ShuttleSurface>,
     output: wl_output::WlOutput,
     layer_surface: LayerSurface,
+    // Stretches the 1x1 hidden buffer over the whole output.
+    viewport: Option<wp_viewport::WpViewport>,
+    viewport_stretched: bool,
     width: u32,
     height: u32,
-    // Size the swapchain is currently configured for
+    // Size and alpha mode the swapchain is currently configured for
     swapchain_size: (u32, u32),
+    swapchain_alpha: wgpu::CompositeAlphaMode,
     configured: bool,
     frame_pending: bool,
     needs_redraw: bool,
@@ -142,50 +277,25 @@ struct AppState {
     output_state: OutputState,
     compositor: CompositorState,
     layer_shell: LayerShell,
+    viewporter: Option<wp_viewporter::WpViewporter>,
     conn: Connection,
     instance: wgpu::Instance,
     // Created lazily with the first surface (adapter selection needs one).
     gpu: Option<Gpu>,
     surfaces: Vec<GlobeSurface>,
-    start_time: Instant,
     frame_interval: Option<Duration>,
     frozen_rotation: Option<f32>,
-}
-
-// Catppuccin Mocha colors (the teal/green are in globe.wgsl)
-const BG_R: u8 = 30;  // Base #1e1e2e
-const BG_G: u8 = 30;
-const BG_B: u8 = 46;
-
-const TEAL_GRID_INTENSITY: f32 = 0.25;
-const TEAL_OUTLINE_INTENSITY: f32 = 0.5;
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Globals {
-    viewport: [f32; 2],
-    center: [f32; 2],
-    radius: f32,
-    rotation: f32,
-    _pad: [f32; 2],
-}
-
-/// One glowing pixel: a point on the globe (kind 0, lon/lat in radians) or a
-/// point on the fixed outline circle (kind 1, screen angle in radians).
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct PointInstance {
-    lon_lat: [f32; 2],
-    intensity: f32,
-    kind: f32,
-}
-
-/// One continent sub-segment, both ends as lon/lat in radians.
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct LineInstance {
-    a: [f32; 2],
-    b: [f32; 2],
+    // WALLPAPER_TIME=<unix seconds> freezes the shuttle scene's clock.
+    frozen_time: Option<f64>,
+    scene: Scene,
+    // Hidden = every surface shows one transparent 1x1 buffer stretched over
+    // the output by wp_viewport (full-size transparent without viewporter),
+    // and no rendering. The layers stay mapped at full size, so hiding and
+    // showing never makes Hyprland refocus or animate a resize, and awww's
+    // layer shows through.
+    visible: bool,
+    launched: Instant,
+    first_frame_logged: bool,
 }
 
 struct Gpu {
@@ -198,10 +308,13 @@ struct Gpu {
     line_count: u32,
     point_buffer: wgpu::Buffer,
     point_count: u32,
+    shuttle: shuttle::ShuttleGpu,
     format: wgpu::TextureFormat,
     view_format: wgpu::TextureFormat,
     present_mode: wgpu::PresentMode,
     alpha_mode: wgpu::CompositeAlphaMode,
+    // Used for the 1x1 hidden surface so it's see-through.
+    hidden_alpha_mode: wgpu::CompositeAlphaMode,
 }
 
 impl Gpu {
@@ -258,7 +371,11 @@ impl Gpu {
         } else {
             caps.alpha_modes[0]
         };
-        eprintln!("spinning_globe: format {format:?}, present mode {present_mode:?}");
+        let hidden_alpha_mode = [wgpu::CompositeAlphaMode::PreMultiplied, wgpu::CompositeAlphaMode::PostMultiplied]
+            .into_iter()
+            .find(|m| caps.alpha_modes.contains(m))
+            .unwrap_or(alpha_mode);
+        eprintln!("spinning_globe: format {format:?}, present mode {present_mode:?}, hidden alpha {hidden_alpha_mode:?}");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("globe shader"),
@@ -360,6 +477,8 @@ impl Gpu {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        let shuttle = shuttle::ShuttleGpu::new(&device, view_format);
+
         Ok(Gpu {
             device,
             queue,
@@ -370,14 +489,16 @@ impl Gpu {
             line_count: lines.len() as u32,
             point_buffer,
             point_count: points.len() as u32,
+            shuttle,
             format,
             view_format,
             present_mode,
             alpha_mode,
+            hidden_alpha_mode,
         })
     }
 
-    fn configure_surface(&self, surface: &wgpu::Surface<'_>, width: u32, height: u32) {
+    fn configure_surface(&self, surface: &wgpu::Surface<'_>, width: u32, height: u32, alpha_mode: wgpu::CompositeAlphaMode) {
         surface.configure(
             &self.device,
             &wgpu::SurfaceConfiguration {
@@ -388,79 +509,11 @@ impl Gpu {
                 height,
                 present_mode: self.present_mode,
                 desired_maximum_frame_latency: 2,
-                alpha_mode: self.alpha_mode,
+                alpha_mode,
                 view_formats: if self.view_format == self.format { vec![] } else { vec![self.view_format] },
             },
         );
     }
-}
-
-/// Lat/lon grid dots and the globe outline, same sampling as the CPU loops.
-fn build_points() -> Vec<PointInstance> {
-    let mut points = Vec::new();
-
-    // Latitude lines (every 30 degrees)
-    for lat_deg in (-60..=60).step_by(30) {
-        let lat = (lat_deg as f32).to_radians();
-        for lon_deg in 0..360 {
-            let lon = (lon_deg as f32).to_radians();
-            points.push(PointInstance { lon_lat: [lon, lat], intensity: TEAL_GRID_INTENSITY, kind: 0.0 });
-        }
-    }
-
-    // Longitude lines (every 30 degrees)
-    for lon_deg in (0..180).step_by(30) {
-        let lon = (lon_deg as f32).to_radians();
-        for lat_deg in -90..=90 {
-            let lat = (lat_deg as f32).to_radians();
-            points.push(PointInstance { lon_lat: [lon, lat], intensity: TEAL_GRID_INTENSITY, kind: 0.0 });
-            points.push(PointInstance { lon_lat: [lon + PI, lat], intensity: TEAL_GRID_INTENSITY, kind: 0.0 });
-        }
-    }
-
-    // Globe outline
-    for angle in 0..720 {
-        let a = (angle as f32) * PI / 360.0;
-        points.push(PointInstance { lon_lat: [a, 0.0], intensity: TEAL_OUTLINE_INTENSITY, kind: 1.0 });
-    }
-
-    points
-}
-
-/// Every landmass edge, interpolated in lat/lon space exactly like
-/// draw_continent() did; each step becomes one line instance.
-fn build_continent_lines() -> Vec<LineInstance> {
-    let mut lines = Vec::new();
-
-    for points in ALL_LANDMASSES {
-        if points.len() < 2 {
-            continue;
-        }
-
-        for i in 0..points.len() {
-            let (lon1, lat1) = points[i];
-            let (lon2, lat2) = points[(i + 1) % points.len()];
-
-            let lat1_rad = lat1.to_radians();
-            let lon1_rad = lon1.to_radians();
-            let lat2_rad = lat2.to_radians();
-            let lon2_rad = lon2.to_radians();
-
-            // More interpolation steps for smoother lines
-            let dist = ((lat2 - lat1).powi(2) + (lon2 - lon1).powi(2)).sqrt();
-            let steps = ((dist * 3.0) as i32).max(20);
-
-            let at = |s: i32| {
-                let t = s as f32 / steps as f32;
-                [lon1_rad + (lon2_rad - lon1_rad) * t, lat1_rad + (lat2_rad - lat1_rad) * t]
-            };
-            for s in 1..=steps {
-                lines.push(LineInstance { a: at(s - 1), b: at(s) });
-            }
-        }
-    }
-
-    lines
 }
 
 impl AppState {
@@ -478,7 +531,10 @@ impl AppState {
             Some(&output),
         );
 
+        // Always full-output: show/hide never changes the layer's geometry,
+        // since Hyprland animates that (the globe grew from the top-left).
         layer_surface.set_anchor(Anchor::all());
+        layer_surface.set_size(0, 0);
         layer_surface.set_exclusive_zone(-1);
         layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer_surface.commit();
@@ -519,20 +575,58 @@ impl AppState {
             entries: &[wgpu::BindGroupEntry { binding: 0, resource: uniform_buffer.as_entire_binding() }],
         });
 
+        let viewport = self.viewporter.as_ref().map(|v| v.get_viewport(layer_surface.wl_surface(), qh, ()));
+
         self.surfaces.push(GlobeSurface {
             gpu_surface,
             uniform_buffer,
             bind_group,
+            shuttle: None,
             output,
             layer_surface,
+            viewport,
+            viewport_stretched: false,
             width: 0,
             height: 0,
             swapchain_size: (0, 0),
+            swapchain_alpha: wgpu::CompositeAlphaMode::Auto,
             configured: false,
             frame_pending: false,
             needs_redraw: false,
             next_frame_at: Instant::now(),
         });
+    }
+
+    /// Switch to `scene` and show it: a redraw on the same layers.
+    fn show_scene(&mut self, scene: Scene, qh: &QueueHandle<Self>) {
+        if self.scene != scene {
+            self.scene = scene;
+            // So set_visible redraws every surface right away.
+            self.visible = false;
+        }
+        self.set_visible(true, qh);
+    }
+
+    fn set_visible(&mut self, visible: bool, qh: &QueueHandle<Self>) {
+        if self.visible == visible {
+            return;
+        }
+        self.visible = visible;
+        self.launched = Instant::now();
+        self.first_frame_logged = false;
+        // Draw the new state right away, full-size and complete, in a single
+        // commit; the layer's geometry never changes.
+        let now = Instant::now();
+        for idx in 0..self.surfaces.len() {
+            let s = &mut self.surfaces[idx];
+            if !s.configured {
+                continue;
+            }
+            s.frame_pending = false;
+            s.needs_redraw = true;
+            s.next_frame_at = now;
+            self.draw(idx, qh);
+        }
     }
 
     fn surface_index(&self, wl_surface: &wl_surface::WlSurface) -> Option<usize> {
@@ -549,7 +643,7 @@ impl AppState {
 
         for idx in 0..self.surfaces.len() {
             let s = &self.surfaces[idx];
-            if !s.configured || !s.needs_redraw || s.frame_pending {
+            if !self.visible || !s.configured || !s.needs_redraw || s.frame_pending {
                 continue;
             }
             if s.next_frame_at <= now {
@@ -564,7 +658,6 @@ impl AppState {
     }
 
     fn draw(&mut self, idx: usize, qh: &QueueHandle<Self>) {
-        let time = self.start_time.elapsed().as_secs_f32();
         let gpu = self.gpu.as_ref().expect("GPU initialised with first surface");
         let s = &mut self.surfaces[idx];
         let width = s.width;
@@ -574,9 +667,24 @@ impl AppState {
             return;
         }
 
-        if s.swapchain_size != (width, height) {
-            gpu.configure_surface(&s.gpu_surface, width, height);
-            s.swapchain_size = (width, height);
+        let visible = self.visible;
+        let alpha = if visible { gpu.alpha_mode } else { gpu.hidden_alpha_mode };
+        let stretch = !visible && s.viewport.is_some();
+        let buffer_size = if stretch { (1, 1) } else { (width, height) };
+        if s.swapchain_size != buffer_size || s.swapchain_alpha != alpha {
+            gpu.configure_surface(&s.gpu_surface, buffer_size.0, buffer_size.1, alpha);
+            s.swapchain_size = buffer_size;
+            s.swapchain_alpha = alpha;
+        }
+        // Viewport state is double-buffered, so this lands in the same commit
+        // as the buffer present() attaches: no frame at a wrong size.
+        if let Some(viewport) = &s.viewport {
+            if stretch {
+                viewport.set_destination(width as i32, height as i32);
+            } else if s.viewport_stretched {
+                viewport.set_destination(-1, -1);
+            }
+            s.viewport_stretched = stretch;
         }
 
         use wgpu::CurrentSurfaceTexture as Cst;
@@ -600,29 +708,27 @@ impl AppState {
             ..Default::default()
         });
 
-        // Globe parameters
-        let globe_radius = (height.min(width) as f32 * 0.35) as i32;
-        let center_x = width as f32 / 2.0;
-        let center_y = height as f32 / 2.0;
-
-        // Rotation angle (shared start_time keeps all monitors in sync);
-        // GLOBE_ROTATION=<radians> freezes it, handy for comparing renders.
-        let rotation = self.frozen_rotation.unwrap_or(time * 0.15);
-
-        gpu.queue.write_buffer(
-            &s.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&Globals {
-                viewport: [width as f32, height as f32],
-                center: [center_x, center_y],
-                radius: globe_radius as f32,
-                rotation,
-                _pad: [0.0; 2],
-            }),
-        );
-
         let mut encoder = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("globe") });
-        {
+        if visible && self.scene == Scene::Shuttle {
+            // Also on the wall clock, shared with its selector preview.
+            let t = self.frozen_time.unwrap_or_else(|| shuttle_scene::unix_secs(std::time::SystemTime::now()));
+            let globals = shuttle_scene::Globals::at_secs(t, width, height);
+            let target = s.shuttle.get_or_insert_with(|| gpu.shuttle.surface(&gpu.device));
+            gpu.shuttle.encode(&gpu.device, &gpu.queue, &mut encoder, &view, target, &globals);
+        } else {
+            // The shuttle's depth target is only kept while it shows.
+            if let Some(target) = &mut s.shuttle {
+                target.release();
+            }
+
+            // Rotation from the wall clock, the same function the selector
+            // preview uses, so both show the same face at the same moment (and
+            // every monitor agrees); GLOBE_ROTATION=<radians> freezes it, handy
+            // for comparing renders.
+            let rotation = self.frozen_rotation.unwrap_or_else(globe_scene::rotation_now);
+
+            gpu.queue.write_buffer(&s.uniform_buffer, 0, bytemuck::bytes_of(&Globals::for_output(width, height, rotation)));
+
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("globe"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -631,17 +737,25 @@ impl AppState {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         // Clear to background
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: BG_R as f64 / 255.0,
-                            g: BG_G as f64 / 255.0,
-                            b: BG_B as f64 / 255.0,
-                            a: 1.0,
+                        load: wgpu::LoadOp::Clear(if visible {
+                            let [r, g, b] = globe_scene::BG;
+                            wgpu::Color { r, g, b, a: 1.0 }
+                        } else {
+                            wgpu::Color::TRANSPARENT
                         }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 ..Default::default()
             });
+            if !visible {
+                // Hidden: one transparent pixel, then no more frames.
+                drop(pass);
+                gpu.queue.submit(Some(encoder.finish()));
+                gpu.queue.present(frame);
+                s.needs_redraw = false;
+                return;
+            }
             pass.set_bind_group(0, &s.bind_group, &[]);
 
             // Landmasses first (MAX blend), then the additive grid and outline.
@@ -665,8 +779,20 @@ impl AppState {
         gpu.queue.present(frame);
 
         s.needs_redraw = false;
+        if !self.first_frame_logged {
+            self.first_frame_logged = true;
+            eprintln!("spinning_globe: first visible frame ({:?}) {:.1} ms after start/show", self.scene, self.launched.elapsed().as_secs_f64() * 1000.0);
+        }
         if let Some(interval) = self.frame_interval {
             s.next_frame_at = Instant::now() + interval;
+        }
+    }
+}
+
+impl Drop for GlobeSurface {
+    fn drop(&mut self) {
+        if let Some(viewport) = self.viewport.take() {
+            viewport.destroy();
         }
     }
 }
@@ -717,6 +843,7 @@ impl LayerShellHandler for AppState {
         // fall back to something sane if it sends 0.
         s.width = if w == 0 { 1920 } else { w };
         s.height = if h == 0 { 1080 } else { h };
+        s.frame_pending = false;
         s.configured = true;
         s.needs_redraw = true;
 
@@ -734,3 +861,5 @@ delegate_compositor!(AppState);
 delegate_output!(AppState);
 delegate_layer!(AppState);
 delegate_registry!(AppState);
+wayland_client::delegate_noop!(AppState: ignore wp_viewporter::WpViewporter);
+wayland_client::delegate_noop!(AppState: ignore wp_viewport::WpViewport);

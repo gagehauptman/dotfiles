@@ -1,0 +1,14 @@
+# The space shuttle wallpaper's scene (shader, geometry, layout, clock),
+# shared by the wallpaper renderer (scripts/wallpaper/bins/spinning_globe,
+# which hosts every warm scene) and the selector preview app in
+# bevy/apps/space_shuttle.
+[package]
+name = "shuttle_scene"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }
+# The background colour comes from the globe's scene.
+globe_scene = { path = "../../spinning_globe/scene" }

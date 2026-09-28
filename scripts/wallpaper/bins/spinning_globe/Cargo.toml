@@ -7,10 +7,11 @@ edition = "2024"
 smithay-client-toolkit = { version = "0.19", default-features = false }
 wayland-client = "0.31"
 pollster = "0.4"
-bytemuck = { version = "1", features = ["derive"] }
+globe_scene = { path = "scene" }
+shuttle_scene = { path = "../space_shuttle/scene" }
 glam = "0.29"
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 wgpu = { version = "30.0.1", default-features = false, features = ["vulkan", "wgsl"] }
 wayland-backend = { version = "0.3.17", features = ["client_system"] }
-rustix = { version = "1.1.5", features = ["event"] }
+rustix = { version = "1.1.5", features = ["event", "fs"] }

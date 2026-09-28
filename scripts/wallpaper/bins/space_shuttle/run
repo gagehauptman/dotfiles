@@ -1,0 +1,8 @@
+#!/bin/sh
+# The space shuttle is a scene of the warm wallpaper renderer in
+# ../spinning_globe, which it shares with the globe (layers, hide/show,
+# GPU setup); its scene itself is ./scene (shuttle_scene).
+dir=$(dirname "$(realpath "$0")")/../spinning_globe
+bin=$dir/target/release/layer_shell_bevy
+[ -x "$bin" ] || cargo build --release --manifest-path "$dir/Cargo.toml" >&2
+exec "$bin" --scene space_shuttle "$@"

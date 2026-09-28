@@ -1,0 +1,10 @@
+# The globe scene (shader + geometry), shared by the wallpaper renderer here
+# and the selector preview app in bevy/apps/spinning_globe.
+[package]
+name = "globe_scene"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }

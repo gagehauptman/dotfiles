@@ -200,6 +200,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
 
 [[package]]
+name = "globe_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "gpu-allocator"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -258,12 +265,13 @@ dependencies = [
 name = "layer_shell_bevy"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "glam",
+ "globe_scene",
  "pollster",
  "ron",
  "rustix 1.1.5",
  "serde",
+ "shuttle_scene",
  "smithay-client-toolkit",
  "wayland-backend",
  "wayland-client",
@@ -677,6 +685,14 @@ name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "shuttle_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "globe_scene",
+]
 
 [[package]]
 name = "smallvec"

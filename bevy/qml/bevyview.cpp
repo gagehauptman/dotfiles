@@ -10,6 +10,7 @@
 #include <QMutex>
 #include <QHash>
 #include <dlfcn.h>
+#include <algorithm>
 
 namespace {
 // Loaded app libraries, kept for the life of the process: a library that owns
@@ -30,6 +31,7 @@ bool loadApi(const QString &path, BevyApi &api, QString &err)
     a.scroll = reinterpret_cast<bevy_scroll_fn>(dlsym(h, "bevy_widget_scroll"));
     a.ui = reinterpret_cast<bevy_ui_fn>(dlsym(h, "bevy_widget_ui"));
     a.event = reinterpret_cast<bevy_event_fn>(dlsym(h, "bevy_widget_event"));
+    a.nextFrame = reinterpret_cast<bevy_next_frame_fn>(dlsym(h, "bevy_widget_next_frame"));
     a.destroy = reinterpret_cast<bevy_destroy_fn>(dlsym(h, "bevy_widget_destroy"));
     if (!a.create || !a.frame || !a.pointer || !a.scroll || !a.ui || !a.event || !a.destroy) {
         err = path + " is not a quickshell-bevy app (missing bevy_widget_* symbols)";
@@ -59,6 +61,27 @@ public:
 BevyView::BevyView()
 {
     setFlag(ItemHasContents, true);
+    m_timer.setSingleShot(true);
+    m_timer.setTimerType(Qt::PreciseTimer);
+    connect(&m_timer, &QTimer::timeout, this, [this] { if (isVisible()) update(); });
+}
+
+void BevyView::kick()
+{
+    m_kicked = true;
+    m_timer.stop();
+    update();
+}
+
+void BevyView::schedule(int ms)
+{
+    if (!isVisible()) return;
+    if (ms <= 1) {
+        m_timer.stop();
+        update();
+    } else if (!m_timer.isActive() || m_timer.remainingTime() > ms) {
+        m_timer.start(ms);
+    }
 }
 
 BevyView::~BevyView()
@@ -85,16 +108,21 @@ void BevyView::setLibrary(const QString &path)
 void BevyView::pointer(qreal x, qreal y, bool down)
 {
     if (m_bevy && m_api.pointer) m_api.pointer(m_bevy, float(x), float(y), down);
+    // A press, drag or release wants a frame now; hovering waits for the next.
+    if (down || down != m_lastDown) kick();
+    m_lastDown = down;
 }
 
 void BevyView::scroll(qreal dy)
 {
     if (m_bevy && m_api.scroll) m_api.scroll(m_bevy, float(dy));
+    kick();
 }
 
 void BevyView::send(const QString &id, const QString &value)
 {
     if (m_bevy && m_api.event) m_api.event(m_bevy, id.toUtf8().constData(), value.toUtf8().constData());
+    kick();
 }
 
 void BevyView::itemChange(ItemChange change, const ItemChangeData &value)
@@ -191,11 +219,18 @@ void BevyView::beforeRendering()
     }
     const qreal dpr = m_window->effectiveDevicePixelRatio();
     const QSize px(qMax(1, int(width() * dpr)), qMax(1, int(height() * dpr)));
+    // Not due yet (the window redraws for another item, say): keep showing
+    // the last image. A resize or input is always due.
+    const auto now = std::chrono::steady_clock::now();
+    const bool kicked = m_kicked.exchange(false);
+    if (!kicked && now < m_due && m_frameImage && px == m_frameSize) return;
     uint64_t image = m_api.frame(m_bevy, uint32_t(px.width()), uint32_t(px.height()));
     if (image) {
         m_frameImage = image;
         m_frameSize = px;
     }
+    const uint32_t ms = m_api.nextFrame ? m_api.nextFrame(m_bevy) : 0;
+    m_due = now + std::chrono::milliseconds(ms);
     // Controls and readouts changed by the app this frame
     uint64_t gen = m_uiGen;
     const char *json = m_api.ui(m_bevy, &gen);
@@ -209,7 +244,12 @@ void BevyView::beforeRendering()
 void BevyView::afterRendering()
 {
     if (m_failed || !m_bevy) return;
-    QMetaObject::invokeMethod(this, [this] { if (isVisible()) update(); }, Qt::QueuedConnection);
+    // Ask for the window's next frame when the app's is due: right away at
+    // the display rate, else on a timer. Also when this window frame wasn't
+    // ours, so a skipped frame never stalls the card.
+    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(m_due - std::chrono::steady_clock::now()).count();
+    const int ms = int(std::clamp<qint64>(left, 0, 60000));
+    QMetaObject::invokeMethod(this, [this, ms] { schedule(ms); }, Qt::QueuedConnection);
 }
 
 void BevyView::invalidate()

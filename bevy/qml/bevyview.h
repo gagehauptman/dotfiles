@@ -6,7 +6,10 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QSGTexture>
+#include <QTimer>
 #include <QtQml/qqmlregistration.h>
+#include <atomic>
+#include <chrono>
 #include <vector>
 
 extern "C" {
@@ -29,6 +32,7 @@ typedef void (*bevy_pointer_fn)(BevyWidget *w, float x, float y, bool down);
 typedef void (*bevy_scroll_fn)(BevyWidget *w, float dy);
 typedef const char *(*bevy_ui_fn)(BevyWidget *w, uint64_t *generation);
 typedef void (*bevy_event_fn)(BevyWidget *w, const char *id, const char *value);
+typedef uint32_t (*bevy_next_frame_fn)(BevyWidget *w);
 typedef void (*bevy_destroy_fn)(BevyWidget *w);
 }
 // The entry points of one loaded app library
@@ -39,6 +43,8 @@ struct BevyApi {
     bevy_scroll_fn scroll = nullptr;
     bevy_ui_fn ui = nullptr;
     bevy_event_fn event = nullptr;
+    // Optional (older apps lack it): ms until the app wants its next frame
+    bevy_next_frame_fn nextFrame = nullptr;
     bevy_destroy_fn destroy = nullptr;
 };
 
@@ -98,6 +104,16 @@ private:
     QString m_error;
     QString m_ui;          // GUI thread
     uint64_t m_uiGen = 0;  // render thread
+
+    // Frame pacing: the app says after each frame when it wants the next
+    // (FramePacing in the harness); frames in between reuse the last image,
+    // even when something else makes the window redraw.
+    void kick();                                   // GUI thread: input, a frame now
+    void schedule(int ms);                         // GUI thread
+    QTimer m_timer;                                // GUI thread
+    std::atomic<bool> m_kicked{false};
+    bool m_lastDown = false;                       // GUI thread
+    std::chrono::steady_clock::time_point m_due{}; // render thread
 
     // Written on the render thread in beforeRendering, read in the sync phase
     uint64_t m_frameImage = 0;

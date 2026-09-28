@@ -51,7 +51,7 @@ use wgpu_hal::api::Vulkan;
 
 pub mod prelude {
     pub use crate::widget;
-    pub use crate::{rig, Control, Info, Setting, WidgetCamera, WidgetEvent, WidgetInput, WidgetOptions, WidgetTarget, WidgetUi};
+    pub use crate::{redraw_on_asset, rig, Control, FramePacing, Info, Setting, WidgetCamera, WidgetEvent, WidgetInput, WidgetOptions, WidgetRedraw, WidgetTarget, WidgetUi};
 }
 
 /// Camera rigs for scenes built around a body at the origin: an overhead
@@ -87,8 +87,18 @@ pub mod rig {
     }
 
     /// Moves `current` a step towards `goal` with time constant `tau`
-    /// seconds (exponential approach of position and orientation).
-    pub fn approach(current: &mut Transform, goal: &Transform, dt: f32, tau: f32) {
+    /// seconds (exponential approach of position and orientation). Snaps
+    /// onto the goal once it is within a hair of it, so a finished move
+    /// stops changing the transform (and the card can stop redrawing, see
+    /// [`FramePacing`](crate::FramePacing)). Takes the component through
+    /// `Mut` so an unchanged pose doesn't count as a change.
+    pub fn approach(current: &mut Mut<Transform>, goal: &Transform, dt: f32, tau: f32) {
+        let close = current.translation.distance_squared(goal.translation) < 1e-10
+            && current.rotation.dot(goal.rotation).abs() > 1.0 - 1e-9;
+        if close {
+            current.set_if_neq(*goal);
+            return;
+        }
         let a = if tau <= 0.0 { 1.0 } else { 1.0 - (-dt / tau).exp() };
         current.translation = current.translation.lerp(goal.translation, a);
         current.rotation = current.rotation.slerp(goal.rotation, a);
@@ -417,6 +427,68 @@ pub struct WidgetTarget {
     pub height: u32,
 }
 
+/// How often the card runs a frame (an update and a render). Qt's render
+/// loop runs at the display's refresh rate, which is far more than a card
+/// needs, and every frame also redraws the whole dashboard window.
+///
+/// - For `input_boost` seconds after a press, drag, wheel step or control
+///   press: every display frame, so handling the scene stays smooth.
+/// - Otherwise at most `fps` frames a second.
+/// - With `on_change`, a frame that changed nothing on screen (see
+///   [`WidgetRedraw`]) drops the card to `idle_fps` until one does. Idle
+///   frames still update the app, so it keeps seeing time pass, network
+///   data and so on; the first change puts it back on `fps`.
+///
+/// The default is continuous at 30 fps, for scenes that animate on their
+/// own (a shader on the wall clock can't be seen changing). Modify the
+/// resource from the app's plugin to change it.
+#[derive(Resource, Debug, Clone)]
+pub struct FramePacing {
+    /// Frames a second while something moves; 0 = every display frame.
+    pub fps: f32,
+    /// Only redraw at `fps` while something changes; `idle_fps` otherwise.
+    pub on_change: bool,
+    /// Frames a second while nothing changes (`on_change` only); 0 = `fps`.
+    pub idle_fps: f32,
+    /// Seconds of display-rate frames after input.
+    pub input_boost: f32,
+}
+
+impl Default for FramePacing {
+    fn default() -> Self {
+        FramePacing { fps: 30.0, on_change: false, idle_fps: 4.0, input_boost: 1.5 }
+    }
+}
+
+/// What counts as a change on screen, for [`FramePacing::on_change`]: the
+/// harness notices entities that move (`GlobalTransform`), appear,
+/// disappear or change `Visibility`, `Mesh3d` or `MeshMaterial3d<StandardMaterial>`
+/// swaps, changed cameras and projections, and any `Mesh`, `Image` or
+/// `StandardMaterial` asset event. Anything else that changes the picture
+/// (a custom material's parameters, say) calls [`WidgetRedraw::request`],
+/// or registers the material with [`redraw_on_asset`].
+#[derive(Resource, Default, Debug, Clone, Copy)]
+pub struct WidgetRedraw {
+    requested: bool,
+}
+
+impl WidgetRedraw {
+    /// This frame changed the picture.
+    pub fn request(&mut self) {
+        self.requested = true;
+    }
+}
+
+/// Counts every event of asset type `A` (a custom material, say) as a
+/// change on screen for [`FramePacing::on_change`].
+pub fn redraw_on_asset<A: Asset>(app: &mut App) {
+    app.add_systems(Last, (|mut events: EventReader<AssetEvent<A>>, mut redraw: ResMut<WidgetRedraw>| {
+        if events.read().next().is_some() {
+            redraw.request();
+        }
+    }).before(detect_changes));
+}
+
 /// Exports the C entry points Quickshell's `BevyView` looks up (`dlopen`) for
 /// a cdylib whose scene is the given Bevy plugin (any `impl Plugins`).
 #[macro_export]
@@ -451,6 +523,10 @@ macro_rules! widget {
         #[no_mangle]
         pub unsafe extern "C" fn bevy_widget_event(w: *mut $crate::ffi::Widget, id: *const ::core::ffi::c_char, value: *const ::core::ffi::c_char) {
             $crate::ffi::event(w, id, value)
+        }
+        #[no_mangle]
+        pub unsafe extern "C" fn bevy_widget_next_frame(w: *mut $crate::ffi::Widget) -> u32 {
+            $crate::ffi::next_frame(w)
         }
         #[no_mangle]
         pub unsafe extern "C" fn bevy_widget_destroy(w: *mut $crate::ffi::Widget) {
@@ -488,10 +564,48 @@ impl Plugin for HarnessPlugin {
         app.init_resource::<WidgetInput>()
             .init_resource::<WidgetTarget>()
             .init_resource::<WidgetUi>()
+            .init_resource::<FramePacing>()
+            .init_resource::<WidgetRedraw>()
+            .init_resource::<Pacer>()
             .add_event::<WidgetEvent>()
             .add_systems(PostStartup, ensure_camera)
             .add_systems(PreUpdate, (sync_input, aim_cameras))
-            .add_systems(Last, publish_ui);
+            .add_systems(Last, (publish_ui, detect_changes));
+    }
+}
+
+/// What the last frame did, for [`FramePacing`]: read by the FFI side after
+/// each update to decide when the next frame is due.
+#[derive(Resource)]
+struct Pacer {
+    /// Last input (press, drag, wheel, control press).
+    input_at: Option<std::time::Instant>,
+    started: std::time::Instant,
+    /// The last frame changed the picture.
+    changed: bool,
+    /// Frames in a row that changed nothing.
+    quiet: u32,
+}
+
+impl Default for Pacer {
+    fn default() -> Self {
+        Pacer { input_at: None, started: std::time::Instant::now(), changed: true, quiet: 0 }
+    }
+}
+
+impl Pacer {
+    /// Milliseconds until the next frame is due; 0 = the next display frame.
+    fn next_frame_ms(&self, pacing: &FramePacing) -> u32 {
+        let interval = |fps: f32| if fps > 0.0 { (1000.0 / fps).round().clamp(1.0, 60_000.0) as u32 } else { 0 };
+        if self.input_at.is_some_and(|t| t.elapsed().as_secs_f32() < pacing.input_boost) {
+            return 0;
+        }
+        // Idle only after a couple of quiet frames: a change can take a frame
+        // more to reach the GPU (an asset prepared the frame after it's added).
+        if pacing.on_change && self.quiet >= 2 && pacing.idle_fps > 0.0 {
+            return interval(pacing.idle_fps).max(interval(pacing.fps));
+        }
+        interval(pacing.fps)
     }
 }
 
@@ -500,17 +614,24 @@ fn sync_input(
     target: Res<WidgetTarget>,
     mut input: ResMut<WidgetInput>,
     mut ui: ResMut<WidgetUi>,
+    mut pacer: ResMut<Pacer>,
     mut events: EventWriter<WidgetEvent>,
 ) {
-    let (x, y, down, scroll, pending) = match shared.0.lock() {
+    let (x, y, down, scroll, pending, edge) = match shared.0.lock() {
         Ok(mut s) => {
-            let (x, y, down) = s.edges.pop_front().unwrap_or((s.x, s.y, s.down));
-            let out = (x, y, down, s.scroll, std::mem::take(&mut s.events));
+            let edge = s.edges.pop_front();
+            let (x, y, down) = edge.unwrap_or((s.x, s.y, s.down));
+            let out = (x, y, down, s.scroll, std::mem::take(&mut s.events), edge.is_some());
             s.scroll = 0.0;
             out
         }
-        Err(_) => (0.5, 0.5, false, 0.0, Vec::new()),
+        Err(_) => (0.5, 0.5, false, 0.0, Vec::new(), false),
     };
+    // Hovering alone isn't input: no app reacts to it, and it would keep the
+    // card at the display rate for as long as the pointer is over it.
+    if down || edge || scroll != 0.0 || !pending.is_empty() {
+        pacer.input_at = Some(std::time::Instant::now());
+    }
     *input = WidgetInput { x, y, down, scroll, width: target.width, height: target.height };
     for (id, value) in pending {
         // The control follows the input; the app then reads its new state or the event
@@ -531,6 +652,37 @@ fn publish_ui(mut ui: ResMut<WidgetUi>, shared: Res<SharedUi>) {
             s.1 = json;
         }
     }
+}
+
+/// Did this frame change the picture? See [`WidgetRedraw`].
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn detect_changes(
+    mut pacer: ResMut<Pacer>,
+    mut redraw: ResMut<WidgetRedraw>,
+    changed: Query<
+        (),
+        Or<(
+            Changed<GlobalTransform>,
+            Changed<Visibility>,
+            Changed<Mesh3d>,
+            Changed<MeshMaterial3d<StandardMaterial>>,
+            Changed<Camera>,
+            Changed<Projection>,
+        )>,
+    >,
+    mut removed: RemovedComponents<Mesh3d>,
+    mut meshes: EventReader<AssetEvent<Mesh>>,
+    mut images: EventReader<AssetEvent<Image>>,
+    mut materials: EventReader<AssetEvent<StandardMaterial>>,
+    clear: Res<ClearColor>,
+) {
+    // Everything counts on every reader, so none of them lags into a later
+    // frame.
+    let events = meshes.read().count() + images.read().count() + materials.read().count() + removed.read().count();
+    let settling = pacer.started.elapsed().as_secs_f32() < 2.0;
+    let now = std::mem::take(&mut redraw.requested) || settling || events > 0 || clear.is_changed() || !changed.is_empty();
+    pacer.changed = now;
+    pacer.quiet = if now { 0 } else { pacer.quiet.saturating_add(1) };
 }
 
 fn aim_cameras(target: Res<WidgetTarget>, mut cams: Query<&mut Camera, With<WidgetCamera>>) {
@@ -586,6 +738,9 @@ pub mod ffi {
         target: Option<Target>,
         retired: Vec<(Handle<Image>, u64)>,
         frame: u64,
+        /// When the next frame is due, in ms after this one (0 = next display
+        /// frame); see [`FramePacing`].
+        next_ms: u32,
         /// A system panicked: the schedules are gone, so the app is frozen on
         /// its last frame instead of panicking again every frame.
         dead: bool,
@@ -648,6 +803,23 @@ pub mod ffi {
                 w.dead = true;
                 0
             }
+        }
+    }
+
+    /// Milliseconds after the last frame until the app wants the next one
+    /// (0 = the next display frame); see [`FramePacing`]. A frozen app wants
+    /// no more frames, which is a long wait.
+    /// # Safety
+    /// Render thread only (the thread that calls `frame`).
+    pub unsafe fn next_frame(w: *mut Widget) -> u32 {
+        if w.is_null() {
+            return 0;
+        }
+        let w = &*w;
+        if w.dead {
+            60_000
+        } else {
+            w.next_ms
         }
     }
 
@@ -839,7 +1011,7 @@ pub mod ffi {
         }
         app.finish();
         app.cleanup();
-        Ok(Widget { input, ui, ui_json: CString::default(), ui_gen: 0, app, sync, target: None, retired: Vec::new(), frame: 0, dead: false })
+        Ok(Widget { input, ui, ui_json: CString::default(), ui_gen: 0, app, sync, target: None, retired: Vec::new(), frame: 0, next_ms: 0, dead: false })
     }
 
     impl Widget {
@@ -875,6 +1047,8 @@ pub mod ffi {
             }
 
             self.app.update();
+            let world = self.app.world();
+            self.next_ms = world.resource::<Pacer>().next_frame_ms(world.resource::<FramePacing>());
 
             // Find the VkImage behind the target (uploaded by the render world)
             let Some(t) = self.target.as_mut() else { return vk::Image::null() };

@@ -83,6 +83,8 @@ impl Plugin for Globe {
             }
             None => (View::Orbit, None),
         };
+        // the sun's direction and the data layers live in the material
+        redraw_on_asset::<GlobeMaterial>(app);
         app.add_plugins(MaterialPlugin::<GlobeMaterial>::default())
             .insert_resource(feed)
             .insert_resource(palette)
@@ -97,6 +99,10 @@ impl Plugin for Globe {
             .init_resource::<Selection>()
             .init_resource::<Sats>()
             .insert_resource(CameraRig { mode, pending_chase: pending })
+            // Nothing here moves on its own clock except what the systems
+            // rebuild (aircraft a few times a second, satellites every frame
+            // while shown), so a still globe needn't be redrawn 30 times a second.
+            .insert_resource(FramePacing { on_change: true, ..default() })
             .add_systems(Startup, setup)
             .add_systems(Update, (receive, controls, settings, camera, select, line_visibility, labels, sun, aircraft, selection_view, satellites).chain());
     }
@@ -1077,7 +1083,8 @@ fn camera(
             if !o.touched {
                 o.dist = fit_distance(aspect);
             }
-            *tf = rig::above(sphere::latlon(o.lat, o.lon), o.dist);
+            // unchanged unless the view moved, so a still globe can idle
+            tf.set_if_neq(rig::above(sphere::latlon(o.lat, o.lon), o.dist));
         }
         View::Focus { dir, dist } => {
             rig::approach(&mut tf, &rig::above(dir, dist), dt, 0.35);

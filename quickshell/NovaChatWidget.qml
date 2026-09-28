@@ -48,11 +48,16 @@ Item {
   property var agents: []
   property bool agentsOpen: false
   property string openAgent: ""         // id of the agent whose task/result is expanded
+  property string openRuns: ""          // id of the agent whose earlier runs are listed
   property real now: Date.now()
-  // finished agents drop off 30 min after they end; running ones always show
-  readonly property var shownAgents: agents.filter(a => a.status === "running" || !a.endedAt || now - a.endedAt < 30 * 60 * 1000)
+  // One row per agent session, showing its latest run. A finished agent that gets a follow-up comes back as
+  // "queued" (follow-up accepted, not started) then "running" with run > 1; earlier runs sit in a.runs.
+  function agentActive(a) { return a.status === "running" || a.status === "queued" }
+  // finished agents drop off 30 min after they end; running/queued ones always show
+  readonly property var shownAgents: agents.filter(a => agentActive(a) || !a.endedAt || now - a.endedAt < 30 * 60 * 1000)
   readonly property int agentsRunning: shownAgents.filter(a => a.status === "running").length
-  readonly property int agentsFailed: shownAgents.filter(a => a.status !== "running" && a.status !== "done").length
+  readonly property int agentsQueued: shownAgents.filter(a => a.status === "queued").length
+  readonly property int agentsFailed: shownAgents.filter(a => !agentActive(a) && a.status !== "done").length
   FileView {
     id: agentsFile
     path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nova-voice/agents.json"
@@ -61,7 +66,7 @@ Item {
     onFileChanged: reload()
     onLoaded: { try { chat.agents = JSON.parse(text()).agents || [] } catch (e) {} }
   }
-  Timer { interval: 1000; repeat: true; running: chat.isOpen && chat.agentsRunning > 0; onTriggered: chat.now = Date.now() }
+  Timer { interval: 1000; repeat: true; running: chat.isOpen && chat.agentsRunning + chat.agentsQueued > 0; onTriggered: chat.now = Date.now() }
   Timer { interval: 60000; repeat: true; running: chat.isOpen; triggeredOnStart: true; onTriggered: chat.now = Date.now() }
   function fmtDur(ms) {
     let s = Math.max(0, Math.round(ms / 1000))
@@ -71,6 +76,7 @@ Item {
     return Math.floor(m / 60) + "h " + (m % 60) + "m"
   }
   function agentWhen(a) {
+    if (a.status === "queued") return "queued " + fmtDur(now - (a.startedAt || now))
     if (a.status === "running") return "running " + fmtDur(now - (a.startedAt || now))
     let took = (a.endedAt && a.startedAt) ? "took " + fmtDur(a.endedAt - a.startedAt) : ""
     let ago = a.endedAt ? fmtDur(Date.now() - a.endedAt) + " ago" : ""
@@ -347,9 +353,11 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: "󰚩  Agents" + (chat.shownAgents.length === 0 ? "  ·  none" : "")
               + (chat.agentsRunning ? "  ·  " + chat.agentsRunning + " running" : "")
-              + ((chat.shownAgents.length - chat.agentsRunning - chat.agentsFailed) ? "  ·  " + (chat.shownAgents.length - chat.agentsRunning - chat.agentsFailed) + " done" : "")
+              + (chat.agentsQueued ? "  ·  " + chat.agentsQueued + " queued" : "")
+              + ((chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) ? "  ·  " + (chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) + " done" : "")
               + (chat.agentsFailed ? "  ·  " + chat.agentsFailed + " failed" : "")
-        color: chat.agentsRunning ? Theme.colors.teal : chat.shownAgents.length ? Theme.colors.textSecondary : Theme.colors.textMuted
+        color: chat.agentsRunning ? Theme.colors.teal : chat.agentsQueued ? Theme.colors.yellow
+               : chat.shownAgents.length ? Theme.colors.textSecondary : Theme.colors.textMuted
         font.pixelSize: metrics.fontSmall
         font.family: "monospace"
       }
@@ -392,7 +400,10 @@ Item {
             required property var modelData
             readonly property bool open: chat.openAgent === modelData.id
             readonly property color tint: modelData.status === "running" ? Theme.colors.teal
+                                          : modelData.status === "queued" ? Theme.colors.yellow
                                           : modelData.status === "done" ? Theme.colors.green : Theme.colors.red
+            readonly property int run: modelData.run || 1
+            readonly property var earlier: modelData.runs || []
             width: agentList.width
             height: arowCol.implicitHeight + metrics.s(12)
             radius: metrics.radiusNormal
@@ -410,7 +421,8 @@ Item {
                 Text {
                   id: aicon
                   anchors.verticalCenter: parent.verticalCenter
-                  text: arow.modelData.status === "running" ? "󰑮" : arow.modelData.status === "done" ? "󰄬" : "󰅖"
+                  text: arow.modelData.status === "running" ? "󰑮" : arow.modelData.status === "queued" ? "󰔟"
+                        : arow.modelData.status === "done" ? "󰄬" : "󰅖"
                   color: arow.tint
                   font.pixelSize: metrics.fontNormal
                   font.family: "monospace"
@@ -422,14 +434,42 @@ Item {
                   }
                 }
                 Text {
+                  id: alabel
                   x: aicon.width + metrics.spacingSmall
                   anchors.verticalCenter: parent.verticalCenter
-                  width: parent.width - x - awhen.width - metrics.spacingNormal
+                  width: Math.min(implicitWidth, parent.width - x - awhen.width - abadges.width - metrics.spacingNormal * 2)
                   elide: Text.ElideRight
                   text: arow.modelData.label
                   color: Theme.colors.textPrimary
                   font.pixelSize: metrics.fontSmall
                   font.family: "monospace"
+                }
+                Row {                      // resumed agents: which run this is, and follow-ups waiting behind it
+                  id: abadges
+                  x: alabel.x + alabel.width + metrics.spacingSmall
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: metrics.s(4)
+                  Repeater {
+                    model: [arow.run > 1 ? "↻ run " + arow.run : "",
+                            arow.modelData.pending ? "+" + arow.modelData.pending + " queued" : ""].filter(x => x)
+                    Rectangle {
+                      required property string modelData
+                      width: abadge.implicitWidth + metrics.s(10)
+                      height: abadge.implicitHeight + metrics.s(2)
+                      radius: height / 2
+                      color: "transparent"
+                      border.width: 1
+                      border.color: modelData.startsWith("+") ? Theme.colors.yellow : arow.tint
+                      Text {
+                        id: abadge
+                        anchors.centerIn: parent
+                        text: parent.modelData
+                        color: parent.border.color
+                        font.pixelSize: metrics.fontTiny
+                        font.family: "monospace"
+                      }
+                    }
+                  }
                 }
                 MouseArea {                // title line toggles the details; the text below stays selectable
                   anchors.fill: parent
@@ -456,16 +496,58 @@ Item {
                 font.pixelSize: metrics.fontTiny
                 font.family: "monospace"
               }
+              TextEdit {                   // what this run was asked (a resumed agent's follow-up message)
+                visible: arow.open && !!arow.modelData.followup
+                width: parent.width
+                text: "Follow-up (run " + arow.run + "): " + (arow.modelData.followup || "")
+                readOnly: true; selectByMouse: true
+                wrapMode: TextEdit.Wrap
+                color: Theme.colors.textMuted
+                font.pixelSize: metrics.fontTiny
+                font.family: "monospace"
+              }
               TextEdit {
                 visible: arow.open
                 width: parent.width
-                text: arow.modelData.result ? arow.modelData.result
-                      : arow.modelData.status === "running" ? "Still working…" : "(no result text)"
+                text: arow.modelData.result ? (arow.run > 1 ? "Run " + arow.run + ": " : "") + arow.modelData.result
+                      : arow.modelData.status === "running" ? (arow.run > 1 ? "Run " + arow.run + " still working…" : "Still working…")
+                      : arow.modelData.status === "queued" ? "Follow-up accepted, run " + arow.run + " hasn't started yet."
+                      : "(no result text)"
                 readOnly: true; selectByMouse: true
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textSecondary
                 font.pixelSize: metrics.fontSmall
                 font.family: "monospace"
+              }
+              Text {                       // earlier runs of a resumed agent, collapsed so they don't read as the current one
+                visible: arow.open && arow.earlier.length > 0
+                text: (chat.openRuns === arow.modelData.id ? "󰅀 " : "󰅂 ") + "Earlier runs (" + arow.earlier.length + ")"
+                color: Theme.colors.textMuted
+                font.pixelSize: metrics.fontTiny
+                font.family: "monospace"
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: chat.openRuns = chat.openRuns === arow.modelData.id ? "" : arow.modelData.id
+                }
+              }
+              Repeater {
+                model: arow.open && chat.openRuns === arow.modelData.id ? arow.earlier.slice().reverse() : []
+                TextEdit {
+                  required property var modelData
+                  width: arowCol.width
+                  leftPadding: metrics.s(10)
+                  text: "Run " + modelData.run + " · " + modelData.status
+                        + (modelData.endedAt && modelData.startedAt ? " · took " + chat.fmtDur(modelData.endedAt - modelData.startedAt) : "")
+                        + (modelData.endedAt ? " · " + chat.fmtDur(chat.now - modelData.endedAt) + " ago" : "")
+                        + (modelData.task ? "\nFollow-up: " + modelData.task : "")
+                        + "\n" + (modelData.result || "(no result text)")
+                  readOnly: true; selectByMouse: true
+                  wrapMode: TextEdit.Wrap
+                  color: Theme.colors.textMuted
+                  font.pixelSize: metrics.fontTiny
+                  font.family: "monospace"
+                }
               }
             }
           }

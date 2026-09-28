@@ -826,11 +826,39 @@ class Server(http.server.ThreadingHTTPServer):
 
 
 def watch_parent():
-    """Exit when the shell that started us is gone."""
+    """Exit when the shell that started us is gone. An orphan is reparented to
+    the nearest subreaper (systemd --user in a login session), not always to
+    pid 1, so any change of parent counts."""
+    parent = os.getppid()
     while True:
-        if os.getppid() == 1:
+        if os.getppid() != parent:
             os._exit(0)
         time.sleep(5)
+
+
+def stop_others():
+    """Newest instance wins: stop any other globeserver of ours, one an earlier
+    shell or a QML reload left running (it would hold the port and keep
+    polling every feed). Returns how many were signalled."""
+    me = os.getpid()
+    n = 0
+    for d in os.listdir("/proc"):
+        if not d.isdigit() or int(d) == me:
+            continue
+        try:
+            if os.stat(f"/proc/{d}").st_uid != os.getuid():
+                continue
+            with open(f"/proc/{d}/cmdline", "rb") as f:
+                argv = f.read().split(b"\0")
+        except OSError:
+            continue
+        if any(a.endswith(b"/globeserver.py") or a == b"globeserver.py" for a in argv[1:3]):
+            try:
+                os.kill(int(d), signal.SIGTERM)
+                n += 1
+            except OSError:
+                pass
+    return n
 
 
 def healthy():
@@ -1635,8 +1663,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 def main():
     os.makedirs(CACHE, exist_ok=True)
-    threading.Thread(target=watch_parent, daemon=True).start()
     signal.signal(signal.SIGTERM, lambda *a: os._exit(0))
+    threading.Thread(target=watch_parent, daemon=True).start()
+    if stop_others():
+        log("stopped an older instance")
+    announced = False
+    while True:
+        try:
+            srv = Server(("127.0.0.1", PORT), Handler)
+            break
+        except OSError:
+            # Something else holds the port (an older instance on its way out,
+            # say): stand in for it while it's healthy and take over once it's
+            # gone. The feeds only start once this one serves, so a stand-in
+            # never polls anything twice.
+            if healthy():
+                if not announced:
+                    print("ready", flush=True)
+                    announced = True
+                time.sleep(0.25)
+            else:
+                time.sleep(0.1)
     load_secrets()
     threading.Thread(target=global_worker, daemon=True).start()
     threading.Thread(target=region_worker, daemon=True).start()
@@ -1645,23 +1692,9 @@ def main():
     routes_load()
     threading.Thread(target=route_worker, daemon=True).start()
     threading.Thread(target=routes_saver, daemon=True).start()
-    announced = False
-    while True:
-        try:
-            srv = Server(("127.0.0.1", PORT), Handler)
-        except OSError:
-            # Another instance holds the port: stand in for it and take over if it dies.
-            if healthy():
-                if not announced:
-                    print("ready", flush=True)
-                    announced = True
-                time.sleep(0.25)
-            else:
-                time.sleep(0.1)
-            continue
-        if not announced:
-            print("ready", flush=True)
-        srv.serve_forever()
+    if not announced:
+        print("ready", flush=True)
+    srv.serve_forever()
 
 
 if __name__ == "__main__":

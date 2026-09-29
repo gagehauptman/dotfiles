@@ -19,11 +19,31 @@ Singleton {
 
     readonly property DynamicTheme colors: DynamicTheme {}
 
-    // Font families: ui = body text, mono = numbers/terminal-ish, display = clock/headings.
+    // Font families: ui = body text, mono = numbers/terminal-ish (and the bar's
+    // icons), display = clock/headings, icon = Nerd Font glyphs on their own.
+    // Every family goes through pickFont(): a theme font that is not installed
+    // falls back to the stock one, then to a generic family, never to whatever
+    // Qt substitutes. Icons inside any family come from the fontconfig rule in
+    // scripts/theme/fontconfig (every font falls back to Symbols Nerd Font).
+    readonly property var installedFonts: Qt.fontFamilies()
+    readonly property var fallbackFonts: ({
+        ui: ["Noto Sans", "sans-serif"],
+        mono: ["JetBrainsMono Nerd Font", "JetBrains Mono", "monospace"],
+        display: ["Noto Sans", "sans-serif"]
+    })
+    function pickFont(role, wanted) {
+        let chain = (wanted ? [wanted] : []).concat(fallbackFonts[role]);
+        for (let i = 0; i < chain.length - 1; i++) {
+            if (installedFonts.indexOf(chain[i]) >= 0) return chain[i];
+            if (chain[i] === wanted) console.warn("theme: font \"" + wanted + "\" (" + role + ") is not installed, using a fallback");
+        }
+        return chain[chain.length - 1];  // generic family: fontconfig always resolves it
+    }
     readonly property QtObject fonts: QtObject {
-        property string ui: "Noto Sans"
-        property string mono: "monospace"
-        property string display: "Noto Sans"
+        property string ui: root.pickFont("ui", "")
+        property string mono: root.pickFont("mono", "")
+        property string display: root.pickFont("display", "")
+        readonly property string icon: "Symbols Nerd Font"
     }
 
     // Shape: 1 = the stock proportions. radius 0 = square, 2 = pills; border 0 = borderless.
@@ -51,9 +71,10 @@ Singleton {
         name = t.name || "";
         stem = t.stem || "";
         let f = t.fonts || {};
-        if (f.ui) fonts.ui = f.ui;
-        if (f.mono) fonts.mono = f.mono;
-        if (f.display) fonts.display = f.display;
+        // A role the theme leaves out goes back to the stock font, not the previous wallpaper's.
+        fonts.ui = pickFont("ui", f.ui);
+        fonts.mono = pickFont("mono", f.mono);
+        fonts.display = pickFont("display", f.display || f.ui);
         let s = t.style || {};
         if (typeof s.radius === "number") radiusScale = s.radius;
         if (typeof s.border === "number") borderScale = s.border;

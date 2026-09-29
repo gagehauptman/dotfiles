@@ -49,17 +49,26 @@ it, and the colours ease to the new values (`DynamicTheme.qml`). It also writes
 and sets the Hyprland border gradient with `hyprctl eval`.
 By hand: `scripts/theme/apply.py clouds`.
 
-In QML: `Theme.colors.*` as before, `Theme.fonts.ui|mono|display`,
+In QML: `Theme.colors.*` as before, `Theme.fonts.ui|mono|display|icon`,
 `Theme.rs(px)` for radii (metrics.radius* already go through it),
 `Theme.bw(px)` for border widths.
 
 ## Fonts
 
+Packages: `ttf-nerd-fonts-symbols` (Symbols Nerd Font, the icons) and
+`ttf-jetbrains-mono-nerd` (JetBrainsMono Nerd Font, the presets' mono font).
 `install-fonts.sh` (no sudo) fetches the OFL families the themes use into
-`~/.local/share/fonts/wallpaper-themes` and writes a fontconfig rule so each
-falls back to Symbols Nerd Font for the icon glyphs. Restart Quickshell once
-afterwards (Qt reads the font list at start). Missing fonts just fall back to
-the default sans, nothing breaks.
+`~/.local/share/fonts/wallpaper-themes` and links
+`fontconfig/60-nerd-symbols-fallback.conf` into `~/.config/fontconfig/conf.d`:
+every font falls back to Symbols Nerd Font for the icon glyphs. Qt only uses
+fallbacks fontconfig lists for the requested family, so without it Nerd Font
+icons draw as boxes in most families. Restart Quickshell once afterwards (Qt
+reads the font list and fontconfig rules at start).
+
+Theme.qml checks each family against the installed fonts: one that is missing
+falls back to the stock font for that role (Noto Sans; JetBrainsMono Nerd Font,
+then JetBrains Mono, for mono) and logs `theme: font "X" ... is not installed`.
+`Theme.fonts.icon` is Symbols Nerd Font, for text that is only an icon.
 
 The lock screen reads `<stem>/lock.toml` from the same folder (falls back to
 `scripts/lock/meta/<stem>.toml`, then `meta/default.toml` and `meta/layouts/`,

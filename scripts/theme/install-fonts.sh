@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Install the fonts the wallpaper themes use, per user (no sudo), and add a
-# fontconfig rule so each falls back to the Nerd Font symbols for icon glyphs.
+# Install the fonts the wallpaper themes use, per user (no sudo), and link the
+# fontconfig rule that makes every font fall back to Symbols Nerd Font for the
+# icon glyphs. Also needs the packages ttf-nerd-fonts-symbols (the icons) and
+# ttf-jetbrains-mono-nerd (the presets' mono font).
 # Restart Quickshell afterwards: Qt reads the font list once at start.
 # Where a family is packaged you can use pacman instead (ttf-cormorant,
 # ttf-jetbrains-mono, ttf-ibm-plex, ttf-lato, ttf-montserrat, ...); this
@@ -21,17 +23,9 @@ for f in json.load(sys.stdin):
     [[ -s $n ]] || curl -fsS -o "$n" "$u"
   done
 done
-conf=${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/conf.d/61-wallpaper-theme-symbols.conf
-mkdir -p "$(dirname "$conf")"
-python3 - "$here/../../wallpapers" "$conf" <<PY
-import glob, json, sys
-fams = set()
-for f in glob.glob(sys.argv[1] + "/*/theme.json") + glob.glob(sys.argv[1] + "/_presets/*.json"):
-    fams.update(json.load(open(f))["fonts"].values())
-fams.discard("monospace")
-x = ["<?xml version=\"1.0\"?>", "<!DOCTYPE fontconfig SYSTEM \"urn:fontconfig:fonts.dtd\">", "<fontconfig>"]
-x += ["  <match target=\"pattern\"><test name=\"family\" qual=\"any\"><string>%s</string></test><edit name=\"family\" mode=\"append\"><string>Symbols Nerd Font</string></edit></match>" % n for n in sorted(fams)]
-open(sys.argv[2], "w").write("\n".join(x + ["</fontconfig>"]) + "\n")
-PY
+confd=${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/conf.d
+mkdir -p "$confd"
+rm -f "$confd/61-wallpaper-theme-symbols.conf"   # the old per-family list; it went stale whenever a theme changed font
+ln -sfn "$here/fontconfig/60-nerd-symbols-fallback.conf" "$confd/60-nerd-symbols-fallback.conf"
 fc-cache -f "$dest"
 echo "fonts installed in $dest; restart quickshell to pick them up"

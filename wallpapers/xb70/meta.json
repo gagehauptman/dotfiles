@@ -1,0 +1,14 @@
+{
+  "name": "Aerospace White",
+  "stem": "xb70",
+  "live": false,
+  "dark": true,
+  "description": "XB-70 crossing diagonally from top left to bottom right; open dark sky lower left. Sit lower, under the nose and clear of the wing.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Nebula Bloom",
+  "stem": "nebula",
+  "live": false,
+  "dark": true,
+  "description": "Bright nebula left and centre; darker star field on the far right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

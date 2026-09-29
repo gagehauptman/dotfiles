@@ -1,0 +1,61 @@
+# Astronaut on the left, capsule on the right, open horizon between them.
+# Default centred stack.
+# Look: clock Carlito 700 100pt, accent #ff9b85.
+
+[text]
+color = "#d5e2ff"
+accent = "#ff9b85"
+font_family = "Carlito"
+font_weight = 700
+halign = "center"
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#e0060c1c"
+
+[clock]
+font_family = "Carlito"
+font_weight = 700
+font_size = 100
+letter_spacing = 2
+format = "HH:mm"
+font_style = "normal"
+color = "#d5e2ff"
+shadow_strength = 1.3
+position = "0%, 14%"
+
+[date]
+font_family = "Carlito"
+font_weight = 400
+font_size = 18
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ff9b85"
+opacity = 1
+shadow_strength = 1.3
+position = "0%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Carlito"
+font_weight = 400
+font_size = 19
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "italic"
+uppercase = false
+color = "#d5e2ff"
+opacity = 0.8
+shadow_strength = 1.3
+position = "0%, -14%"
+
+[input]
+halign = "center"
+position = "0%, -22%"
+size = [320, 54]
+rounding = 27
+inner_color = "#55060c1c"
+outer_color = "#66d5e2ff"
+highlight_color = "#22ffffff"
+accent_color = "#ff9b85"

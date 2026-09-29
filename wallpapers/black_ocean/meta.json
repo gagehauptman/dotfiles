@@ -1,0 +1,14 @@
+{
+  "name": "Red Tether",
+  "stem": "black_ocean",
+  "live": false,
+  "dark": true,
+  "description": "Astronaut left of centre inside a red ring; planet limb lower right. The ring's lower-right arc crosses the default column; lift it clear.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

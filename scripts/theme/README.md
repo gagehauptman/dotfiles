@@ -9,7 +9,11 @@ borders.
 
     wallpapers/
       clouds/clouds.png        the image (or <stem>.live descriptor)
-      clouds/theme.json        its theme
+      clouds/theme.json        palette, fonts, rounding, borders
+      clouds/lock.toml         lock screen layout + text styling (scripts/lock/lockgen.py)
+      clouds/bar.json          Quickshell tweaks (panelOpacity)
+      clouds/kitty.conf        extra kitty settings appended to the generated colours
+      clouds/meta.json         name, description, file index (informational)
       clouds.png -> clouds/clouds.png     symlink kept so the selector, the
                                           saved path in wpsave.txt and the
                                           lock screen still find it flat
@@ -58,5 +62,6 @@ falls back to Symbols Nerd Font for the icon glyphs. Restart Quickshell once
 afterwards (Qt reads the font list at start). Missing fonts just fall back to
 the default sans, nothing breaks.
 
-Not yet themed: the lock screen (it has its own per-wallpaper typography in
-`scripts/lock/meta/`) and Bevy widgets.
+The lock screen reads `<stem>/lock.toml` from the same folder (falls back to
+`scripts/lock/meta/<stem>.toml`, then `meta/default.toml` and `meta/layouts/`,
+which stay shared). Not yet themed: Bevy widgets.

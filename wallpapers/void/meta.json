@@ -1,0 +1,14 @@
+{
+  "name": "Line Cosmos",
+  "stem": "void",
+  "live": false,
+  "dark": true,
+  "description": "Outline figure lower left, planets across the top; empty on the right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,61 @@
+# Explosion glow right of centre behind a dark skyline; dark clouds top left.
+# Look: clock Noto Sans 200 112pt, accent #ff7a3d.
+base = "left"
+
+[text]
+color = "#f9dcbf"
+accent = "#ff7a3d"
+font_family = "Noto Sans"
+font_weight = 200
+halign = "left"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0100603"
+
+[clock]
+font_family = "Noto Sans"
+font_weight = 200
+font_size = 112
+letter_spacing = 0
+format = "HH:mm"
+font_style = "normal"
+color = "#f9dcbf"
+shadow_strength = 1.6
+position = "5%, 14.1%"
+
+[date]
+font_family = "Noto Sans"
+font_weight = 600
+font_size = 13
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ff7a3d"
+opacity = 1
+shadow_strength = 1.6
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Noto Sans"
+font_weight = 300
+font_size = 17
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "italic"
+uppercase = false
+color = "#f9dcbf"
+opacity = 0.75
+shadow_strength = 1.6
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#5510070a"
+outer_color = "#66f9dcbf"
+highlight_color = "#1cffffff"
+accent_color = "#ff7a3d"

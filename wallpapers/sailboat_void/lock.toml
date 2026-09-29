@@ -1,0 +1,61 @@
+# Moon and small boat on the centre line; dark sky and sea to both sides.
+# Look: clock Liberation Serif 400 100pt, accent #a9b8d8.
+base = "right"
+
+[text]
+color = "#dfe6f5"
+accent = "#a9b8d8"
+font_family = "Liberation Serif"
+font_weight = 400
+halign = "right"
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#e0040818"
+
+[clock]
+font_family = "Liberation Serif"
+font_weight = 400
+font_size = 100
+letter_spacing = 2
+format = "HH:mm"
+font_style = "normal"
+color = "#dfe6f5"
+shadow_strength = 1.4
+position = "-5%, 14%"
+
+[date]
+font_family = "Liberation Serif"
+font_weight = 400
+font_size = 13
+letter_spacing = 9
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#a9b8d8"
+opacity = 1
+shadow_strength = 1.4
+position = "-5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Liberation Serif"
+font_weight = 400
+font_size = 17
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "italic"
+uppercase = false
+color = "#dfe6f5"
+opacity = 0.7
+shadow_strength = 1.4
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"
+size = [320, 52]
+rounding = 26
+inner_color = "#40040818"
+outer_color = "#66dfe6f5"
+highlight_color = "#1cffffff"
+accent_color = "#a9b8d8"

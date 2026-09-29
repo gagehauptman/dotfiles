@@ -40,6 +40,11 @@ Singleton {
         let p = t.palette;
         for (let k in p)
             if (typeof colors[k] !== "undefined" && typeof p[k] === "string") colors[k] = p[k];
+        let bar = t.bar || {};
+        if (typeof bar.panelOpacity === "number" && p.panel) {
+            let c = Qt.color(p.panel);
+            colors.panel = Qt.rgba(c.r, c.g, c.b, bar.panelOpacity);
+        }
         colors.name = t.name || "";
         colors.isDark = t.dark !== false;
         isDark = colors.isDark;

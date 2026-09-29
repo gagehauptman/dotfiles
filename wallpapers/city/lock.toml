@@ -1,0 +1,65 @@
+# Overgrown towers everywhere; dark buildings along the left edge.
+# Look: clock Inter Display 600 104pt, accent #4f7a3a.
+base = "left"
+
+[background]
+brightness = 1.0
+
+[text]
+color = "#1d2a1a"
+accent = "#4f7a3a"
+font_family = "Inter Display"
+font_weight = 600
+halign = "center"
+shadow_passes = 2
+shadow_size = 2
+shadow_color = "#88f4f1dc"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 600
+font_size = 104
+letter_spacing = -2
+format = "HH:mm"
+font_style = "normal"
+color = "#1d2a1a"
+shadow_strength = 1.0
+position = "22%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 14
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#3a4d2e"
+opacity = 0.9
+shadow_strength = 1.0
+position = "22%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 500
+font_size = 16
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#2b3b23"
+opacity = 0.85
+shadow_strength = 1.0
+position = "22%, -14%"
+
+[input]
+halign = "center"
+position = "22%, -22%"
+size = [320, 54]
+rounding = 27
+inner_color = "#66f4f1dc"
+outer_color = "#cc1d2a1a"
+highlight_color = "#77ffffff"
+accent_color = "#4f7a3a"
+font_color = "#1d2a1a"

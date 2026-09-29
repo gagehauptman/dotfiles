@@ -1,0 +1,14 @@
+{
+  "name": "Lighthouse Hour",
+  "stem": "VIC_8066",
+  "live": false,
+  "dark": true,
+  "description": "Lighthouse silhouette at centre against a pale dusk sky.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Blue Hour Ascent",
+  "stem": "canaveral2",
+  "live": false,
+  "dark": true,
+  "description": "Launch contrail rising left of centre over a sunset horizon; open blue sky right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

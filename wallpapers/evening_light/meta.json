@@ -1,0 +1,14 @@
+{
+  "name": "Blast Sunset",
+  "stem": "evening_light",
+  "live": false,
+  "dark": true,
+  "description": "Explosion glow right of centre behind a dark skyline; dark clouds top left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

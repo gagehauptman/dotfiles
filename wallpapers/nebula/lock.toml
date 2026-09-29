@@ -1,0 +1,61 @@
+# Bright nebula left and centre; darker star field on the far right.
+# Look: clock Inter Display 500 90pt, accent #7fe8d0.
+base = "right"
+
+[text]
+color = "#fff2f2"
+accent = "#7fe8d0"
+font_family = "Inter Display"
+font_weight = 500
+halign = "right"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0100818"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 500
+font_size = 90
+letter_spacing = 4
+format = "HH:mm"
+font_style = "normal"
+color = "#fff2f2"
+shadow_strength = 1.6
+position = "-5%, 14%"
+
+[date]
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 13
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#7fe8d0"
+opacity = 1
+shadow_strength = 1.6
+position = "-5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 300
+font_size = 15
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#fff2f2"
+opacity = 0.7
+shadow_strength = 1.6
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#5a100818"
+outer_color = "#66fff2f2"
+highlight_color = "#20ffffff"
+accent_color = "#7fe8d0"

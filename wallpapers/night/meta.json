@@ -1,0 +1,14 @@
+{
+  "name": "Deep Void",
+  "stem": "night",
+  "live": false,
+  "dark": true,
+  "description": "Star trails on black; nothing to avoid. Default centred stack.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

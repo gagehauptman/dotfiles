@@ -1,0 +1,14 @@
+{
+  "name": "Phone Booth",
+  "stem": "upload",
+  "live": false,
+  "dark": true,
+  "description": "Figure at a pay phone on the far right; lamp row across the middle.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

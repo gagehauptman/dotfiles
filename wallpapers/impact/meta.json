@@ -1,0 +1,14 @@
+{
+  "name": "Impact Gold",
+  "stem": "impact",
+  "live": false,
+  "dark": true,
+  "description": "Tree on the left, explosion in the middle; darker treeline lower right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,61 @@
+# Live (Bevy): wireframe orbiter left of centre over the Earth's limb.
+# Look: clock Adwaita Mono 400 72pt, accent #a8f0c8.
+base = "right"
+
+[text]
+color = "#eef2ff"
+accent = "#a8f0c8"
+font_family = "Adwaita Mono"
+font_weight = 400
+halign = "right"
+shadow_passes = 2
+shadow_size = 3
+shadow_color = "#88000000"
+
+[clock]
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 72
+letter_spacing = 3
+format = "HH:mm"
+font_style = "normal"
+color = "#eef2ff"
+shadow_strength = 0.6
+position = "-5%, 14%"
+
+[date]
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 13
+letter_spacing = 4
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#a8f0c8"
+opacity = 1
+shadow_strength = 0.6
+position = "-5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 13
+letter_spacing = 0
+text = "welcome, {user}"
+font_style = "normal"
+uppercase = false
+color = "#eef2ff"
+opacity = 0.6
+shadow_strength = 0.6
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"
+size = [320, 50]
+rounding = 10
+inner_color = "#22eef2ff"
+outer_color = "#55a8f0c8"
+highlight_color = "#10ffffff"
+accent_color = "#a8f0c8"

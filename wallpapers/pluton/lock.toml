@@ -1,0 +1,65 @@
+# Antenna platforms across the middle and right under a bright blue sky.
+# Look: clock Adwaita Sans 600 100pt, accent #1e5fa8.
+base = "left"
+
+[background]
+brightness = 1.0
+
+[text]
+color = "#0d2440"
+accent = "#1e5fa8"
+font_family = "Adwaita Sans"
+font_weight = 600
+halign = "left"
+shadow_passes = 2
+shadow_size = 2
+shadow_color = "#88ffffff"
+
+[clock]
+font_family = "Adwaita Sans"
+font_weight = 600
+font_size = 100
+letter_spacing = -3
+format = "HH:mm"
+font_style = "normal"
+color = "#0d2440"
+shadow_strength = 0.8
+position = "5%, 38%"
+
+[date]
+font_family = "Adwaita Sans"
+font_weight = 700
+font_size = 13
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#123a66"
+opacity = 0.9
+shadow_strength = 0.8
+position = "5%, 27.5%"
+
+[greeting]
+show = false
+font_family = "Adwaita Sans"
+font_weight = 400
+font_size = 15
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#0d2440"
+opacity = 0.8
+shadow_strength = 0.8
+position = "5%, 10%"
+
+[input]
+halign = "left"
+position = "5%, 18.5%"
+size = [320, 52]
+rounding = 26
+inner_color = "#55ffffff"
+outer_color = "#990d2440"
+highlight_color = "#88ffffff"
+accent_color = "#1e5fa8"
+font_color = "#0d2440"

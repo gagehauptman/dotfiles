@@ -1,0 +1,14 @@
+{
+  "name": "Range Safety",
+  "stem": "USSF-51",
+  "live": false,
+  "dark": true,
+  "description": "Night launch: the rocket and its trail rise just left of centre; the right half is dark sky.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Bridge Fog",
+  "stem": "bridge",
+  "live": false,
+  "dark": true,
+  "description": "Foggy lift bridge on the left two-thirds; dark teal fog on the right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

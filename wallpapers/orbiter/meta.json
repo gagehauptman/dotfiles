@@ -1,0 +1,14 @@
+{
+  "name": "Orbital Deck",
+  "stem": "orbiter",
+  "live": false,
+  "dark": true,
+  "description": "Space station top centre over a bright cloud deck in the lower third.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

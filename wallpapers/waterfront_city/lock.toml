@@ -1,0 +1,67 @@
+# Pixel-art skyline filling the frame (gif; its first frame is used).
+# Default centred stack.
+# Nothing is empty here, so soften the city behind the default centre stack.
+# Look: clock Inter Display 700 110pt, accent #ffd166.
+
+[background]
+blur_passes = 2
+blur_size = 5
+brightness = 0.7
+
+[text]
+color = "#fff4d2"
+accent = "#ffd166"
+font_family = "Inter Display"
+font_weight = 700
+halign = "center"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0100c00"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 110
+letter_spacing = -2
+format = "HH:mm"
+font_style = "normal"
+color = "#fff4d2"
+shadow_strength = 1.8
+position = "0%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 600
+font_size = 14
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ffd166"
+opacity = 1
+shadow_strength = 1.8
+position = "0%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 500
+font_size = 16
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#fff4d2"
+opacity = 0.8
+shadow_strength = 1.8
+position = "0%, -14%"
+
+[input]
+halign = "center"
+position = "0%, -22%"
+size = [320, 54]
+rounding = 6
+inner_color = "#66140f00"
+outer_color = "#66fff4d2"
+highlight_color = "#20ffffff"
+accent_color = "#ffd166"

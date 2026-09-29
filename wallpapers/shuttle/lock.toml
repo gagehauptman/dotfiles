@@ -1,0 +1,61 @@
+# Glowing shuttle on the right; dark space on the left.
+# Look: clock Inter Display 300 96pt, accent #ff8a70.
+base = "left"
+
+[text]
+color = "#ffe3d6"
+accent = "#ff8a70"
+font_family = "Inter Display"
+font_weight = 300
+halign = "left"
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#e0120810"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 300
+font_size = 96
+letter_spacing = 0
+format = "HH:mm"
+font_style = "normal"
+color = "#ffe3d6"
+shadow_strength = 1.5
+position = "5%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 13
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ff8a70"
+opacity = 1
+shadow_strength = 1.5
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 400
+font_size = 15
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#ffe3d6"
+opacity = 0.7
+shadow_strength = 1.5
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#66120810"
+outer_color = "#66ffe3d6"
+highlight_color = "#20ffffff"
+accent_color = "#ff8a70"

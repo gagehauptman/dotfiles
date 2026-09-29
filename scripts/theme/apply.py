@@ -3,7 +3,7 @@
 
     apply.py [wallpaper-path-or-stem]     (default: the saved wallpaper)
 
-Reads wallpapers/<stem>/theme.json (following "inherits" into
+Reads wallpapers/<stem>/theme.json + bar.json + kitty.conf (following "inherits" into
 wallpapers/_presets/), writes the flattened result to
 $XDG_CACHE_HOME/wallpaper_theme/current.json, which Quickshell watches
 (quickshell/themes/Theme.qml) and repaints from, then updates the cheap
@@ -42,6 +42,19 @@ def load(stem, seen=()):
     return None
 
 
+def folder_extras(stem, t):
+    """Other files in the wallpaper's folder: bar.json -> t["bar"], kitty.conf -> t["kitty_extra"]."""
+    d = WP / stem
+    try:
+        t["bar"] = {k: v for k, v in json.loads((d / "bar.json").read_text()).items() if k != "_"}
+    except (OSError, ValueError):
+        t["bar"] = {}
+    try:
+        t["kitty_extra"] = (d / "kitty.conf").read_text()
+    except OSError:
+        t["kitty_extra"] = ""
+
+
 def kitty_conf(t):
     p = t["palette"]; fg = p["textPrimary"]; bg = p["background"]
     hues = ["panelDeep", "red", "green", "yellow", "blue", "violet", "cyan", "textSecondary"]
@@ -57,6 +70,9 @@ def kitty_conf(t):
         lines.append(f"color{i} {p[k]}")
         lines.append(f"color{i + 8} {p[k]}")
     lines[-1] = f"color15 {fg}"
+    extra = t.get("kitty_extra")
+    if extra:
+        lines.append(extra.rstrip("\n"))
     return "\n".join(lines) + "\n"
 
 
@@ -78,6 +94,7 @@ def main():
     if not t:
         return
     t["stem"] = stem
+    folder_extras(stem, t)
     changed = write_if_changed(CACHE / "current.json", json.dumps(t, indent=1))
     if not changed:
         return

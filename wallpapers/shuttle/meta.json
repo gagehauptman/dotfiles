@@ -1,0 +1,14 @@
+{
+  "name": "Reentry Glow",
+  "stem": "shuttle",
+  "live": false,
+  "dark": true,
+  "description": "Glowing shuttle on the right; dark space on the left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

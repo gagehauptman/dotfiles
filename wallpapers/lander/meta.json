@@ -1,0 +1,14 @@
+{
+  "name": "Red Planet Dusk",
+  "stem": "lander",
+  "live": false,
+  "dark": true,
+  "description": "Astronaut on the left, capsule on the right, open horizon between them. Default centred stack.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

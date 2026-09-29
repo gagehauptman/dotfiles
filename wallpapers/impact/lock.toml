@@ -1,0 +1,64 @@
+# Tree on the left, explosion in the middle; darker treeline lower right.
+# Look: clock Inter Display 900 100pt, accent #ffa640.
+base = "right"
+
+[background]
+brightness = 0.75
+
+[text]
+color = "#fff0da"
+accent = "#ffa640"
+font_family = "Inter Display"
+font_weight = 900
+halign = "right"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0180a02"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 900
+font_size = 100
+letter_spacing = -3
+format = "HH:mm"
+font_style = "normal"
+color = "#fff0da"
+shadow_strength = 1.6
+position = "-5%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 800
+font_size = 14
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ffa640"
+opacity = 1
+shadow_strength = 1.6
+position = "-5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 600
+font_size = 15
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#fff0da"
+opacity = 0.75
+shadow_strength = 1.6
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#66180a02"
+outer_color = "#66fff0da"
+highlight_color = "#20ffffff"
+accent_color = "#ffa640"

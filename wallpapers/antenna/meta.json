@@ -1,0 +1,14 @@
+{
+  "name": "Array Sunset",
+  "stem": "antenna",
+  "live": false,
+  "dark": true,
+  "description": "Radio dishes across the middle under orange clouds; darker sky top right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

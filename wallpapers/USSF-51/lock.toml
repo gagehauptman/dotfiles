@@ -1,0 +1,61 @@
+# Night launch: the rocket and its trail rise just left of centre; the right half is dark sky.
+# Look: clock Adwaita Mono 400 66pt, accent #ff9d57.
+base = "right"
+
+[text]
+color = "#ffe9d2"
+accent = "#ff9d57"
+font_family = "Adwaita Mono"
+font_weight = 400
+halign = "right"
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#cc0a0605"
+
+[clock]
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 66
+letter_spacing = 3
+format = "HH:mm:ss"
+font_style = "normal"
+color = "#ffe9d2"
+shadow_strength = 1.2
+position = "-5%, 14%"
+
+[date]
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 13
+letter_spacing = 4
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ff9d57"
+opacity = 0.95
+shadow_strength = 1.2
+position = "-5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Adwaita Mono"
+font_weight = 400
+font_size = 12
+letter_spacing = 1
+text = "signed in as {user}"
+font_style = "normal"
+uppercase = false
+color = "#ffe9d2"
+opacity = 0.6
+shadow_strength = 1.2
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"
+size = [320, 50]
+rounding = 10
+inner_color = "#66120a06"
+outer_color = "#66ff9d57"
+highlight_color = "#18ffffff"
+accent_color = "#ff9d57"

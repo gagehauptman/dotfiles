@@ -1,0 +1,14 @@
+{
+  "name": "Amber Nebula",
+  "stem": "nebula2",
+  "live": false,
+  "dark": true,
+  "description": "Orange nebula and bright star on the right; deep blue on the left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

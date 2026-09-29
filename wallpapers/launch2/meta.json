@@ -1,0 +1,14 @@
+{
+  "name": "Lone Beacon",
+  "stem": "launch2",
+  "live": false,
+  "dark": true,
+  "description": "Thin rocket climbing dead centre over a dark coast.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

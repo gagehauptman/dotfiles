@@ -1,0 +1,14 @@
+{
+  "name": "Cotton Sky",
+  "stem": "clouds",
+  "live": false,
+  "dark": false,
+  "description": "Pastel pink clouds centre/right, moon top right, open lavender sky top left. Light image: dark text instead of the usual flamingo.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

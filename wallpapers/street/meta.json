@@ -1,0 +1,14 @@
+{
+  "name": "Sodium Violet",
+  "stem": "street",
+  "live": false,
+  "dark": true,
+  "description": "Foggy station platform receding to the centre; dark sky upper left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

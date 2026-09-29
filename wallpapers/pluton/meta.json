@@ -1,0 +1,14 @@
+{
+  "name": "Dish Rust",
+  "stem": "pluton",
+  "live": false,
+  "dark": true,
+  "description": "Antenna platforms across the middle and right under a bright blue sky.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

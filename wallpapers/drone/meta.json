@@ -1,0 +1,14 @@
+{
+  "name": "Steel Sea",
+  "stem": "drone",
+  "live": false,
+  "dark": true,
+  "description": "Giant drone mech on the left half; empty pale blue haze on the right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

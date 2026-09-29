@@ -1,0 +1,61 @@
+# Contrail left of centre, power pole and wires on the right; clouds top left.
+# Look: clock Inter Display 500 84pt, accent #ff8fb1.
+base = "left"
+
+[text]
+color = "#f7ecff"
+accent = "#ff8fb1"
+font_family = "Inter Display"
+font_weight = 500
+halign = "left"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0100a20"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 500
+font_size = 84
+letter_spacing = 1
+format = "h:mm AP"
+font_style = "normal"
+color = "#f7ecff"
+shadow_strength = 1.6
+position = "5%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 13
+letter_spacing = 5
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ffb3cb"
+opacity = 1
+shadow_strength = 1.6
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 400
+font_size = 15
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#f7ecff"
+opacity = 0.85
+shadow_strength = 1.6
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#5a100a20"
+outer_color = "#66f7ecff"
+highlight_color = "#20ffffff"
+accent_color = "#ff8fb1"

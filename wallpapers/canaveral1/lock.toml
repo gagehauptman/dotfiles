@@ -1,0 +1,64 @@
+# Bright cloud tower top centre, trees lower right, dark cloud band on the left.
+# Look: clock Inter Display 300 100pt, accent #f0b56a.
+base = "left"
+
+[background]
+brightness = 0.7
+
+[text]
+color = "#fff0d8"
+accent = "#f0b56a"
+font_family = "Inter Display"
+font_weight = 300
+halign = "left"
+shadow_passes = 2
+shadow_size = 6
+shadow_color = "#f0100a06"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 300
+font_size = 100
+letter_spacing = 10
+format = "HH:mm"
+font_style = "normal"
+color = "#fff0d8"
+shadow_strength = 2.4
+position = "5%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 13
+letter_spacing = 9
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#ffc880"
+opacity = 1
+shadow_strength = 2.4
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 300
+font_size = 15
+letter_spacing = 3
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#fff0d8"
+opacity = 0.85
+shadow_strength = 2.4
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 56]
+rounding = 28
+inner_color = "#66140e06"
+outer_color = "#66f8e6c8"
+highlight_color = "#1cffffff"
+accent_color = "#f0b56a"

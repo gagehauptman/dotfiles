@@ -1,0 +1,14 @@
+{
+  "name": "Nightshift Green",
+  "stem": "plugged_in",
+  "live": false,
+  "dark": true,
+  "description": "Figure at a charging post right of centre; dark night sky above the fence.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

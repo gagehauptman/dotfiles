@@ -1,0 +1,61 @@
+# Foggy station platform receding to the centre; dark sky upper left.
+# Look: clock Adwaita Sans 300 108pt, accent #c99be8.
+base = "left"
+
+[text]
+color = "#f2dcf5"
+accent = "#c99be8"
+font_family = "Adwaita Sans"
+font_weight = 300
+halign = "left"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0120a1a"
+
+[clock]
+font_family = "Adwaita Sans"
+font_weight = 300
+font_size = 108
+letter_spacing = 0
+format = "HH:mm"
+font_style = "italic"
+color = "#f2dcf5"
+shadow_strength = 1.5
+position = "5%, 14%"
+
+[date]
+font_family = "Adwaita Sans"
+font_weight = 500
+font_size = 13
+letter_spacing = 8
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#c99be8"
+opacity = 1
+shadow_strength = 1.5
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Adwaita Sans"
+font_weight = 300
+font_size = 17
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "italic"
+uppercase = false
+color = "#f2dcf5"
+opacity = 0.75
+shadow_strength = 1.5
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#55120a1a"
+outer_color = "#66f2dcf5"
+highlight_color = "#20ffffff"
+accent_color = "#c99be8"

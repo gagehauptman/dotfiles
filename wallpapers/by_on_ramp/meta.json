@@ -1,0 +1,14 @@
+{
+  "name": "Sunbelt Cartoon",
+  "stem": "by_on_ramp",
+  "live": false,
+  "dark": false,
+  "description": "Peace-sign hand, giant ball and car across the right half; palms and sky left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

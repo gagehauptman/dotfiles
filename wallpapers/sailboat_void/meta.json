@@ -1,0 +1,14 @@
+{
+  "name": "Moonlit Sail",
+  "stem": "sailboat_void",
+  "live": false,
+  "dark": true,
+  "description": "Moon and small boat on the centre line; dark sky and sea to both sides.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

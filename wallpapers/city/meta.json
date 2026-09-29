@@ -1,0 +1,14 @@
+{
+  "name": "Overgrowth",
+  "stem": "city",
+  "live": false,
+  "dark": true,
+  "description": "Overgrown towers everywhere; dark buildings along the left edge.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

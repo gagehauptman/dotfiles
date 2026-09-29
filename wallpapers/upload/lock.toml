@@ -1,0 +1,61 @@
+# Figure at a pay phone on the far right; lamp row across the middle.
+# Look: clock Inter Display 800 84pt, accent #4fe0c4.
+base = "left"
+
+[text]
+color = "#ffe9a8"
+accent = "#4fe0c4"
+font_family = "Inter Display"
+font_weight = 800
+halign = "left"
+shadow_passes = 2
+shadow_size = 5
+shadow_color = "#e0031412"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 800
+font_size = 84
+letter_spacing = 0
+format = "HH:mm"
+font_style = "normal"
+color = "#ffe9a8"
+shadow_strength = 1.6
+position = "5%, 14%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 13
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#4fe0c4"
+opacity = 1
+shadow_strength = 1.6
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 500
+font_size = 16
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#ffe9a8"
+opacity = 0.7
+shadow_strength = 1.6
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#66031412"
+outer_color = "#66ffe9a8"
+highlight_color = "#20ffffff"
+accent_color = "#4fe0c4"

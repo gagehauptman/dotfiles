@@ -1,0 +1,61 @@
+# Pier house on the left, creature on the right, open water and fog in the middle.
+# Default centred stack.
+# Look: clock Inter Display 300 116pt, accent #7fe0c8.
+
+[text]
+color = "#e3fff6"
+accent = "#7fe0c8"
+font_family = "Inter Display"
+font_weight = 300
+halign = "center"
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#e0031418"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 300
+font_size = 116
+letter_spacing = 3
+format = "HH:mm"
+font_style = "normal"
+color = "#e3fff6"
+shadow_strength = 1.4
+position = "0%, 14.4%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 500
+font_size = 14
+letter_spacing = 8
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#8fe6cf"
+opacity = 1
+shadow_strength = 1.4
+position = "0%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Noto Sans"
+font_weight = 300
+font_size = 12
+letter_spacing = 6
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = true
+color = "#e3fff6"
+opacity = 0.7
+shadow_strength = 1.4
+position = "0%, -14%"
+
+[input]
+halign = "center"
+position = "0%, -22%"
+size = [300, 52]
+rounding = 26
+inner_color = "#8005201f"
+outer_color = "#998fe6cf"
+highlight_color = "#20ffffff"
+accent_color = "#7fe0c8"

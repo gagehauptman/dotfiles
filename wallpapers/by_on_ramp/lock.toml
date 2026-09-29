@@ -1,0 +1,65 @@
+# Peace-sign hand, giant ball and car across the right half; palms and sky left.
+# Look: clock Inter Display 800 120pt, accent #c99a00.
+base = "left"
+
+[background]
+brightness = 0.95
+
+[text]
+color = "#14252d"
+accent = "#c99a00"
+font_family = "Inter Display"
+font_weight = 800
+halign = "left"
+shadow_passes = 2
+shadow_size = 2
+shadow_color = "#99ffffff"
+
+[clock]
+font_family = "Inter Display"
+font_weight = 800
+font_size = 120
+letter_spacing = -4
+format = "h:mm"
+font_style = "normal"
+color = "#14252d"
+shadow_strength = 1.0
+position = "5%, 14.7%"
+
+[date]
+font_family = "Inter Display"
+font_weight = 700
+font_size = 15
+letter_spacing = 4
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#14252d"
+opacity = 0.85
+shadow_strength = 1.0
+position = "5%, 3.5%"
+
+[greeting]
+show = true
+font_family = "Inter Display"
+font_weight = 500
+font_size = 18
+letter_spacing = 0
+text = "hey {user}"
+font_style = "normal"
+uppercase = false
+color = "#14252d"
+opacity = 0.8
+shadow_strength = 1.0
+position = "5%, -14%"
+
+[input]
+halign = "left"
+position = "5%, -22%"
+size = [340, 58]
+rounding = 29
+inner_color = "#66ffffff"
+outer_color = "#9914252d"
+highlight_color = "#88ffffff"
+accent_color = "#c99a00"
+font_color = "#14252d"

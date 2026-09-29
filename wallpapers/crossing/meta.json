@@ -1,0 +1,14 @@
+{
+  "name": "Harbor Light",
+  "stem": "crossing",
+  "live": false,
+  "dark": true,
+  "description": "Pier house on the left, creature on the right, open water and fog in the middle. Default centred stack.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

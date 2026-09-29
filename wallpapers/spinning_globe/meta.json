@@ -1,0 +1,14 @@
+{
+  "name": "Blue Marble",
+  "stem": "spinning_globe",
+  "live": true,
+  "dark": true,
+  "description": "Live (Bevy): wireframe globe in the centre.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

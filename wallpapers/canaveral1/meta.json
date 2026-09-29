@@ -1,0 +1,14 @@
+{
+  "name": "Anvil Cloud",
+  "stem": "canaveral1",
+  "live": false,
+  "dark": true,
+  "description": "Bright cloud tower top centre, trees lower right, dark cloud band on the left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

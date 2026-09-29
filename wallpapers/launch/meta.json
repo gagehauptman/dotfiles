@@ -1,0 +1,14 @@
+{
+  "name": "Contrail Dusk",
+  "stem": "launch",
+  "live": false,
+  "dark": true,
+  "description": "Contrail left of centre, power pole and wires on the right; clouds top left.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Ember Arc",
+  "stem": "coast",
+  "live": false,
+  "dark": true,
+  "description": "Molten arc falling through the centre, moon upper left; dark on the right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

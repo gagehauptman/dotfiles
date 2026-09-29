@@ -21,6 +21,12 @@ gets a widget type of its own in `DashboardConfig.qml` (`globe` does, with
   over the Earth's limb, on the wall clock like the wallpaper), with the
   globe preview's downsample shader. The wallpaper itself is a second scene
   of the globe's renderer, so the two switch without restarting it.
+- `free_return`: the live preview of the free-return wallpaper, built the
+  same way from its `free_return_scene` crate in
+  `scripts/wallpaper/bins/free_return/scene` (the Earth-Moon rotating frame:
+  L1-L5, the zero-velocity curves through them, and an Apollo 8-style free
+  return integrated in the restricted three-body problem at startup, flown
+  on a 15 minute wall-clock loop). Also a scene of the globe's renderer.
 - `globe`: weather, light pollution and live aircraft on a cube-sphere with
   Natural Earth coastlines, borders, names and cities by zoom level, fed by
   `scripts/globeserver.py`. Its labels are quads on the sphere from a glyph

@@ -1674,6 +1674,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "free_return"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "free_return_scene",
+ "quickshell-bevy",
+ "serde_json",
+ "wgpu",
+]
+
+[[package]]
+name = "free_return_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "globe_scene",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"

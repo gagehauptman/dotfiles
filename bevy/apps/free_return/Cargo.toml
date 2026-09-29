@@ -1,0 +1,16 @@
+[package]
+name = "free_return"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+# The wallpaper's scene: shader, trajectory, layout and clock
+free_return_scene = { path = "../../../scripts/wallpaper/bins/free_return/scene" }
+wgpu = "24"
+serde_json = "1"

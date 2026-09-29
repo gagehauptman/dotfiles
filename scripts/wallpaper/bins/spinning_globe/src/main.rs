@@ -32,8 +32,10 @@ use std::time::{Duration, Instant};
 // (bevy/apps/spinning_globe) so both draw the same globe.
 use globe_scene::{build_continent_lines, build_points, bytemuck, Globals, LineInstance, PointInstance, SHADER};
 
-// The other scene this renderer hosts (bins/space_shuttle), on the same
-// layers, so switching between them is only a redraw.
+// The other scenes this renderer hosts (bins/space_shuttle,
+// bins/free_return), on the same layers, so switching between them is only
+// a redraw.
+mod free_return;
 mod shuttle;
 
 // The globe rotates slowly, so 30 fps is plenty. Override with `--fps N` or
@@ -45,6 +47,7 @@ const DEFAULT_FPS: u32 = 30;
 enum Scene {
     Globe,
     Shuttle,
+    FreeReturn,
 }
 
 impl Scene {
@@ -52,6 +55,7 @@ impl Scene {
         match name {
             "spinning_globe" | "globe" => Some(Scene::Globe),
             "space_shuttle" | "shuttle" => Some(Scene::Shuttle),
+            "free_return" => Some(Scene::FreeReturn),
             _ => None,
         }
     }
@@ -256,6 +260,8 @@ struct GlobeSurface {
     bind_group: wgpu::BindGroup,
     // Made the first time this output shows the shuttle
     shuttle: Option<shuttle::ShuttleSurface>,
+    // Made the first time this output shows the free return
+    free_return: Option<free_return::FreeReturnSurface>,
     output: wl_output::WlOutput,
     layer_surface: LayerSurface,
     // Stretches the 1x1 hidden buffer over the whole output.
@@ -285,7 +291,8 @@ struct AppState {
     surfaces: Vec<GlobeSurface>,
     frame_interval: Option<Duration>,
     frozen_rotation: Option<f32>,
-    // WALLPAPER_TIME=<unix seconds> freezes the shuttle scene's clock.
+    // WALLPAPER_TIME=<unix seconds> freezes the shuttle's and the free
+    // return's clock.
     frozen_time: Option<f64>,
     scene: Scene,
     // Hidden = every surface shows one transparent 1x1 buffer stretched over
@@ -309,6 +316,7 @@ struct Gpu {
     point_buffer: wgpu::Buffer,
     point_count: u32,
     shuttle: shuttle::ShuttleGpu,
+    free_return: free_return::FreeReturnGpu,
     format: wgpu::TextureFormat,
     view_format: wgpu::TextureFormat,
     present_mode: wgpu::PresentMode,
@@ -487,6 +495,7 @@ impl Gpu {
         });
 
         let shuttle = shuttle::ShuttleGpu::new(&device, view_format);
+        let free_return = free_return::FreeReturnGpu::new(&device, view_format);
 
         Ok(Gpu {
             device,
@@ -499,6 +508,7 @@ impl Gpu {
             point_buffer,
             point_count: points.len() as u32,
             shuttle,
+            free_return,
             format,
             view_format,
             present_mode,
@@ -591,6 +601,7 @@ impl AppState {
             uniform_buffer,
             bind_group,
             shuttle: None,
+            free_return: None,
             output,
             layer_surface,
             viewport,
@@ -724,6 +735,14 @@ impl AppState {
             let globals = shuttle_scene::Globals::at_secs(t, width, height);
             let target = s.shuttle.get_or_insert_with(|| gpu.shuttle.surface(&gpu.device));
             gpu.shuttle.encode(&gpu.device, &gpu.queue, &mut encoder, &view, target, &globals);
+        } else if visible && self.scene == Scene::FreeReturn {
+            if let Some(target) = &mut s.shuttle {
+                target.release();
+            }
+            let t = self.frozen_time.unwrap_or_else(|| free_return_scene::unix_secs(std::time::SystemTime::now()));
+            let globals = gpu.free_return.globals(t, width, height);
+            let target = s.free_return.get_or_insert_with(|| gpu.free_return.surface(&gpu.device));
+            gpu.free_return.encode(&gpu.queue, &mut encoder, &view, target, &globals);
         } else {
             // The shuttle's depth target is only kept while it shows.
             if let Some(target) = &mut s.shuttle {

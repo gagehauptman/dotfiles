@@ -1,0 +1,8 @@
+#!/bin/sh
+# The free-return trajectory is a scene of the warm wallpaper renderer in
+# ../spinning_globe, which it shares with the globe and the shuttle (layers,
+# hide/show, GPU setup); its scene itself is ./scene (free_return_scene).
+dir=$(dirname "$(realpath "$0")")/../spinning_globe
+bin=$dir/target/release/layer_shell_bevy
+[ -x "$bin" ] || cargo build --release --manifest-path "$dir/Cargo.toml" >&2
+exec "$bin" --scene free_return "$@"

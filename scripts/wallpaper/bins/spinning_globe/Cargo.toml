@@ -9,6 +9,7 @@ wayland-client = "0.31"
 pollster = "0.4"
 globe_scene = { path = "scene" }
 shuttle_scene = { path = "../space_shuttle/scene" }
+free_return_scene = { path = "../free_return/scene" }
 glam = "0.29"
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }

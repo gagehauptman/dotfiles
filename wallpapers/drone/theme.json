@@ -1,0 +1,44 @@
+{
+  "name": "Steel Sea",
+  "stem": "drone",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Oxanium",
+    "mono": "Share Tech Mono",
+    "display": "Oxanium"
+  },
+  "style": {
+    "radius": 0.2,
+    "border": 2
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c697",
+    "yellow": "#f7dc97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#88e0f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#5bc0e8",
+    "pink": "#eb8ea4",
+    "background": "#0f3346",
+    "panel": "#0b2532",
+    "panelDeep": "#081a23",
+    "inset": "#244658",
+    "border": "#395a6a",
+    "textPrimary": "#e2f4fb",
+    "textSecondary": "#a7bec8",
+    "textMuted": "#6e8a97",
+    "accent": "#f2c14e",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7dc97",
+    "onAccent": "#0f3346"
+  },
+  "extra": {
+    "accent2": "#5bc0e8"
+  }
+}

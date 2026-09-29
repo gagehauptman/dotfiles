@@ -53,7 +53,7 @@ Item {
           radius: metrics.s(50)
           color: Theme.colors.inset
           border.color: Theme.colors.border
-          border.width: 2
+          border.width: Theme.bw(2)
           visible: pfpImage.status !== Image.Ready
 
           Text {
@@ -61,7 +61,7 @@ Item {
             text: "󰀉"
             color: Theme.colors.textMuted
             font.pixelSize: metrics.fontHuge
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
           }
         }
 
@@ -97,7 +97,7 @@ Item {
         color: Theme.colors.textPrimary
         font.pixelSize: metrics.fontLarge
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
 
       // Hostname
@@ -106,7 +106,7 @@ Item {
         text: profileWidget.hostname
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontSmall
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
 
       // Color palette dots

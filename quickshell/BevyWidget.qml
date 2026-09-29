@@ -97,7 +97,7 @@ Item {
       color: Theme.colors.textPrimary
       font.pixelSize: metrics.fontLarge
       font.bold: true
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
     }
 
     // Readouts: "label value" pairs from the app, right of the title
@@ -113,13 +113,13 @@ Item {
             text: modelData.label ?? ""
             color: Theme.colors.textMuted
             font.pixelSize: metrics.fontSmall
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
           }
           Text {
             text: modelData.value ?? ""
             color: Theme.colors.textSecondary
             font.pixelSize: metrics.fontSmall
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
           }
         }
       }
@@ -139,7 +139,7 @@ Item {
       width: Math.min(360, parent.width * 0.55)
       radius: metrics.radiusLarge / 2
       color: bevyWidget.withAlpha(Theme.colors.panelDeep, 0.96)
-      border.width: 1
+      border.width: Theme.bw(1)
       border.color: Theme.colors.border
       MouseArea { anchors.fill: parent; hoverEnabled: true; onWheel: wheel => wheel.accepted = true }   // keeps the globe from zooming under it
       Flickable {
@@ -162,7 +162,7 @@ Item {
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontSmall
                 font.bold: true
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 topPadding: metrics.spacingSmall
               }
               Repeater {
@@ -198,7 +198,7 @@ Item {
           width: pillText.implicitWidth + 16
           radius: height / 2
           color: on ? bevyWidget.withAlpha(Theme.colors.accent, 0.28) : bevyWidget.withAlpha(Theme.colors.panelDeep, 0.78)
-          border.width: 1
+          border.width: Theme.bw(1)
           border.color: on ? Theme.colors.accent : Theme.colors.border
           opacity: pillArea.pressed ? 0.6 : 1
           Text {
@@ -207,7 +207,7 @@ Item {
             text: modelData.label ?? modelData.id
             color: on ? Theme.colors.textPrimary : Theme.colors.textSecondary
             font.pixelSize: metrics.fontSmall
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
           }
           MouseArea {
             id: pillArea
@@ -223,14 +223,14 @@ Item {
         width: height
         radius: height / 2
         color: bevyWidget.settingsOpen ? bevyWidget.withAlpha(Theme.colors.accent, 0.28) : bevyWidget.withAlpha(Theme.colors.panelDeep, 0.78)
-        border.width: 1
+        border.width: Theme.bw(1)
         border.color: bevyWidget.settingsOpen ? Theme.colors.accent : Theme.colors.border
         Text {
           anchors.centerIn: parent
           text: "\u{f0493}"   // nf-md-cog
           color: bevyWidget.settingsOpen ? Theme.colors.textPrimary : Theme.colors.textSecondary
           font.pixelSize: metrics.fontSmall + 2
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: bevyWidget.settingsOpen = !bevyWidget.settingsOpen }
       }
@@ -241,7 +241,7 @@ Item {
   component SettingLabel: Text {
     color: Theme.colors.textSecondary
     font.pixelSize: metrics.fontSmall
-    font.family: "monospace"
+    font.family: Theme.fonts.mono
     elide: Text.ElideRight
   }
   component Pill: Rectangle {
@@ -252,9 +252,9 @@ Item {
     width: pillLabel.implicitWidth + 14
     radius: height / 2
     color: on ? bevyWidget.withAlpha(Theme.colors.accent, 0.28) : bevyWidget.withAlpha(Theme.colors.panel, 0.9)
-    border.width: 1
+    border.width: Theme.bw(1)
     border.color: on ? Theme.colors.accent : Theme.colors.border
-    Text { id: pillLabel; anchors.centerIn: parent; text: parent.label; color: parent.on ? Theme.colors.textPrimary : Theme.colors.textSecondary; font.pixelSize: metrics.fontSmall; font.family: "monospace" }
+    Text { id: pillLabel; anchors.centerIn: parent; text: parent.label; color: parent.on ? Theme.colors.textPrimary : Theme.colors.textSecondary; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono }
     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
   }
 
@@ -354,7 +354,7 @@ Item {
         width: parent.width; height: metrics.fontSmall + 12
         radius: 4
         color: bevyWidget.withAlpha(Theme.colors.panel, 0.9)
-        border.width: 1
+        border.width: Theme.bw(1)
         border.color: field.activeFocus ? Theme.colors.accent : Theme.colors.border
         TextInput {
           id: field
@@ -363,7 +363,7 @@ Item {
           text: setting.value ?? ""
           color: Theme.colors.textPrimary
           font.pixelSize: metrics.fontSmall
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
           clip: true
           selectByMouse: true
           onEditingFinished: if (text !== (setting.value ?? "")) bevyWidget.send(setting.id, text)
@@ -384,6 +384,6 @@ Item {
           : (view.item ? view.item.error : "")
       color: Theme.colors.textMuted
       font.pixelSize: metrics.fontSmall
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
     }
 }

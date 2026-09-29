@@ -1,0 +1,44 @@
+{
+  "name": "Nightshift Green",
+  "stem": "plugged_in",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "IBM Plex Mono",
+    "mono": "IBM Plex Mono",
+    "display": "IBM Plex Mono"
+  },
+  "style": {
+    "radius": 0.5,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7e597",
+    "yellow": "#e8f797",
+    "green": "#98e1ac",
+    "teal": "#98e1ce",
+    "cyan": "#a0eeea",
+    "blue": "#88d8f2",
+    "indigo": "#92bee8",
+    "violet": "#9392e8",
+    "lavender": "#d6b85a",
+    "pink": "#e68eeb",
+    "background": "#0a1a17",
+    "panel": "#071311",
+    "panelDeep": "#050d0c",
+    "inset": "#1d2e2a",
+    "border": "#31423d",
+    "textPrimary": "#cbe3d4",
+    "textSecondary": "#95ab9f",
+    "textMuted": "#61746c",
+    "accent": "#8fd9b0",
+    "error": "#ee8b98",
+    "success": "#98e1ac",
+    "warning": "#e8f797",
+    "onAccent": "#0a1a17"
+  },
+  "extra": {
+    "accent2": "#d6b85a"
+  }
+}

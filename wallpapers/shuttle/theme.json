@@ -1,0 +1,44 @@
+{
+  "name": "Reentry Glow",
+  "stem": "shuttle",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Rajdhani",
+    "mono": "Share Tech Mono",
+    "display": "Orbitron"
+  },
+  "style": {
+    "radius": 0.6,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7b797",
+    "yellow": "#f7cd97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#7f9cff",
+    "pink": "#eb8eb2",
+    "background": "#0a0a1c",
+    "panel": "#070714",
+    "panelDeep": "#05050e",
+    "inset": "#232030",
+    "border": "#3b3744",
+    "textPrimary": "#ffe9e4",
+    "textSecondary": "#baabac",
+    "textMuted": "#786e76",
+    "accent": "#ff7a5c",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7cd97",
+    "onAccent": "#0a0a1c"
+  },
+  "extra": {
+    "accent2": "#7f9cff"
+  }
+}

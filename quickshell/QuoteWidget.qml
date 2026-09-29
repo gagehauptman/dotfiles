@@ -28,6 +28,7 @@ ThreeRowWidget {
 
   middleContent: Component {
     Text {
+      font.family: Theme.fonts.display
       text: quoteWidget.quoteText || "Loading..."
       color: Theme.colors.textPrimary
       font.pixelSize: metrics.fontSmall
@@ -39,6 +40,7 @@ ThreeRowWidget {
 
   footerContent: Component {
     Text {
+      font.family: Theme.fonts.ui
       visible: quoteWidget.quoteAuthor !== ""
       text: "— " + quoteWidget.quoteAuthor
       color: Theme.colors.blue

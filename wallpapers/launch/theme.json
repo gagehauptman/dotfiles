@@ -1,0 +1,44 @@
+{
+  "name": "Contrail Dusk",
+  "stem": "launch",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Nunito",
+    "mono": "Share Tech Mono",
+    "display": "Nunito"
+  },
+  "style": {
+    "radius": 1.8,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7a897",
+    "yellow": "#f7bf97",
+    "green": "#a8e198",
+    "teal": "#98cde1",
+    "cyan": "#a0c0ee",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#d792e8",
+    "lavender": "#6fa6e8",
+    "pink": "#eb8ec1",
+    "background": "#121a3a",
+    "panel": "#0d132a",
+    "panelDeep": "#090d1d",
+    "inset": "#282e4d",
+    "border": "#3d4260",
+    "textPrimary": "#e9e4f8",
+    "textSecondary": "#adabc3",
+    "textMuted": "#737590",
+    "accent": "#f27fa5",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7bf97",
+    "onAccent": "#121a3a"
+  },
+  "extra": {
+    "accent2": "#6fa6e8"
+  }
+}

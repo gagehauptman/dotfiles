@@ -1,0 +1,44 @@
+{
+  "name": "Red Planet Dusk",
+  "stem": "lander",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Space Grotesk",
+    "mono": "JetBrains Mono",
+    "display": "Space Grotesk"
+  },
+  "style": {
+    "radius": 1.2,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7b597",
+    "yellow": "#f7cc97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0c0ee",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#7f8cff",
+    "pink": "#eb8eb4",
+    "background": "#14183a",
+    "panel": "#0e112a",
+    "panelDeep": "#0a0c1d",
+    "inset": "#292d4e",
+    "border": "#3e4161",
+    "textPrimary": "#e8e6ff",
+    "textSecondary": "#adacc8",
+    "textMuted": "#737593",
+    "accent": "#ff6a55",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7cc97",
+    "onAccent": "#14183a"
+  },
+  "extra": {
+    "accent2": "#7f8cff"
+  }
+}

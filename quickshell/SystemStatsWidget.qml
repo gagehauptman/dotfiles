@@ -172,7 +172,7 @@ DataWidget {
             color: Theme.colors.textPrimary
             font.pixelSize: metrics.fontSmall
             font.bold: true
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
             Layout.fillWidth: true
           }
 
@@ -197,7 +197,7 @@ DataWidget {
                  : Theme.colors.textMuted
             font.pixelSize: metrics.fontSmall
             font.italic: true
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
 
             Behavior on color { ColorAnimation { duration: 200 } }
           }
@@ -240,7 +240,7 @@ DataWidget {
           color: Theme.colors.textPrimary
           font.pixelSize: metrics.fontSmall
           font.bold: true
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
           Layout.fillWidth: true
         }
 
@@ -261,7 +261,7 @@ DataWidget {
           }
           font.pixelSize: metrics.fontSmall
           font.italic: true
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
 
           Behavior on color { ColorAnimation { duration: 200 } }
         }

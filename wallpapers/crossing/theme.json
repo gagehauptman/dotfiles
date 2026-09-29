@@ -1,0 +1,44 @@
+{
+  "name": "Harbor Light",
+  "stem": "crossing",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Nunito",
+    "mono": "IBM Plex Mono",
+    "display": "Josefin Sans"
+  },
+  "style": {
+    "radius": 1.6,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c697",
+    "yellow": "#f7dd97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#88e0f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#4fc1c6",
+    "pink": "#eb8ea4",
+    "background": "#0c2a30",
+    "panel": "#091e23",
+    "panelDeep": "#061518",
+    "inset": "#203e43",
+    "border": "#345256",
+    "textPrimary": "#d5f0ee",
+    "textSecondary": "#9db9b9",
+    "textMuted": "#668385",
+    "accent": "#f4c95d",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7dd97",
+    "onAccent": "#0c2a30"
+  },
+  "extra": {
+    "accent2": "#4fc1c6"
+  }
+}

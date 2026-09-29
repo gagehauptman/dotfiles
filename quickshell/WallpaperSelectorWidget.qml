@@ -412,7 +412,7 @@ Item {
                 anchors.right: parent.right
                 text: fileBaseName
                 color: Theme.colors.textSecondary
-                font.family: "Noto Sans"
+                font.family: Theme.fonts.ui
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }

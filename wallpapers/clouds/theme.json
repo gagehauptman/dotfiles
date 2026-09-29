@@ -1,0 +1,44 @@
+{
+  "name": "Cotton Sky",
+  "stem": "clouds",
+  "dark": false,
+  "inherits": null,
+  "fonts": {
+    "ui": "Quicksand",
+    "mono": "Space Mono",
+    "display": "Quicksand"
+  },
+  "style": {
+    "radius": 2,
+    "border": 1
+  },
+  "palette": {
+    "red": "#a3293a",
+    "orange": "#9a301e",
+    "yellow": "#9a4d1e",
+    "green": "#4d923a",
+    "teal": "#3a7992",
+    "cyan": "#29538f",
+    "blue": "#2525a7",
+    "indigo": "#53319b",
+    "violet": "#83319b",
+    "lavender": "#7c6bd6",
+    "pink": "#9f2d6e",
+    "background": "#f4ecfa",
+    "panel": "#e8e0ed",
+    "panelDeep": "#dcd4e1",
+    "inset": "#e3dbe8",
+    "border": "#c8c2cd",
+    "textPrimary": "#3a2f57",
+    "textSecondary": "#6e6485",
+    "textMuted": "#a097b1",
+    "accent": "#e0508f",
+    "error": "#a3293a",
+    "success": "#4d923a",
+    "warning": "#9a4d1e",
+    "onAccent": "#f4ecfa"
+  },
+  "extra": {
+    "accent2": "#7c6bd6"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "Moonlit Sail",
+  "stem": "sailboat_void",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Lora",
+    "mono": "IBM Plex Mono",
+    "display": "Cormorant Garamond"
+  },
+  "style": {
+    "radius": 1.6,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f79799",
+    "yellow": "#e8f797",
+    "green": "#98e1bc",
+    "teal": "#98dfe1",
+    "cyan": "#a0d9ee",
+    "blue": "#88b2f2",
+    "indigo": "#929ee8",
+    "violet": "#aa92e8",
+    "lavender": "#e3d8b0",
+    "pink": "#eb8ee8",
+    "background": "#080e1e",
+    "panel": "#060a16",
+    "panelDeep": "#04070f",
+    "inset": "#1c2333",
+    "border": "#303748",
+    "textPrimary": "#d2dcf0",
+    "textSecondary": "#99a2b5",
+    "textMuted": "#636b7c",
+    "accent": "#a9c4ff",
+    "error": "#ee8b98",
+    "success": "#98e1bc",
+    "warning": "#e8f797",
+    "onAccent": "#080e1e"
+  },
+  "extra": {
+    "accent2": "#e3d8b0"
+  }
+}

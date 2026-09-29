@@ -1,0 +1,44 @@
+{
+  "name": "Lighthouse Hour",
+  "stem": "VIC_8066",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Lora",
+    "mono": "IBM Plex Mono",
+    "display": "Playfair Display"
+  },
+  "style": {
+    "radius": 1.4,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7bc97",
+    "yellow": "#f7d697",
+    "green": "#a5e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#d892e8",
+    "lavender": "#9aa3b5",
+    "pink": "#eb8eb7",
+    "background": "#1a1719",
+    "panel": "#131112",
+    "panelDeep": "#0d0c0c",
+    "inset": "#2f2b2c",
+    "border": "#45403f",
+    "textPrimary": "#efe3d8",
+    "textSecondary": "#b3aaa3",
+    "textMuted": "#7a736f",
+    "accent": "#e8a27c",
+    "error": "#ee8b98",
+    "success": "#a5e198",
+    "warning": "#f7d697",
+    "onAccent": "#1a1719"
+  },
+  "extra": {
+    "accent2": "#9aa3b5"
+  }
+}

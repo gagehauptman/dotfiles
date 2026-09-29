@@ -37,7 +37,7 @@ Item {
         color: Theme.colors.textPrimary
         font.pixelSize: root.titleSize
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.display
         Layout.fillWidth: true
         elide: Text.ElideRight
       }

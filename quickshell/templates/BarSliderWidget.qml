@@ -75,7 +75,7 @@ Item {
       text: root.icon
       color: root.accentColor
       font.pixelSize: metrics.fontNormal
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
       font.bold: true
     }
 

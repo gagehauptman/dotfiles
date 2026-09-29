@@ -68,7 +68,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       text: voiceBar.icon
       color: voiceBar.stateColor
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
       font.pixelSize: metrics.fontSmall
       Behavior on color { ColorAnimation { duration: 250 } }
       SequentialAnimation on opacity {
@@ -101,6 +101,7 @@ Item {
     }
 
     Text {
+      font.family: Theme.fonts.ui
       anchors.verticalCenter: parent.verticalCenter
       visible: !voiceBar.isVertical
       text: voiceBar.line

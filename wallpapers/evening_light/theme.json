@@ -1,0 +1,44 @@
+{
+  "name": "Blast Sunset",
+  "stem": "evening_light",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Rajdhani",
+    "mono": "IBM Plex Mono",
+    "display": "Orbitron"
+  },
+  "style": {
+    "radius": 0.6,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7bd97",
+    "yellow": "#f7d397",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#d94a3a",
+    "pink": "#eb8ead",
+    "background": "#150e0f",
+    "panel": "#0f0a0b",
+    "panelDeep": "#0a0708",
+    "inset": "#2c2422",
+    "border": "#443935",
+    "textPrimary": "#ffe6cf",
+    "textSecondary": "#bdaa99",
+    "textMuted": "#7e6f65",
+    "accent": "#ff7a2b",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7d397",
+    "onAccent": "#150e0f"
+  },
+  "extra": {
+    "accent2": "#d94a3a"
+  }
+}

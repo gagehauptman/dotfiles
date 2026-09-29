@@ -88,7 +88,7 @@ ThreeRowWidget {
         text: weatherWidget.weatherIcon(weatherWidget.weatherCode)
         color: weatherWidget.weatherColor(weatherWidget.weatherCode)
         font.pixelSize: metrics.fontHuge
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         Layout.alignment: Qt.AlignVCenter
       }
 
@@ -101,14 +101,14 @@ ThreeRowWidget {
           color: Theme.colors.textPrimary
           font.pixelSize: metrics.fontXL
           font.bold: true
-          font.family: "Noto Sans"
+          font.family: Theme.fonts.ui
         }
 
         Text {
           text: weatherWidget.weatherDesc(weatherWidget.weatherCode)
           color: weatherWidget.weatherColor(weatherWidget.weatherCode)
           font.pixelSize: metrics.fontSmall
-          font.family: "Noto Sans"
+          font.family: Theme.fonts.ui
         }
       }
     }
@@ -120,14 +120,14 @@ ThreeRowWidget {
 
       RowLayout {
         spacing: metrics.spacingTiny
-        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: metrics.fontSmall; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
+        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono; font.bold: true }
+        Text { font.family: Theme.fonts.ui; text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
       }
 
       RowLayout {
         spacing: metrics.spacingTiny
-        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: metrics.fontSmall; font.family: "monospace"; font.bold: true }
-        Text { text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
+        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono; font.bold: true }
+        Text { font.family: Theme.fonts.ui; text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
       }
     }
   }

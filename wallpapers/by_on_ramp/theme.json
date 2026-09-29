@@ -1,0 +1,44 @@
+{
+  "name": "Sunbelt Cartoon",
+  "stem": "by_on_ramp",
+  "dark": false,
+  "inherits": null,
+  "fonts": {
+    "ui": "Nunito",
+    "mono": "Space Mono",
+    "display": "Nunito"
+  },
+  "style": {
+    "radius": 2,
+    "border": 2
+  },
+  "palette": {
+    "red": "#a3293a",
+    "orange": "#9a4e1e",
+    "yellow": "#9a6b1e",
+    "green": "#4d923a",
+    "teal": "#3a9262",
+    "cyan": "#298f75",
+    "blue": "#2525a7",
+    "indigo": "#53319b",
+    "violet": "#8b319b",
+    "lavender": "#1fa6c4",
+    "pink": "#9f2d53",
+    "background": "#fdf3d0",
+    "panel": "#f0e7c6",
+    "panelDeep": "#e4dbbb",
+    "inset": "#ebe2c1",
+    "border": "#cfc7ab",
+    "textPrimary": "#23303a",
+    "textSecondary": "#606764",
+    "textMuted": "#9b9b8c",
+    "accent": "#ff7a2f",
+    "error": "#a3293a",
+    "success": "#4d923a",
+    "warning": "#9a6b1e",
+    "onAccent": "#fdf3d0"
+  },
+  "extra": {
+    "accent2": "#1fa6c4"
+  }
+}

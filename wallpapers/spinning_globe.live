@@ -1,2 +1,1 @@
-# Live wallpaper: scripts/wallpaper/bins/spinning_globe draws it; the selector
-# lists this file and previews it with bevy/apps/spinning_globe (same scene).
+spinning_globe/spinning_globe.live

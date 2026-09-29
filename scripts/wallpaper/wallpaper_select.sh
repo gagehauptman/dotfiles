@@ -311,6 +311,9 @@ fi
 
 stem=${selection##*/}
 stem=${stem%.*}
+# Re-theme the shell (Quickshell, kitty, borders) for this wallpaper; previews
+# too, so the whole look follows the selector live. See scripts/theme/apply.py.
+(exec 9>&- 8>&-; "$CONFIG_HOME/scripts/theme/apply.py" "$stem" >/dev/null 2>&1) &
 bin_dir="$BIN_ROOT/$stem"
 # Saved and listed as its descriptor, whatever path it came in as.
 if [[ -d $bin_dir && -f "$WALLPAPER_DIR/$stem.live" ]]; then

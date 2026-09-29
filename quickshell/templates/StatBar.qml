@@ -22,7 +22,7 @@ ColumnLayout {
       color: root.accentColor
       font.pixelSize: metrics.fontSmall
       font.bold: true
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
       Layout.preferredWidth: metrics.s(70)
     }
     Text {

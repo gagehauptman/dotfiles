@@ -76,7 +76,7 @@ Item {
       text: "\uf030"
       color: screenshotMouse.containsMouse ? Theme.colors.cyan : Theme.colors.textSecondary
       font.pixelSize: metrics.fontNormal
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
       font.bold: true
 
       Behavior on color { ColorAnimation { duration: 100 } }
@@ -107,7 +107,7 @@ Item {
         return recordMouse.containsMouse ? Theme.colors.red : Theme.colors.textSecondary
       }
       font.pixelSize: root.isRecording ? metrics.fontNormal : metrics.s(10)
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
       font.bold: true
 
       Timer {

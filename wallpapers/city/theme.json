@@ -1,0 +1,44 @@
+{
+  "name": "Overgrowth",
+  "stem": "city",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Lora",
+    "mono": "IBM Plex Mono",
+    "display": "Playfair Display"
+  },
+  "style": {
+    "radius": 1.2,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7d397",
+    "yellow": "#f7e997",
+    "green": "#a1e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#88e0f2",
+    "indigo": "#92bee8",
+    "violet": "#db92e8",
+    "lavender": "#d9a25a",
+    "pink": "#eb8ea2",
+    "background": "#17201a",
+    "panel": "#111713",
+    "panelDeep": "#0c100d",
+    "inset": "#2c342c",
+    "border": "#40493f",
+    "textPrimary": "#e6ecd2",
+    "textSecondary": "#acb39e",
+    "textMuted": "#747c6d",
+    "accent": "#b8c95a",
+    "error": "#ee8b98",
+    "success": "#a1e198",
+    "warning": "#f7e997",
+    "onAccent": "#17201a"
+  },
+  "extra": {
+    "accent2": "#d9a25a"
+  }
+}

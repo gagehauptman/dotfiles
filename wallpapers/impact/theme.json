@@ -1,0 +1,44 @@
+{
+  "name": "Impact Gold",
+  "stem": "impact",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Josefin Sans",
+    "mono": "Space Mono",
+    "display": "Playfair Display"
+  },
+  "style": {
+    "radius": 0.8,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c497",
+    "yellow": "#f7db97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#88e0f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#ff5a2b",
+    "pink": "#eb8ea5",
+    "background": "#0d1428",
+    "panel": "#090e1d",
+    "panelDeep": "#060a14",
+    "inset": "#252a38",
+    "border": "#3d3f49",
+    "textPrimary": "#ffeccc",
+    "textSecondary": "#bbb09e",
+    "textMuted": "#7a7572",
+    "accent": "#ffb020",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7db97",
+    "onAccent": "#0d1428"
+  },
+  "extra": {
+    "accent2": "#ff5a2b"
+  }
+}

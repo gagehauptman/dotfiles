@@ -102,7 +102,7 @@ Item {
             text: "󰍉"
             color: Theme.colors.blue
             font.pixelSize: metrics.fontNormal
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
         }
 
         Text {
@@ -111,7 +111,7 @@ Item {
             text: "Search applications..."
             color: Theme.colors.textMuted
             font.pixelSize: metrics.fontNormal
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
             visible: !searchBox.text && !searchBox.activeFocus
         }
 
@@ -123,7 +123,7 @@ Item {
 
             color: Theme.colors.textPrimary
             font.pixelSize: metrics.fontNormal
-            font.family: "monospace"
+            font.family: Theme.fonts.mono
             clip: true
             
             onTextChanged: {
@@ -206,7 +206,7 @@ Item {
         highlight: Rectangle {
             color: Theme.colors.inset
             radius: metrics.radiusNormal
-            border.width: 2
+            border.width: Theme.bw(2)
             border.color: Theme.colors.blue
         }
         highlightFollowsCurrentItem: true
@@ -252,7 +252,7 @@ Item {
                     color: Theme.colors.textPrimary
                     font.pixelSize: metrics.fontTiny
                     font.bold: isSelected
-                    font.family: "monospace"
+                    font.family: Theme.fonts.mono
                     anchors.horizontalCenter: parent.horizontalCenter
                     elide: Text.ElideRight
                     width: resultsGrid.cellWidth - metrics.s(16)
@@ -290,7 +290,7 @@ Item {
         text: (appSelectorWidget.currentPage + 1) + " / " + appSelectorWidget.totalPages
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontTiny
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         visible: appSelectorWidget.totalPages > 1
     }
 

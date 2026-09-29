@@ -142,7 +142,7 @@ ThreeRowWidget {
         color: Theme.colors.textSecondary
         font.pixelSize: metrics.fontSmall
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         Layout.fillWidth: true
       }
 
@@ -159,6 +159,7 @@ ThreeRowWidget {
           }
 
           Text {
+            font.family: Theme.fonts.ui
             text: modelData.name
             color: Theme.colors.textPrimary
             font.pixelSize: metrics.fontNormal
@@ -167,6 +168,7 @@ ThreeRowWidget {
           }
 
           Text {
+            font.family: Theme.fonts.ui
             text: modelData.status
             color: modelData.status === "online" ? Theme.colors.green : Theme.colors.textMuted
             font.pixelSize: metrics.fontSmall
@@ -174,6 +176,7 @@ ThreeRowWidget {
           }
 
           Text {
+            font.family: Theme.fonts.ui
             visible: modelData.ping !== "N/A"
             text: "(" + modelData.ping + ")"
             color: {
@@ -188,6 +191,7 @@ ThreeRowWidget {
       }
 
       Text {
+        font.family: Theme.fonts.ui
         visible: servicesWidget.devices.length === 0
         text: "Loading devices..."
         color: Theme.colors.textMuted
@@ -223,11 +227,12 @@ ThreeRowWidget {
         color: Theme.colors.textPrimary
         font.pixelSize: metrics.fontNormal
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
 
       // Error / loading message — fills middle when shown
       Text {
+        font.family: Theme.fonts.ui
         visible: !servicesWidget.carOk
         text: servicesWidget.carStatus === "loading" ? "loading..." : servicesWidget.carError
         color: Theme.colors.textMuted
@@ -255,11 +260,12 @@ ThreeRowWidget {
         }
         font.pixelSize: metrics.fontSmall
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
 
       // Range
       Text {
+        font.family: Theme.fonts.ui
         visible: servicesWidget.carOk
         text: servicesWidget.carRange + " mi"
         color: Theme.colors.textSecondary
@@ -274,7 +280,7 @@ ThreeRowWidget {
         text: servicesWidget.carTemp.toFixed(0) + "°C"
         color: Theme.colors.textSecondary
         font.pixelSize: metrics.fontSmall
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
 
       // Climate toggle — single click to toggle on/off
@@ -292,7 +298,7 @@ ThreeRowWidget {
           text: "󰈐"
           color: servicesWidget.carClimateOn ? Theme.colors.blue : Theme.colors.textMuted
           font.pixelSize: metrics.fontNormal
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
           Behavior on color { ColorAnimation { duration: 150 } }
 
           RotationAnimator on rotation {
@@ -342,7 +348,7 @@ ThreeRowWidget {
           text: "󰌾"
           color: Theme.colors.green
           font.pixelSize: metrics.fontNormal
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
           visible: servicesWidget.carLocked
           opacity: 1.0 - lockButton.holdProgress
         }
@@ -352,7 +358,7 @@ ThreeRowWidget {
           text: "󰿆"
           color: Theme.colors.red
           font.pixelSize: metrics.fontNormal
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
           opacity: servicesWidget.carLocked ? lockButton.holdProgress : 1.0
           visible: opacity > 0
         }

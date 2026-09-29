@@ -395,10 +395,10 @@ Scope {
         readonly property real spacingSmall: s(6)
         readonly property real spacingNormal: s(10)
         readonly property real spacingLarge: s(15)
-        readonly property real radiusSmall: s(5)
-        readonly property real radiusNormal: s(10)
-        readonly property real radiusLarge: s(15)
-        readonly property real radiusXL: s(20)
+        readonly property real radiusSmall: Theme.rs(s(5))
+        readonly property real radiusNormal: Theme.rs(s(10))
+        readonly property real radiusLarge: Theme.rs(s(15))
+        readonly property real radiusXL: Theme.rs(s(20))
 
         readonly property real marginBar: s(15)
         readonly property real marginEdge: s(20)
@@ -496,7 +496,7 @@ Scope {
           radius: metrics.radiusXL
           color: Theme.colors.background
           border.color: Theme.colors.red
-          border.width: 2
+          border.width: Theme.bw(2)
 
           anchors {
             horizontalCenter: parent.horizontalCenter
@@ -515,11 +515,12 @@ Scope {
               text: ""
               color: Theme.colors.red
               font.pixelSize: metrics.fontHuge
-              font.family: "monospace"
+              font.family: Theme.fonts.mono
               Layout.alignment: Qt.AlignHCenter
             }
             
             Text {
+              font.family: Theme.fonts.ui
               text: "Low Battery Warning"
               color: Theme.colors.textPrimary
               font.pixelSize: metrics.fontLarge
@@ -528,6 +529,7 @@ Scope {
             }
             
             Text {
+              font.family: Theme.fonts.ui
               text: "Battery at " + root.batteryPercent + "% — Please plug in charger"
               color: Theme.colors.textSecondary
               font.pixelSize: metrics.fontSmall
@@ -805,7 +807,7 @@ Scope {
 
             color: Theme.colors.textPrimary
             font.pixelSize: metrics.isVertical ? metrics.fontSmall : metrics.fontNormal
-            font.family: "Noto Sans"
+            font.family: Theme.fonts.display
             font.bold: true
 
             function updateTime() {
@@ -903,10 +905,11 @@ Scope {
                 text: "󰘚"
                 color: Theme.colors.blue
                 font.pixelSize: metrics.fontNormal
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 font.bold: true
               }
               Text {
+                font.family: Theme.fonts.ui
                 text: parseFloat(root.cpuLoad).toFixed(0) + "%"
                 color: Theme.colors.blue
                 font.pixelSize: metrics.fontNormal
@@ -936,10 +939,11 @@ Scope {
                   return Theme.colors.teal;
                 }
                 font.pixelSize: metrics.fontNormal
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 font.bold: true
               }
               Text {
+                font.family: Theme.fonts.ui
                 text: parseFloat(root.tempValue).toFixed(0) + "°C"
                 color: {
                   let temp = parseFloat(root.tempValue);
@@ -976,10 +980,11 @@ Scope {
                   return Theme.colors.red;
                 }
                 font.pixelSize: metrics.fontNormal
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 font.bold: true
               }
               Text {
+                font.family: Theme.fonts.ui
                 text: root.batteryPercent + "%"
                 color: {
                   let level = parseInt(root.batteryPercent);

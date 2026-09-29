@@ -1,0 +1,44 @@
+{
+  "name": "Anvil Cloud",
+  "stem": "canaveral1",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "DM Sans",
+    "mono": "IBM Plex Mono",
+    "display": "Josefin Sans"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c297",
+    "yellow": "#f7d997",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#8f8fb8",
+    "pink": "#eb8ea7",
+    "background": "#1c1a24",
+    "panel": "#14131a",
+    "panelDeep": "#0e0d12",
+    "inset": "#312e36",
+    "border": "#464348",
+    "textPrimary": "#f0e6da",
+    "textSecondary": "#b5ada7",
+    "textMuted": "#7b7676",
+    "accent": "#f2b25a",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7d997",
+    "onAccent": "#1c1a24"
+  },
+  "extra": {
+    "accent2": "#8f8fb8"
+  }
+}

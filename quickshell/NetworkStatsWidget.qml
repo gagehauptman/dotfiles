@@ -45,18 +45,18 @@ DataWidget {
         Layout.fillWidth: true
         spacing: metrics.spacingNormal
 
-        Text { text: "󰇚"; color: Theme.colors.cyan; font.pixelSize: metrics.fontLarge; font.family: "monospace" }
+        Text { text: "󰇚"; color: Theme.colors.cyan; font.pixelSize: metrics.fontLarge; font.family: Theme.fonts.mono }
 
         ColumnLayout {
           Layout.fillWidth: true
           spacing: metrics.spacingTiny
 
-          Text { text: "Download"; color: Theme.colors.cyan; font.pixelSize: metrics.fontTiny; font.bold: true }
+          Text { font.family: Theme.fonts.ui; text: "Download"; color: Theme.colors.cyan; font.pixelSize: metrics.fontTiny; font.bold: true }
 
           RowLayout {
             spacing: metrics.spacingSmall
-            Text { text: networkWidget.rxRate; color: Theme.colors.textPrimary; font.pixelSize: metrics.fontSmall; font.bold: true }
-            Text { text: "(" + networkWidget.rxTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: metrics.fontTiny }
+            Text { font.family: Theme.fonts.ui; text: networkWidget.rxRate; color: Theme.colors.textPrimary; font.pixelSize: metrics.fontSmall; font.bold: true }
+            Text { font.family: Theme.fonts.ui; text: "(" + networkWidget.rxTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: metrics.fontTiny }
           }
         }
       }
@@ -66,18 +66,18 @@ DataWidget {
         Layout.fillWidth: true
         spacing: metrics.spacingNormal
 
-        Text { text: "󰕒"; color: Theme.colors.green; font.pixelSize: metrics.fontLarge; font.family: "monospace" }
+        Text { text: "󰕒"; color: Theme.colors.green; font.pixelSize: metrics.fontLarge; font.family: Theme.fonts.mono }
 
         ColumnLayout {
           Layout.fillWidth: true
           spacing: metrics.spacingTiny
 
-          Text { text: "Upload"; color: Theme.colors.green; font.pixelSize: metrics.fontTiny; font.bold: true }
+          Text { font.family: Theme.fonts.ui; text: "Upload"; color: Theme.colors.green; font.pixelSize: metrics.fontTiny; font.bold: true }
 
           RowLayout {
             spacing: metrics.spacingSmall
-            Text { text: networkWidget.txRate; color: Theme.colors.textPrimary; font.pixelSize: metrics.fontSmall; font.bold: true }
-            Text { text: "(" + networkWidget.txTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: metrics.fontTiny }
+            Text { font.family: Theme.fonts.ui; text: networkWidget.txRate; color: Theme.colors.textPrimary; font.pixelSize: metrics.fontSmall; font.bold: true }
+            Text { font.family: Theme.fonts.ui; text: "(" + networkWidget.txTotal + " total)"; color: Theme.colors.textMuted; font.pixelSize: metrics.fontTiny }
           }
         }
       }

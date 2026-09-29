@@ -1,0 +1,44 @@
+{
+  "name": "Lone Beacon",
+  "stem": "launch2",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Josefin Sans",
+    "mono": "IBM Plex Mono",
+    "display": "Josefin Sans"
+  },
+  "style": {
+    "radius": 0.4,
+    "border": 0
+  },
+  "palette": {
+    "red": "#e495a0",
+    "orange": "#edc3a1",
+    "yellow": "#edd5a1",
+    "green": "#acdaa0",
+    "teal": "#a0daba",
+    "cyan": "#a7e6d7",
+    "blue": "#9292e7",
+    "indigo": "#b09adf",
+    "violet": "#d59adf",
+    "lavender": "#4d6b93",
+    "pink": "#e298ac",
+    "background": "#060d1a",
+    "panel": "#040913",
+    "panelDeep": "#03060d",
+    "inset": "#1a212f",
+    "border": "#2d3543",
+    "textPrimary": "#c9d6e8",
+    "textSecondary": "#929eae",
+    "textMuted": "#5e6777",
+    "accent": "#ffb85c",
+    "error": "#e495a0",
+    "success": "#acdaa0",
+    "warning": "#edd5a1",
+    "onAccent": "#060d1a"
+  },
+  "extra": {
+    "accent2": "#4d6b93"
+  }
+}

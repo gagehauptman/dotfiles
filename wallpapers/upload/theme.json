@@ -1,0 +1,44 @@
+{
+  "name": "Phone Booth",
+  "stem": "upload",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "DM Sans",
+    "mono": "Space Mono",
+    "display": "DM Sans"
+  },
+  "style": {
+    "radius": 1.2,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c797",
+    "yellow": "#f7dd97",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#88e0f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#38b6a8",
+    "pink": "#eb8ea3",
+    "background": "#0b2226",
+    "panel": "#08181b",
+    "panelDeep": "#061113",
+    "inset": "#20373a",
+    "border": "#354b4d",
+    "textPrimary": "#dcefe9",
+    "textSecondary": "#a1b6b2",
+    "textMuted": "#697e7e",
+    "accent": "#ffc93c",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7dd97",
+    "onAccent": "#0b2226"
+  },
+  "extra": {
+    "accent2": "#38b6a8"
+  }
+}

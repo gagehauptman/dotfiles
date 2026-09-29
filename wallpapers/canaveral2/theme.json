@@ -1,0 +1,44 @@
+{
+  "name": "Blue Hour Ascent",
+  "stem": "canaveral2",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Josefin Sans",
+    "mono": "JetBrains Mono",
+    "display": "Josefin Sans"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ee8b98",
+    "orange": "#f7c297",
+    "yellow": "#f7d897",
+    "green": "#a8e198",
+    "teal": "#98e1b9",
+    "cyan": "#a0eedb",
+    "blue": "#8888f2",
+    "indigo": "#ad92e8",
+    "violet": "#db92e8",
+    "lavender": "#4c8be6",
+    "pink": "#eb8ea8",
+    "background": "#0a1a3a",
+    "panel": "#07132a",
+    "panelDeep": "#050d1d",
+    "inset": "#202f4e",
+    "border": "#364461",
+    "textPrimary": "#e4ecff",
+    "textSecondary": "#a7b1c8",
+    "textMuted": "#6c7893",
+    "accent": "#ffab3d",
+    "error": "#ee8b98",
+    "success": "#a8e198",
+    "warning": "#f7d897",
+    "onAccent": "#0a1a3a"
+  },
+  "extra": {
+    "accent2": "#4c8be6"
+  }
+}

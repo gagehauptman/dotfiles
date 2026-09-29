@@ -1,0 +1,44 @@
+{
+  "name": "Cat Bouquine",
+  "stem": "cat_bouquine",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Lora",
+    "mono": "IBM Plex Mono",
+    "display": "Cormorant Garamond"
+  },
+  "style": {
+    "radius": 1.4,
+    "border": 1
+  },
+  "palette": {
+    "red": "#e495a0",
+    "orange": "#edc4a1",
+    "yellow": "#edd7a1",
+    "green": "#aadaa0",
+    "teal": "#a0daba",
+    "cyan": "#a7e6d7",
+    "blue": "#92d9e7",
+    "indigo": "#b09adf",
+    "violet": "#d59adf",
+    "lavender": "#b5523b",
+    "pink": "#e298af",
+    "background": "#231a15",
+    "panel": "#19130f",
+    "panelDeep": "#120d0a",
+    "inset": "#382e27",
+    "border": "#4c4239",
+    "textPrimary": "#f1e4cb",
+    "textSecondary": "#b7ab98",
+    "textMuted": "#807567",
+    "accent": "#d9a441",
+    "error": "#e495a0",
+    "success": "#aadaa0",
+    "warning": "#edd7a1",
+    "onAccent": "#231a15"
+  },
+  "extra": {
+    "accent2": "#b5523b"
+  }
+}

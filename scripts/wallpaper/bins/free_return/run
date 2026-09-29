@@ -4,5 +4,8 @@
 # hide/show, GPU setup); its scene itself is ./scene (free_return_scene).
 dir=$(dirname "$(realpath "$0")")/../spinning_globe
 bin=$dir/target/release/layer_shell_bevy
-[ -x "$bin" ] || cargo build --release --manifest-path "$dir/Cargo.toml" >&2
+# Always through cargo (a no-op when it is up to date) so a scene edited or
+# pulled since the last build isn't shown from a stale binary; if the build
+# fails, the last good one still runs.
+cargo build --release --quiet --manifest-path "$dir/Cargo.toml" >&2 || [ -x "$bin" ] || exit 1
 exec "$bin" --scene free_return "$@"

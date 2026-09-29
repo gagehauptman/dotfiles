@@ -2,43 +2,15 @@
   "name": "Amber Nebula",
   "stem": "nebula2",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/peach",
   "fonts": {
-    "ui": "DM Sans",
-    "mono": "JetBrains Mono",
     "display": "Josefin Sans"
   },
-  "style": {
-    "radius": 1.4,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7c097",
-    "yellow": "#f7d797",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#8b6ee6",
-    "pink": "#eb8ea9",
-    "background": "#1c1020",
-    "panel": "#140c17",
-    "panelDeep": "#0e0810",
-    "inset": "#332632",
-    "border": "#493b44",
-    "textPrimary": "#ffe9d2",
-    "textSecondary": "#bfaca0",
-    "textMuted": "#827270",
-    "accent": "#ff9d3a",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7d797",
-    "onAccent": "#1c1020"
+    "accent": "#fab387"
   },
   "extra": {
-    "accent2": "#8b6ee6"
+    "accent2": "#cba6f7"
   }
 }

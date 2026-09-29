@@ -2,43 +2,15 @@
   "name": "Red Tether",
   "stem": "black_ocean",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/maroon",
   "fonts": {
-    "ui": "Outfit",
-    "mono": "JetBrains Mono",
     "display": "Outfit"
   },
-  "style": {
-    "radius": 2,
-    "border": 0
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7af97",
-    "yellow": "#f7c697",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0c0ee",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#5b7cff",
-    "pink": "#eb8eba",
-    "background": "#0b1030",
-    "panel": "#080c23",
-    "panelDeep": "#060818",
-    "inset": "#202545",
-    "border": "#353b59",
-    "textPrimary": "#dfe6ff",
-    "textSecondary": "#a4aac5",
-    "textMuted": "#6a708d",
-    "accent": "#e23b4a",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7c697",
-    "onAccent": "#0b1030"
+    "accent": "#ee99a0"
   },
   "extra": {
-    "accent2": "#5b7cff"
+    "accent2": "#8aadf4"
   }
 }

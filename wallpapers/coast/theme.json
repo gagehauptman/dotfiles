@@ -2,43 +2,15 @@
   "name": "Ember Arc",
   "stem": "coast",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/rosewater",
   "fonts": {
-    "ui": "Rajdhani",
-    "mono": "Share Tech Mono",
     "display": "Orbitron"
   },
-  "style": {
-    "radius": 0.6,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7b897",
-    "yellow": "#f7ce97",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#4aa3d8",
-    "pink": "#eb8eb1",
-    "background": "#120f1c",
-    "panel": "#0d0b14",
-    "panelDeep": "#09080e",
-    "inset": "#28242e",
-    "border": "#3f3840",
-    "textPrimary": "#f2ddd0",
-    "textSecondary": "#b3a39e",
-    "textMuted": "#776c6d",
-    "accent": "#ff5b2e",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7ce97",
-    "onAccent": "#120f1c"
+    "accent": "#f5e0dc"
   },
   "extra": {
-    "accent2": "#4aa3d8"
+    "accent2": "#74c7ec"
   }
 }

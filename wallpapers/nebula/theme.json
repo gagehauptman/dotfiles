@@ -2,43 +2,15 @@
   "name": "Nebula Bloom",
   "stem": "nebula",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/red",
   "fonts": {
-    "ui": "Outfit",
-    "mono": "Space Mono",
     "display": "Outfit"
   },
-  "style": {
-    "radius": 1.6,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7a597",
-    "yellow": "#f7bb97",
-    "green": "#a8e198",
-    "teal": "#98cde1",
-    "cyan": "#a0c0ee",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#d492e8",
-    "lavender": "#38d6b8",
-    "pink": "#eb8ec4",
-    "background": "#120b1f",
-    "panel": "#0d0816",
-    "panelDeep": "#090610",
-    "inset": "#282034",
-    "border": "#3f364a",
-    "textPrimary": "#f2e2f5",
-    "textSecondary": "#b3a6b9",
-    "textMuted": "#776c7f",
-    "accent": "#ff5fa8",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7bb97",
-    "onAccent": "#120b1f"
+    "accent": "#f38ba8"
   },
   "extra": {
-    "accent2": "#38d6b8"
+    "accent2": "#94e2d5"
   }
 }

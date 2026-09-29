@@ -2,43 +2,15 @@
   "name": "Golden Skyline",
   "stem": "waterfront_city",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/yellow",
   "fonts": {
-    "ui": "Lora",
-    "mono": "IBM Plex Mono",
     "display": "Playfair Display"
   },
-  "style": {
-    "radius": 0.6,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7c797",
-    "yellow": "#f7de97",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#88e0f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#5aa07a",
-    "pink": "#eb8ea3",
-    "background": "#1f1c10",
-    "panel": "#16140c",
-    "panelDeep": "#100e08",
-    "inset": "#353122",
-    "border": "#4a4634",
-    "textPrimary": "#f7ecc4",
-    "textSecondary": "#bbb292",
-    "textMuted": "#807a61",
-    "accent": "#f0c23b",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7de97",
-    "onAccent": "#1f1c10"
+    "accent": "#f9e2af"
   },
   "extra": {
-    "accent2": "#5aa07a"
+    "accent2": "#94e2d5"
   }
 }

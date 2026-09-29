@@ -17,15 +17,16 @@ borders.
       clouds.png -> clouds/clouds.png     symlink kept so the selector, the
                                           saved path in wpsave.txt and the
                                           lock screen still find it flat
-      _presets/                shared themes others can inherit from:
-        default.json           Catppuccin Mocha (used when a wallpaper has no theme)
-        cat_bouquine.json      Cat Bouquine, dark: parchment ink, brass, oxblood, moss
-        cat_bouquine_day.json  Cat Bouquine, paper variant
+      _presets/                shared themes others inherit from:
+        catppuccin_mocha|macchiato|frappe|latte.json   the four Catppuccin flavours
+        default.json           = Catppuccin Mocha (used when a wallpaper has no theme)
 
 A new wallpaper: `mkdir wallpapers/<stem>`, put the image in, symlink it flat
-(`ln -s <stem>/<file> wallpapers/<file>`) and add `theme.json`. A Cat Bouquine
-wallpaper needs only `{"inherits": "cat_bouquine"}` (optionally with
-`fonts`/`style`/`palette` overrides, which win).
+(`ln -s <stem>/<file> wallpapers/<file>`) and add `theme.json`. Catppuccin is
+the house look: a new wallpaper needs only `{"inherits": "catppuccin_mocha",
+"palette": {"accent": "#..."}}` (pick the flavour by brightness, the accent from
+Catppuccin's own accent colours; `fonts`/`style`/`palette` overrides win).
+Deviate from Catppuccin only when it clearly clashes with the image.
 
 ## theme.json
 
@@ -37,9 +38,7 @@ wallpaper needs only `{"inherits": "cat_bouquine"}` (optionally with
             textMuted accent error success warning onAccent
     extra   {accent2}            second accent (window-border gradient)
 
-`themegen.py` holds the seed table (bg, fg, accent, accent2, fonts, shape) the
-files were generated from; after that the JSON is the source of truth, edit it
-directly. `themegen.py <stem>` regenerates one from its seed.
+Each wallpaper's theme.json keeps only what differs from its Catppuccin flavour (accent, accent2, display font).
 
 ## How it switches
 

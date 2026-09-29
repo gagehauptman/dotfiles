@@ -1,0 +1,44 @@
+{
+  "name": "Catppuccin Macchiato",
+  "stem": "catppuccin_macchiato",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Noto Sans",
+    "mono": "JetBrainsMono Nerd Font",
+    "display": "Noto Sans"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ed8796",
+    "orange": "#f5a97f",
+    "yellow": "#eed49f",
+    "green": "#a6da95",
+    "teal": "#8bd5ca",
+    "cyan": "#91d7e3",
+    "blue": "#8aadf4",
+    "indigo": "#7dc4e4",
+    "violet": "#c6a0f6",
+    "lavender": "#b7bdf8",
+    "pink": "#f5bde6",
+    "background": "#24273a",
+    "panel": "#1e2030",
+    "panelDeep": "#181926",
+    "inset": "#363a4f",
+    "border": "#494d64",
+    "textPrimary": "#cad3f5",
+    "textSecondary": "#a5adcb",
+    "textMuted": "#6e738d",
+    "accent": "#8aadf4",
+    "error": "#ed8796",
+    "success": "#a6da95",
+    "warning": "#eed49f",
+    "onAccent": "#24273a"
+  },
+  "extra": {
+    "accent2": "#b7bdf8"
+  }
+}

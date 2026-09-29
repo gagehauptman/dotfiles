@@ -1,0 +1,44 @@
+{
+  "name": "Catppuccin Latte",
+  "stem": "catppuccin_latte",
+  "dark": false,
+  "inherits": null,
+  "fonts": {
+    "ui": "Noto Sans",
+    "mono": "JetBrainsMono Nerd Font",
+    "display": "Noto Sans"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#d20f39",
+    "orange": "#fe640b",
+    "yellow": "#df8e1d",
+    "green": "#40a02b",
+    "teal": "#179299",
+    "cyan": "#04a5e5",
+    "blue": "#1e66f5",
+    "indigo": "#209fb5",
+    "violet": "#8839ef",
+    "lavender": "#7287fd",
+    "pink": "#ea76cb",
+    "background": "#eff1f5",
+    "panel": "#e6e9ef",
+    "panelDeep": "#dce0e8",
+    "inset": "#ccd0da",
+    "border": "#bcc0cc",
+    "textPrimary": "#4c4f69",
+    "textSecondary": "#6c6f85",
+    "textMuted": "#9ca0b0",
+    "accent": "#1e66f5",
+    "error": "#d20f39",
+    "success": "#40a02b",
+    "warning": "#df8e1d",
+    "onAccent": "#eff1f5"
+  },
+  "extra": {
+    "accent2": "#7287fd"
+  }
+}

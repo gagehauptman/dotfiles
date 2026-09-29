@@ -2,43 +2,15 @@
   "name": "Array Sunset",
   "stem": "antenna",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/peach",
   "fonts": {
-    "ui": "Space Grotesk",
-    "mono": "Space Mono",
     "display": "Space Grotesk"
   },
-  "style": {
-    "radius": 1,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7c197",
-    "yellow": "#f7d797",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#7fa3c7",
-    "pink": "#eb8ea9",
-    "background": "#241813",
-    "panel": "#1a110e",
-    "panelDeep": "#120c0a",
-    "inset": "#392c26",
-    "border": "#4e4139",
-    "textPrimary": "#f6e3cf",
-    "textSecondary": "#bbaa9a",
-    "textMuted": "#827368",
-    "accent": "#f0a24b",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7d797",
-    "onAccent": "#241813"
+    "accent": "#f5a97f"
   },
   "extra": {
-    "accent2": "#7fa3c7"
+    "accent2": "#7dc4e4"
   }
 }

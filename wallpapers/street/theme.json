@@ -2,43 +2,15 @@
   "name": "Sodium Violet",
   "stem": "street",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/mauve",
   "fonts": {
-    "ui": "Josefin Sans",
-    "mono": "IBM Plex Mono",
     "display": "Josefin Sans"
   },
-  "style": {
-    "radius": 1,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f79799",
-    "yellow": "#f7b597",
-    "green": "#98e1c5",
-    "teal": "#98cde1",
-    "cyan": "#a0c0ee",
-    "blue": "#8894f2",
-    "indigo": "#9a92e8",
-    "violet": "#ba92e8",
-    "lavender": "#ff8a5c",
-    "pink": "#eb8edf",
-    "background": "#120c1a",
-    "panel": "#0d0913",
-    "panelDeep": "#09060d",
-    "inset": "#27202f",
-    "border": "#3c3444",
-    "textPrimary": "#e4d6ee",
-    "textSecondary": "#a99db3",
-    "textMuted": "#706779",
-    "accent": "#c77dff",
-    "error": "#ee8b98",
-    "success": "#98e1c5",
-    "warning": "#f7b597",
-    "onAccent": "#120c1a"
+    "accent": "#cba6f7"
   },
   "extra": {
-    "accent2": "#ff8a5c"
+    "accent2": "#fab387"
   }
 }

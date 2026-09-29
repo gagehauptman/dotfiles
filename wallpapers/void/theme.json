@@ -2,43 +2,15 @@
   "name": "Line Cosmos",
   "stem": "void",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/yellow",
   "fonts": {
-    "ui": "Quicksand",
-    "mono": "Space Mono",
     "display": "Quicksand"
   },
-  "style": {
-    "radius": 2,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7cb97",
-    "yellow": "#f7e197",
-    "green": "#a7e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#88e0f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#8fa0e8",
-    "pink": "#eb8ea2",
-    "background": "#12142a",
-    "panel": "#0d0e1e",
-    "panelDeep": "#090a15",
-    "inset": "#282a3f",
-    "border": "#3e4055",
-    "textPrimary": "#eef0ff",
-    "textSecondary": "#b0b2c3",
-    "textMuted": "#75778a",
-    "accent": "#f5f0d0",
-    "error": "#ee8b98",
-    "success": "#a7e198",
-    "warning": "#f7e197",
-    "onAccent": "#12142a"
+    "accent": "#eed49f"
   },
   "extra": {
-    "accent2": "#8fa0e8"
+    "accent2": "#8aadf4"
   }
 }

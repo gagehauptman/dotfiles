@@ -1,0 +1,44 @@
+{
+  "name": "Catppuccin Frapp\u00e9",
+  "stem": "catppuccin_frappe",
+  "dark": true,
+  "inherits": null,
+  "fonts": {
+    "ui": "Noto Sans",
+    "mono": "JetBrainsMono Nerd Font",
+    "display": "Noto Sans"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#e78284",
+    "orange": "#ef9f76",
+    "yellow": "#e5c890",
+    "green": "#a6d189",
+    "teal": "#81c8be",
+    "cyan": "#99d1db",
+    "blue": "#8caaee",
+    "indigo": "#85c1dc",
+    "violet": "#ca9ee6",
+    "lavender": "#babbf1",
+    "pink": "#f4b8e4",
+    "background": "#303446",
+    "panel": "#292c3c",
+    "panelDeep": "#232634",
+    "inset": "#414559",
+    "border": "#51576d",
+    "textPrimary": "#c6d0f5",
+    "textSecondary": "#a5adce",
+    "textMuted": "#737994",
+    "accent": "#8caaee",
+    "error": "#e78284",
+    "success": "#a6d189",
+    "warning": "#e5c890",
+    "onAccent": "#303446"
+  },
+  "extra": {
+    "accent2": "#babbf1"
+  }
+}

@@ -2,43 +2,15 @@
   "name": "Dish Rust",
   "stem": "pluton",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/peach",
   "fonts": {
-    "ui": "Space Grotesk",
-    "mono": "Space Mono",
     "display": "Space Grotesk"
   },
-  "style": {
-    "radius": 0.8,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7be97",
-    "yellow": "#f7d497",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#6fb1e8",
-    "pink": "#eb8eac",
-    "background": "#18222f",
-    "panel": "#111822",
-    "panelDeep": "#0c1118",
-    "inset": "#2d3643",
-    "border": "#414b57",
-    "textPrimary": "#e6eef7",
-    "textSecondary": "#acb5bf",
-    "textMuted": "#757e89",
-    "accent": "#e08a4c",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7d497",
-    "onAccent": "#18222f"
+    "accent": "#f5a97f"
   },
   "extra": {
-    "accent2": "#6fb1e8"
+    "accent2": "#7dc4e4"
   }
 }

@@ -2,43 +2,15 @@
   "name": "Range Safety",
   "stem": "USSF-51",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/peach",
   "fonts": {
-    "ui": "Rajdhani",
-    "mono": "Share Tech Mono",
     "display": "Orbitron"
   },
-  "style": {
-    "radius": 0.5,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7bf97",
-    "yellow": "#f7d597",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#c9a27a",
-    "pink": "#eb8eab",
-    "background": "#17130f",
-    "panel": "#110e0b",
-    "panelDeep": "#0c0a08",
-    "inset": "#2d2823",
-    "border": "#433d37",
-    "textPrimary": "#f1e6d8",
-    "textSecondary": "#b4aba0",
-    "textMuted": "#797269",
-    "accent": "#f28c38",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7d597",
-    "onAccent": "#17130f"
+    "accent": "#fab387"
   },
   "extra": {
-    "accent2": "#c9a27a"
+    "accent2": "#f9e2af"
   }
 }

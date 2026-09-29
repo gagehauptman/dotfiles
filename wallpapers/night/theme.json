@@ -2,43 +2,15 @@
   "name": "Deep Void",
   "stem": "night",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/lavender",
   "fonts": {
-    "ui": "JetBrains Mono",
-    "mono": "JetBrains Mono",
     "display": "JetBrains Mono"
   },
-  "style": {
-    "radius": 0.3,
-    "border": 1
-  },
   "palette": {
-    "red": "#e09aa3",
-    "orange": "#e8a6a7",
-    "yellow": "#e8bba6",
-    "green": "#a3d6c3",
-    "teal": "#a3cfd6",
-    "cyan": "#abcfe2",
-    "blue": "#98b2e2",
-    "indigo": "#9fa7db",
-    "violet": "#ad9fdb",
-    "lavender": "#6b7280",
-    "pink": "#da9cdd",
-    "background": "#07080b",
-    "panel": "#050608",
-    "panelDeep": "#040406",
-    "inset": "#1a1c1f",
-    "border": "#2e2f33",
-    "textPrimary": "#c8cbd3",
-    "textSecondary": "#92949b",
-    "textMuted": "#5e6065",
-    "accent": "#8aa4ff",
-    "error": "#e09aa3",
-    "success": "#a3d6c3",
-    "warning": "#e8bba6",
-    "onAccent": "#07080b"
+    "accent": "#b4befe"
   },
   "extra": {
-    "accent2": "#6b7280"
+    "accent2": "#74c7ec"
   }
 }

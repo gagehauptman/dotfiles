@@ -2,43 +2,15 @@
   "name": "Free Return",
   "stem": "free_return",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/sapphire",
   "fonts": {
-    "ui": "Share Tech Mono",
-    "mono": "Share Tech Mono",
     "display": "Share Tech Mono"
   },
-  "style": {
-    "radius": 0.3,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7e597",
-    "yellow": "#e8f797",
-    "green": "#98e1c0",
-    "teal": "#98e1e1",
-    "cyan": "#a0ddee",
-    "blue": "#88bcf2",
-    "indigo": "#92a9e8",
-    "violet": "#9b92e8",
-    "lavender": "#f0d080",
-    "pink": "#e68eeb",
-    "background": "#070b14",
-    "panel": "#05080e",
-    "panelDeep": "#04060a",
-    "inset": "#1d212b",
-    "border": "#323741",
-    "textPrimary": "#dfe8f5",
-    "textSecondary": "#a3aab6",
-    "textMuted": "#686e79",
-    "accent": "#5cc8ff",
-    "error": "#ee8b98",
-    "success": "#98e1c0",
-    "warning": "#e8f797",
-    "onAccent": "#070b14"
+    "accent": "#74c7ec"
   },
   "extra": {
-    "accent2": "#f0d080"
+    "accent2": "#f9e2af"
   }
 }

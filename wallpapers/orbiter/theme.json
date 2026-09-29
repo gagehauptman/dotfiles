@@ -2,43 +2,15 @@
   "name": "Orbital Deck",
   "stem": "orbiter",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/lavender",
   "fonts": {
-    "ui": "Rajdhani",
-    "mono": "Share Tech Mono",
     "display": "Orbitron"
   },
-  "style": {
-    "radius": 0.4,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f79799",
-    "yellow": "#f7b597",
-    "green": "#98e1c5",
-    "teal": "#98d4e1",
-    "cyan": "#a0d0ee",
-    "blue": "#88aaf2",
-    "indigo": "#929ae8",
-    "violet": "#a992e8",
-    "lavender": "#ff5f7a",
-    "pink": "#e68eeb",
-    "background": "#0d1030",
-    "panel": "#090c23",
-    "panelDeep": "#060818",
-    "inset": "#222545",
-    "border": "#373a59",
-    "textPrimary": "#dfe3ff",
-    "textSecondary": "#a4a8c5",
-    "textMuted": "#6c6f8d",
-    "accent": "#7d8bff",
-    "error": "#ee8b98",
-    "success": "#98e1c5",
-    "warning": "#f7b597",
-    "onAccent": "#0d1030"
+    "accent": "#b7bdf8"
   },
   "extra": {
-    "accent2": "#ff5f7a"
+    "accent2": "#ed8796"
   }
 }

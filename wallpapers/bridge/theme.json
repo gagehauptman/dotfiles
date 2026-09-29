@@ -2,43 +2,15 @@
   "name": "Bridge Fog",
   "stem": "bridge",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/rosewater",
   "fonts": {
-    "ui": "Rajdhani",
-    "mono": "Share Tech Mono",
     "display": "Rajdhani"
   },
-  "style": {
-    "radius": 0.3,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7b797",
-    "yellow": "#f7cd97",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0c0ee",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#2fb5aa",
-    "pink": "#eb8eb3",
-    "background": "#071b1f",
-    "panel": "#051316",
-    "panelDeep": "#040e10",
-    "inset": "#1b3033",
-    "border": "#2f4447",
-    "textPrimary": "#cfe9e6",
-    "textSecondary": "#97afae",
-    "textMuted": "#617879",
-    "accent": "#ff6a4d",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7cd97",
-    "onAccent": "#071b1f"
+    "accent": "#f5e0dc"
   },
   "extra": {
-    "accent2": "#2fb5aa"
+    "accent2": "#94e2d5"
   }
 }

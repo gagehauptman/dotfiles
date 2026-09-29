@@ -1,6 +1,6 @@
 {
   "name": "Catppuccin Mocha",
-  "stem": "default",
+  "stem": "catppuccin_mocha",
   "dark": true,
   "inherits": null,
   "fonts": {

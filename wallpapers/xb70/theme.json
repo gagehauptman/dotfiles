@@ -2,43 +2,15 @@
   "name": "Aerospace White",
   "stem": "xb70",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/lavender",
   "fonts": {
-    "ui": "Space Grotesk",
-    "mono": "JetBrains Mono",
     "display": "Orbitron"
   },
-  "style": {
-    "radius": 0.5,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f79799",
-    "yellow": "#f7b597",
-    "green": "#98e1c5",
-    "teal": "#98d5e1",
-    "cyan": "#a0d1ee",
-    "blue": "#88abf2",
-    "indigo": "#929ce8",
-    "violet": "#a892e8",
-    "lavender": "#ffffff",
-    "pink": "#e68eeb",
-    "background": "#14153a",
-    "panel": "#0e0f2a",
-    "panelDeep": "#0a0a1d",
-    "inset": "#2a2b4e",
-    "border": "#404161",
-    "textPrimary": "#eef0ff",
-    "textSecondary": "#b1b3c8",
-    "textMuted": "#767893",
-    "accent": "#a9b6ff",
-    "error": "#ee8b98",
-    "success": "#98e1c5",
-    "warning": "#f7b597",
-    "onAccent": "#14153a"
+    "accent": "#b7bdf8"
   },
   "extra": {
-    "accent2": "#ffffff"
+    "accent2": "#f4dbd6"
   }
 }

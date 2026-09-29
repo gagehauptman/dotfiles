@@ -2,43 +2,15 @@
   "name": "Blue Marble",
   "stem": "spinning_globe",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/blue",
   "fonts": {
-    "ui": "Outfit",
-    "mono": "JetBrains Mono",
     "display": "Outfit"
   },
-  "style": {
-    "radius": 1.4,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f79799",
-    "yellow": "#e8f797",
-    "green": "#98e1c3",
-    "teal": "#98dde1",
-    "cyan": "#a0d9ee",
-    "blue": "#88b6f2",
-    "indigo": "#92a4e8",
-    "violet": "#9f92e8",
-    "lavender": "#5fd39a",
-    "pink": "#e68eeb",
-    "background": "#06101f",
-    "panel": "#040c16",
-    "panelDeep": "#030810",
-    "inset": "#1b2635",
-    "border": "#313b4c",
-    "textPrimary": "#dbe9ff",
-    "textSecondary": "#9facc0",
-    "textMuted": "#667284",
-    "accent": "#4aa3ff",
-    "error": "#ee8b98",
-    "success": "#98e1c3",
-    "warning": "#e8f797",
-    "onAccent": "#06101f"
+    "accent": "#89b4fa"
   },
   "extra": {
-    "accent2": "#5fd39a"
+    "accent2": "#94e2d5"
   }
 }

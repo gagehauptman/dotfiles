@@ -2,43 +2,15 @@
   "name": "Shuttle Deck",
   "stem": "space_shuttle",
   "dark": true,
-  "inherits": null,
+  "inherits": "catppuccin_mocha",
+  "_catppuccin": "mocha/peach",
   "fonts": {
-    "ui": "Rajdhani",
-    "mono": "Share Tech Mono",
     "display": "Orbitron"
   },
-  "style": {
-    "radius": 0.5,
-    "border": 1
-  },
   "palette": {
-    "red": "#ee8b98",
-    "orange": "#f7bc97",
-    "yellow": "#f7d297",
-    "green": "#a8e198",
-    "teal": "#98e1b9",
-    "cyan": "#a0eedb",
-    "blue": "#8888f2",
-    "indigo": "#ad92e8",
-    "violet": "#db92e8",
-    "lavender": "#58a6ff",
-    "pink": "#eb8eae",
-    "background": "#080a12",
-    "panel": "#06070d",
-    "panelDeep": "#040509",
-    "inset": "#1e2129",
-    "border": "#343740",
-    "textPrimary": "#e6ecf7",
-    "textSecondary": "#a8adb7",
-    "textMuted": "#6c7079",
-    "accent": "#ff8a4d",
-    "error": "#ee8b98",
-    "success": "#a8e198",
-    "warning": "#f7d297",
-    "onAccent": "#080a12"
+    "accent": "#fab387"
   },
   "extra": {
-    "accent2": "#58a6ff"
+    "accent2": "#89b4fa"
   }
 }

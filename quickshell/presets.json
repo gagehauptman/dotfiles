@@ -44,6 +44,15 @@
         { "type": "quote",    "col": 2, "row": 1 }
       ]
     },
+    "calendar": {
+      "columns": 3,
+      "widthPercent": 50,
+      "widgets": [
+        { "type": "calendar", "col": 0, "row": 0, "colSpan": 2, "rowSpan": 2 },
+        { "type": "weather",  "col": 2, "row": 0 },
+        { "type": "quote",    "col": 2, "row": 1 }
+      ]
+    },
     "bevy": {
       "columns": 3,
       "widthPercent": 55,

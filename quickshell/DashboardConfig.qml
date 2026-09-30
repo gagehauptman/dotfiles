@@ -36,6 +36,7 @@ Item {
     "miscstats":   { file: "MiscStatsWidget.qml" },
     "quote":       { file: "QuoteWidget.qml" },
     "weather":     { file: "WeatherWidget.qml" },
+    "calendar":    { file: "CalendarWidget.qml" },
     "network":     { file: "NetworkStatsWidget.qml" },
     "profile":     { file: "ProfileWidget.qml" },
     "music":       { file: "MusicWidget.qml", props: { card: true } },

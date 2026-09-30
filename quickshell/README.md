@@ -118,6 +118,7 @@ re-packed into `portraitColumns` ignoring `col` and `row`.
 | `miscstats` | MiscStatsWidget.qml | – |
 | `quote` | QuoteWidget.qml | – |
 | `weather` | WeatherWidget.qml | `location`: `"lat,lon"` or a place name (default: geolocate by IP), `label`: display name |
+| `calendar` | CalendarWidget.qml | Proton Calendar from calro (read-only, end-to-end encrypted; `~/calro` on the server), run locally or over ssh to `CALRO_SSH` (env or `~/.config/calro/env`), else `NOVA_GATEWAY_SSH`. Next event with a countdown, click for today's agenda; shows "calendar offline" without calro. `agenda`: start on the agenda; `fixture`: `true` or a JSON file (format: `scripts/polls/fixtures/calendar.json`) to show sample events |
 | `network` | NetworkStatsWidget.qml | – |
 | `profile` | ProfileWidget.qml | – |
 | `music` | MusicWidget.qml (card mode) | `size`: `"small"`, `"normal"`, `"large"` (text size) |

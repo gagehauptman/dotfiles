@@ -30,7 +30,9 @@ set -euo pipefail
 #   A dynamic wallpaper that isn't warm-capable only gets its still
 #   (wallpapers/<stem>/<stem>.png, if it has one).
 # --warm: start warm-capable dynamic wallpapers hidden (if not running) and
-#   fill the pre-scaled cache in the background.
+#   fill the pre-scaled cache in the background, plus the selector's
+#   thumbnails (THUMB_DIR/<stem>.png, 400 px high like its previews), so the
+#   carousel never decodes a 5-8K original.
 mode=apply
 case ${1:-} in
   --preview) mode=preview; shift ;;
@@ -52,9 +54,12 @@ THEME_LATEST_FILE="$STATE_DIR/theme.latest"
 LOG_DIR="$STATE_DIR/logs"
 # In RAM (tmpfs): kept warm, costs no disk, refilled by --warm after a reboot.
 SCALED_DIR="$RUNTIME_DIR/wallpaper_select/scaled"
+# Read by quickshell/WallpaperSelectorWidget.qml (same path, by stem).
+THUMB_DIR="$RUNTIME_DIR/wallpaper_select/thumbs"
+THUMB_HEIGHT=400
 SELF=$(realpath -- "${BASH_SOURCE[0]}")
 
-mkdir -p "$(dirname "$SAVE_FILE")" "$LOG_DIR" "$SCALED_DIR"
+mkdir -p "$(dirname "$SAVE_FILE")" "$LOG_DIR" "$SCALED_DIR" "$THUMB_DIR"
 
 selection=""
 if [[ $mode != warm ]]; then
@@ -163,6 +168,24 @@ make_scaled() {
   mkdir -p "${dst%/*}"
   tmp="${dst%.png}.tmp.$$.png"
   if vips thumbnail "$src" "$tmp[compression=1,strip]" "$w" --height "$h" --crop centre --size both 2>/dev/null; then
+    mv -f "$tmp" "$dst"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+# Selector thumbnail of $1: THUMB_HEIGHT px high, aspect kept (what the
+# carousel's Image sourceSize made of the original). Redone when the image is
+# newer than its thumbnail.
+make_thumb() {
+  local src=$1 stem dst tmp
+  stem=${src##*/}
+  stem=${stem%.*}
+  dst="$THUMB_DIR/$stem.png"
+  [[ -s $dst && ! $src -nt $dst ]] && return 0
+  tmp="$THUMB_DIR/.$stem.tmp.$$.png"
+  if vips thumbnail "$src" "$tmp[compression=1,strip]" 100000 --height "$THUMB_HEIGHT" --size down 2>/dev/null; then
     mv -f "$tmp" "$dst"
   else
     rm -f "$tmp"
@@ -282,8 +305,16 @@ if [[ $mode == warm ]]; then
   flock -n 8 || exit 0
   mapfile -t outs < <(outputs)
   (( ${#outs[@]} )) || exit 0
-  declare -A keep=()
+  declare -A keep=() keep_thumb=()
   mapfile -t wallpaper_files < <("$CONFIG_HOME/scripts/wallpaper/list.sh")
+  # Thumbnails first: they're what the open selector is waiting on.
+  for src in "${wallpaper_files[@]}"; do
+    cacheable "$src" || continue
+    case ${src,,} in *.png|*.jpg|*.jpeg|*.webp|*.tif|*.tiff|*.bmp) ;; *) continue ;; esac
+    make_thumb "$src" || true
+    stem=${src##*/}
+    keep_thumb[$THUMB_DIR/${stem%.*}.png]=1
+  done
   for src in "${wallpaper_files[@]}"; do
     cacheable "$src" || continue
     case ${src,,} in *.png|*.jpg|*.jpeg|*.webp|*.tif|*.tiff|*.bmp) ;; *) continue ;; esac
@@ -298,6 +329,9 @@ if [[ $mode == warm ]]; then
     [[ -n ${keep[$f]:-} ]] || rm -f -- "$f"
   done < <(find "$SCALED_DIR" -type f -print0)
   find "$SCALED_DIR" -mindepth 1 -type d -empty -delete
+  while IFS= read -r -d '' f; do
+    [[ -n ${keep_thumb[$f]:-} ]] || rm -f -- "$f"
+  done < <(find "$THUMB_DIR" -type f -print0)
   exit 0
 fi
 

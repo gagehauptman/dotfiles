@@ -1,13 +1,12 @@
 # Live (Bevy): wireframe globe in the centre.
+# Layout: Live scene: thin clock left, globe keeps the centre.
 # Look: clock Noto Sans 100 116pt, accent #7fb4ff.
-base = "left"
 
 [text]
 color = "#e8f0ff"
 accent = "#7fb4ff"
 font_family = "Noto Sans"
 font_weight = 100
-halign = "left"
 shadow_passes = 2
 shadow_size = 3
 shadow_color = "#88000000"
@@ -15,13 +14,15 @@ shadow_color = "#88000000"
 [clock]
 font_family = "Noto Sans"
 font_weight = 100
-font_size = 116
 letter_spacing = 2
 format = "HH:mm"
 font_style = "normal"
 color = "#e8f0ff"
 shadow_strength = 0.6
-position = "5%, 14.4%"
+font_size = "16%"
+halign = "left"
+valign = "top"
+position = "5%, -14%"
 
 [date]
 font_family = "Noto Sans"
@@ -34,7 +35,7 @@ font_style = "normal"
 color = "#7fb4ff"
 opacity = 1
 shadow_strength = 0.6
-position = "5%, 3.5%"
+halign = "left"
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#e8f0ff"
 opacity = 0.65
 shadow_strength = 0.6
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 56]
 rounding = 28
 inner_color = "#22e8f0ff"
 outer_color = "#557fb4ff"
 highlight_color = "#10ffffff"
 accent_color = "#7fb4ff"
+halign = "left"
+valign = "bottom"
+position = "5%, 10%"

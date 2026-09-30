@@ -1,13 +1,12 @@
 # Live (Bevy): Earth-Moon free-return loop across the centre, L-points on a ring.
+# Layout: Live scene: mono column on the left, time up high, field low.
 # Look: clock Adwaita Mono 400 78pt, accent #8fd3ff.
-base = "left"
 
 [text]
 color = "#dbe7ff"
 accent = "#8fd3ff"
 font_family = "Adwaita Mono"
 font_weight = 400
-halign = "left"
 shadow_passes = 2
 shadow_size = 3
 shadow_color = "#88000000"
@@ -15,13 +14,15 @@ shadow_color = "#88000000"
 [clock]
 font_family = "Adwaita Mono"
 font_weight = 400
-font_size = 78
 letter_spacing = 2
 format = "HH:mm"
 font_style = "normal"
 color = "#dbe7ff"
 shadow_strength = 0.6
-position = "5%, 14%"
+font_size = "13%"
+halign = "left"
+valign = "top"
+position = "5%, -14%"
 
 [date]
 font_family = "Adwaita Mono"
@@ -34,7 +35,7 @@ font_style = "normal"
 color = "#8fd3ff"
 opacity = 1
 shadow_strength = 0.6
-position = "5%, 3.5%"
+halign = "left"
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#dbe7ff"
 opacity = 0.6
 shadow_strength = 0.6
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [320, 50]
 rounding = 8
 inner_color = "#22dbe7ff"
 outer_color = "#558fd3ff"
 highlight_color = "#10ffffff"
 accent_color = "#8fd3ff"
+halign = "left"
+valign = "bottom"
+position = "5%, 10%"

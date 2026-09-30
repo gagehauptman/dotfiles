@@ -1,6 +1,9 @@
 # Peace-sign hand, giant ball and car across the right half; palms and sky left.
+# Layout: Heavy clock across the top, behind the mascot's spikes; the rest down the palm side.
 # Look: clock Inter Display 800 120pt, accent #c99a00.
-base = "left"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [background]
 brightness = 0.95
@@ -10,7 +13,6 @@ color = "#14252d"
 accent = "#c99a00"
 font_family = "Inter Display"
 font_weight = 800
-halign = "left"
 shadow_passes = 2
 shadow_size = 2
 shadow_color = "#99ffffff"
@@ -18,13 +20,16 @@ shadow_color = "#99ffffff"
 [clock]
 font_family = "Inter Display"
 font_weight = 800
-font_size = 120
-letter_spacing = -4
+letter_spacing = -6
 format = "h:mm"
 font_style = "normal"
 color = "#14252d"
 shadow_strength = 1.0
-position = "5%, 14.7%"
+font_size = "23%"
+halign = "center"
+depth = "behind"
+valign = "top"
+position = "14%, -5%"
 
 [date]
 font_family = "Inter Display"
@@ -37,7 +42,10 @@ font_style = "normal"
 color = "#14252d"
 opacity = 0.85
 shadow_strength = 1.0
-position = "5%, 3.5%"
+halign = "left"
+below = ""
+above = "greeting"
+gap = 34
 
 [greeting]
 show = true
@@ -51,11 +59,9 @@ uppercase = false
 color = "#14252d"
 opacity = 0.8
 shadow_strength = 1.0
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66ffffff"
@@ -63,3 +69,6 @@ outer_color = "#9914252d"
 highlight_color = "#88ffffff"
 accent_color = "#c99a00"
 font_color = "#14252d"
+halign = "left"
+valign = "bottom"
+position = "5%, 9%"

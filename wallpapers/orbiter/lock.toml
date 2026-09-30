@@ -1,13 +1,12 @@
 # Space station top centre over a bright cloud deck in the lower third.
+# Layout: Clock in the dark space left of the station, field over the cloud deck.
 # Look: clock Adwaita Sans 300 96pt, accent #9ab0ff.
-base = "left"
 
 [text]
 color = "#f0f2ff"
 accent = "#9ab0ff"
 font_family = "Adwaita Sans"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#e00a0c28"
@@ -15,13 +14,15 @@ shadow_color = "#e00a0c28"
 [clock]
 font_family = "Adwaita Sans"
 font_weight = 300
-font_size = 96
 letter_spacing = 0
 format = "HH:mm"
 font_style = "normal"
 color = "#f0f2ff"
 shadow_strength = 1.4
-position = "5%, 30%"
+font_size = "17%"
+halign = "left"
+valign = "top"
+position = "6%, -12%"
 
 [date]
 font_family = "Adwaita Sans"
@@ -34,7 +35,7 @@ font_style = "normal"
 color = "#9ab0ff"
 opacity = 1
 shadow_strength = 1.4
-position = "5%, 19.5%"
+halign = "left"
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#f0f2ff"
 opacity = 0.75
 shadow_strength = 1.4
-position = "5%, 2%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -6%"
 size = [340, 58]
 rounding = 29
 inner_color = "#550a0c28"
 outer_color = "#66f0f2ff"
 highlight_color = "#20ffffff"
 accent_color = "#9ab0ff"
+halign = "left"
+valign = "bottom"
+position = "6%, 9%"

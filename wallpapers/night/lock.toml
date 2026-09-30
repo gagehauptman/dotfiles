@@ -1,13 +1,11 @@
 # Star trails on black; nothing to avoid.
-# Default centred stack.
-# Look: clock Inter Display 100 168pt, accent #8fa2cf.
+# Layout: Nothing to avoid: one huge hairline clock dead centre, everything else small.
 
 [text]
 color = "#c9d3e6"
 accent = "#8fa2cf"
 font_family = "Inter Display"
 font_weight = 100
-halign = "center"
 shadow_passes = 0
 shadow_size = 0
 shadow_color = "#00000000"
@@ -15,13 +13,15 @@ shadow_color = "#00000000"
 [clock]
 font_family = "Inter Display"
 font_weight = 100
-font_size = 168
-letter_spacing = 0
+letter_spacing = -6
 format = "HH:mm"
 font_style = "normal"
 color = "#c9d3e6"
 shadow_strength = 0
-position = "0%, 18.4%"
+font_size = "34%"
+halign = "center"
+valign = "top"
+position = "0%, -22%"
 
 [date]
 font_family = "Inter Display"
@@ -34,7 +34,8 @@ font_style = "normal"
 color = "#6f7fa0"
 opacity = 1
 shadow_strength = 0
-position = "0%, 3.5%"
+halign = "center"
+gap = 34
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#c9d3e6"
 opacity = 0.5
 shadow_strength = 0
-position = "0%, -14%"
+halign = "center"
 
 [input]
-halign = "center"
-position = "0%, -22%"
 size = [300, 50]
 rounding = 25
 inner_color = "#22c9d3e6"
 outer_color = "#40c9d3e6"
 highlight_color = "#12ffffff"
 accent_color = "#8fa2cf"
+halign = "center"
+valign = "bottom"
+position = "0%, 8%"

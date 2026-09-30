@@ -1,13 +1,14 @@
 # Glowing shuttle on the right; dark space on the left.
-# Look: clock Inter Display 300 96pt, accent #ff8a70.
-base = "left"
+# Layout: Clock across the top, the shuttle's tail fin cutting into it.
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#ffe3d6"
 accent = "#ff8a70"
 font_family = "Inter Display"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#e0120810"
@@ -15,13 +16,16 @@ shadow_color = "#e0120810"
 [clock]
 font_family = "Inter Display"
 font_weight = 300
-font_size = 96
 letter_spacing = 0
 format = "HH:mm"
 font_style = "normal"
 color = "#ffe3d6"
 shadow_strength = 1.5
-position = "5%, 14%"
+font_size = "21%"
+halign = "center"
+depth = "behind"
+valign = "top"
+position = "3%, -7%"
 
 [date]
 font_family = "Inter Display"
@@ -34,7 +38,10 @@ font_style = "normal"
 color = "#ff8a70"
 opacity = 1
 shadow_strength = 1.5
-position = "5%, 3.5%"
+halign = "right"
+below = ""
+above = "greeting"
+gap = 34
 
 [greeting]
 show = true
@@ -48,14 +55,15 @@ uppercase = false
 color = "#ffe3d6"
 opacity = 0.7
 shadow_strength = 1.5
-position = "5%, -14%"
+halign = "right"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66120810"
 outer_color = "#66ffe3d6"
 highlight_color = "#20ffffff"
 accent_color = "#ff8a70"
+halign = "right"
+valign = "bottom"
+position = "-5%, 9%"

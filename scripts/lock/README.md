@@ -22,7 +22,24 @@ flat `[background] color`. Non-live wallpapers: the image, cover-cropped.
 
 - Placement: `wallpapers/<stem>/lock.toml` over `meta/default.toml`; a file lists
   only what it changes. `base = "left"` / `"right"` pulls in `meta/layouts/`.
-  Positions are `"x%, y%"` (+y up). Per monitor: `[monitor."HDMI-A-3".clock]`.
+  Positions are `"x%, y%"` (+y up) from the `halign`/`valign` anchor. Per monitor:
+  `[monitor."HDMI-A-3".clock]` (avoid: names differ per machine).
+- **Alignment is by ink** (2026-09-29): an element's box is its glyphs' tight
+  width x the font's cap height, not Qt's text box. The old box carried the side
+  bearings (several px at 100pt+), the trailing letter spacing and the line's
+  ascent/descent, so a big clock, a tracked uppercase date and the field never
+  shared an edge; and vertical % offsets with fixed-px fonts made the gaps drift
+  with every font size. Now left/right/center edges line up exactly.
+- Groups instead of fixed rows: `below = "clock"` / `above = "input"` + `gap`
+  (px) hangs an element off another, aligned to its edge (default: date under the
+  clock, greeting over the field), so moving the clock moves the date with it.
+  `below = ""` frees it. `offset = "x, y"` nudges.
+- `font_size` takes points or `"N%"` of the screen height. Sizes, gaps and px
+  offsets are designed for a 1440px-tall screen and scale with the screen (a
+  laptop keeps the same composition); `[text] ui_scale = N` pins it.
+- `relative_to = "subject"`: anchor to the box of the wallpaper's subject (from
+  its foreground mask) instead of the screen, so a clock can sit on the subject
+  whatever the monitor's crop.
 - Elements: `[background]`, `[text]`, `[clock]`, `[date]`, `[greeting]`, `[input]`.
 - **Text style is per wallpaper.** `[text]` in `meta/default.toml` is only the fallback
   (`color`, `accent`, `font_family`, `font_weight`, `font_style`, shadow); every
@@ -41,7 +58,40 @@ flat `[background] color`. Non-live wallpapers: the image, cover-cropped.
   test lock (`<` = backspace, `!` = enter); `LOCK_FPS=1` logs frames really presented
   per screen every 2 s.
 
+## Depth (iPhone-style: clock between background and subject)
+
+Stills can carry masks in `wallpapers/<stem>/lock/` (8-bit greyscale PNG, same
+aspect as the image, white = selected):
+
+```toml
+[depth]
+foreground = "lock/fg-mask.png"   # the subject: drawn over depth = "behind" text
+background = "lock/bg-mask.png"   # the far plane (sky): the rest is drawn over depth = "far" text
+
+[clock]
+depth = "behind"                  # front (default) | behind | far
+```
+
+Planes, bottom to top: background + shade, `far` text, midground (image minus
+the bg mask), `behind` text, foreground (image under the fg mask), front text
+and the field. lockgen.py cuts the per-monitor layers out of the same
+cover-cropped still with brightness and the top/bottom shade baked in (Pillow +
+numpy; cached in `$XDG_RUNTIME_DIR/lockscreen/depth/`), so they match the
+background pixel for pixel; QML only stacks images. Without Pillow/numpy, or on
+live wallpapers, it draws without depth.
+
+Masks are made locally by `masks.py` (BiRefNet through rembg, CPU, offline once
+the model is cached; set-up in its docstring): `masks.py STEM` for a subject,
+`masks.py --sky [--dark 0.1] STEM` for a skyline/treeline silhouette. 20
+wallpapers use a foreground mask, canaveral1 and evening_light a sky mask.
+
 ## Testing safely
+
+- `lock.sh --preview [DIR]`: renders each monitor offscreen to `DIR/<monitor>.png`
+  (default `$XDG_RUNTIME_DIR/lockscreen/preview`); nothing appears on screen, no
+  PAM. `LOCK_WALLPAPER=~/.config/wallpapers/clouds/clouds.png lock.sh --preview`
+  previews another wallpaper; `LOCK_PREVIEW_BOXES=1` outlines the alignment boxes.
+  Live (Bevy) scenes show as their flat colour there.
 
 - `lock.sh --test [SECS]`: same screens as overlay windows, NOT a lock, closes
   after SECS (default 15). PAM uses `pam/test` (accepts only "letmein").

@@ -1,14 +1,14 @@
 # Astronaut left of centre inside a red ring; planet limb lower right.
-# The ring's lower-right arc crosses the default column; lift it clear.
-# Look: clock Inter Display 100 130pt, accent #ff5c66.
-base = "left"
+# Layout: Hairline clock over the dark planet, the red ribbon sweeping in front of it.
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#e9f1ff"
 accent = "#ff5c66"
 font_family = "Inter Display"
 font_weight = 100
-halign = "left"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#cc050814"
@@ -16,13 +16,16 @@ shadow_color = "#cc050814"
 [clock]
 font_family = "Inter Display"
 font_weight = 100
-font_size = 130
 letter_spacing = -2
 format = "HH:mm"
 font_style = "normal"
 color = "#e9f1ff"
 shadow_strength = 1.0
-position = "5%, -12.5%"
+font_size = "24%"
+halign = "right"
+depth = "behind"
+valign = "top"
+position = "-6%, -48%"
 
 [date]
 font_family = "Inter Display"
@@ -35,7 +38,8 @@ font_style = "normal"
 color = "#9fb8ff"
 opacity = 0.95
 shadow_strength = 1.0
-position = "5%, -24.5%"
+halign = "right"
+gap = 30
 
 [greeting]
 show = false
@@ -49,14 +53,15 @@ uppercase = false
 color = "#e9f1ff"
 opacity = 0.6
 shadow_strength = 1.0
-position = "5%, -42%"
+halign = "right"
 
 [input]
-halign = "left"
-position = "5%, -33.5%"
 size = [300, 52]
 rounding = 26
 inner_color = "#40060a1a"
 outer_color = "#55e9f1ff"
 highlight_color = "#1cffffff"
 accent_color = "#ff5c66"
+halign = "right"
+valign = "bottom"
+position = "-6%, 8%"

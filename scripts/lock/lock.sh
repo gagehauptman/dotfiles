@@ -11,6 +11,10 @@
 #                           gone after SECS (default 15). PAM uses a fixture
 #                           that accepts only the password "letmein".
 #   lock.sh --try [SECS]    real lock that unlocks itself after SECS (default 10)
+#   lock.sh --preview [DIR] SAFEST: render every monitor's lock screen offscreen
+#                           to DIR/<monitor>.png (default $XDG_RUNTIME_DIR/
+#                           lockscreen/preview); nothing shows on screen.
+#                           LOCK_WALLPAPER=path previews another wallpaper.
 #   lock.sh --unlock        unlock a running lock (from a TTY: Ctrl+Alt+F3)
 #   lock.sh --recover       lock client died and left the screen on the red
 #                           "lock died" screen: start a 3s lock to clear it
@@ -30,6 +34,16 @@ qs() { quickshell -p "$dir/qs" "$@"; }
 
 case $1 in
   --unlock)  exec quickshell -p "$dir/qs" ipc call lock unlock ;;
+  --preview)
+    out=${2:-$state/preview}
+    mkdir -p "$out"
+    wall=(); [[ -n $LOCK_WALLPAPER ]] && wall=(--wallpaper "$LOCK_WALLPAPER")
+    python3 "$dir/lockgen.py" "${wall[@]}" --out "$out/lock.json" --check || exit 1
+    QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML2_IMPORT_PATH=$HOME/.config/quickshell/modules \
+      LOCK_CONFIG=$out/lock.json LOCK_PREVIEW_OUT=$out \
+      timeout 60 quickshell -p "$dir/qs/preview.qml" >"$out/preview.log" 2>&1
+    ls "$out"/*.png
+    exit ;;
   --recover)
     hyprctl eval 'hl.config({misc={allow_session_lock_restore=true}})' >/dev/null
     "$0" --try 3
@@ -46,7 +60,7 @@ case $1 in
 esac
 
 # One lock at a time (a second Super+L must not start another client).
-pgrep -ax quickshell | grep -qF -- "-p $dir/qs" && exit 0
+pgrep -ax quickshell | grep -qE -- "-p $dir/qs( |$)" && exit 0      # not qs/preview.qml
 pgrep -xu "$UID" hyprlock >/dev/null && exit 0
 
 conf=$state/lock.json

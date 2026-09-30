@@ -1,13 +1,12 @@
 # Orange nebula and bright star on the right; deep blue on the left.
+# Layout: Serif column in the deep blue on the left.
 # Look: clock Noto Serif 300 108pt, accent #ffb15c.
-base = "left"
 
 [text]
 color = "#ffe6c8"
 accent = "#ffb15c"
 font_family = "Noto Serif"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0080a26"
@@ -15,13 +14,15 @@ shadow_color = "#e0080a26"
 [clock]
 font_family = "Noto Serif"
 font_weight = 300
-font_size = 108
 letter_spacing = 0
 format = "h:mm"
 font_style = "normal"
 color = "#ffe6c8"
 shadow_strength = 1.6
-position = "5%, 14%"
+font_size = "17%"
+halign = "left"
+valign = "top"
+position = "6%, -18%"
 
 [date]
 font_family = "Noto Serif"
@@ -34,7 +35,7 @@ font_style = "normal"
 color = "#ffd58a"
 opacity = 1
 shadow_strength = 1.6
-position = "5%, 3.5%"
+halign = "left"
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#ffe6c8"
 opacity = 0.8
 shadow_strength = 1.6
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 56]
 rounding = 28
 inner_color = "#55080a26"
 outer_color = "#66ffe6c8"
 highlight_color = "#22ffffff"
 accent_color = "#ffb15c"
+halign = "left"
+valign = "bottom"
+position = "6%, 9%"

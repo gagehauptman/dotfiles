@@ -1,6 +1,6 @@
 # Tree on the left, explosion in the middle; darker treeline lower right.
+# Layout: Black-weight clock top right over the dark sky; field bottom right over the treeline.
 # Look: clock Inter Display 900 100pt, accent #ffa640.
-base = "right"
 
 [background]
 brightness = 0.75
@@ -10,7 +10,6 @@ color = "#fff0da"
 accent = "#ffa640"
 font_family = "Inter Display"
 font_weight = 900
-halign = "right"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0180a02"
@@ -18,13 +17,15 @@ shadow_color = "#e0180a02"
 [clock]
 font_family = "Inter Display"
 font_weight = 900
-font_size = 100
 letter_spacing = -3
 format = "HH:mm"
 font_style = "normal"
 color = "#fff0da"
 shadow_strength = 1.6
-position = "-5%, 14%"
+font_size = "15%"
+halign = "right"
+valign = "top"
+position = "-5%, -11%"
 
 [date]
 font_family = "Inter Display"
@@ -37,7 +38,7 @@ font_style = "normal"
 color = "#ffa640"
 opacity = 1
 shadow_strength = 1.6
-position = "-5%, 3.5%"
+halign = "right"
 
 [greeting]
 show = true
@@ -51,14 +52,15 @@ uppercase = false
 color = "#fff0da"
 opacity = 0.75
 shadow_strength = 1.6
-position = "-5%, -14%"
+halign = "right"
 
 [input]
-halign = "right"
-position = "-5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66180a02"
 outer_color = "#66fff0da"
 highlight_color = "#20ffffff"
 accent_color = "#ffa640"
+halign = "right"
+valign = "bottom"
+position = "-5%, 9%"

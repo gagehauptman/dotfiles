@@ -1,13 +1,15 @@
 # Foggy station platform receding to the centre; dark sky upper left.
+# Layout: Clock on the right with the platform lamp post standing in front of it.
 # Look: clock Adwaita Sans 300 108pt, accent #c99be8.
-base = "left"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#f2dcf5"
 accent = "#c99be8"
 font_family = "Adwaita Sans"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0120a1a"
@@ -15,13 +17,16 @@ shadow_color = "#e0120a1a"
 [clock]
 font_family = "Adwaita Sans"
 font_weight = 300
-font_size = 108
 letter_spacing = 0
 format = "HH:mm"
 font_style = "italic"
 color = "#f2dcf5"
 shadow_strength = 1.5
-position = "5%, 14%"
+font_size = "19%"
+halign = "right"
+depth = "behind"
+valign = "top"
+position = "-5%, -30%"
 
 [date]
 font_family = "Adwaita Sans"
@@ -34,7 +39,7 @@ font_style = "normal"
 color = "#c99be8"
 opacity = 1
 shadow_strength = 1.5
-position = "5%, 3.5%"
+halign = "right"
 
 [greeting]
 show = true
@@ -48,14 +53,15 @@ uppercase = false
 color = "#f2dcf5"
 opacity = 0.75
 shadow_strength = 1.5
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#55120a1a"
 outer_color = "#66f2dcf5"
 highlight_color = "#20ffffff"
 accent_color = "#c99be8"
+halign = "left"
+valign = "bottom"
+position = "5%, 9%"

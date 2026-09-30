@@ -1,7 +1,8 @@
 # Pastel pink clouds centre/right, moon top right, open lavender sky top left.
-# Light image: dark text instead of the usual flamingo.
-# Look: clock Inter Display 200 124pt, accent #d6689b.
-base = "left"
+# Layout: Big airy clock in the open sky, the clouds swelling up over its end.
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [background]
 brightness = 1.0
@@ -11,7 +12,6 @@ color = "#2b2748"
 accent = "#d6689b"
 font_family = "Inter Display"
 font_weight = 200
-halign = "left"
 shadow_passes = 2
 shadow_size = 3
 shadow_color = "#88f5e0dc"
@@ -19,13 +19,16 @@ shadow_color = "#88f5e0dc"
 [clock]
 font_family = "Inter Display"
 font_weight = 200
-font_size = 124
-letter_spacing = -1
+letter_spacing = -4
 format = "HH:mm"
 font_style = "normal"
 color = "#2b2748"
 shadow_strength = 0.9
-position = "5%, 15.0%"
+font_size = "26%"
+halign = "left"
+depth = "behind"
+valign = "top"
+position = "6%, -17%"
 
 [date]
 font_family = "Inter Display"
@@ -38,7 +41,10 @@ font_style = "normal"
 color = "#6a4f86"
 opacity = 0.95
 shadow_strength = 0.9
-position = "5%, 3.5%"
+halign = "left"
+below = ""
+above = "clock"
+gap = 28
 
 [greeting]
 show = true
@@ -52,11 +58,9 @@ uppercase = false
 color = "#3b3358"
 opacity = 0.8
 shadow_strength = 0.9
-position = "5%, -14%"
+halign = "center"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66f5e0dc"
@@ -64,3 +68,6 @@ outer_color = "#cc2b2748"
 highlight_color = "#88ffffff"
 accent_color = "#d6689b"
 font_color = "#2b2748"
+halign = "center"
+valign = "bottom"
+position = "0%, 7%"

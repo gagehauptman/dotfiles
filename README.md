@@ -44,7 +44,8 @@ sudo pacman -S hyprland kitty awww hyprlock neovim \
      grim slurp wl-clipboard wf-recorder ffmpeg playerctl brightnessctl \
      pipewire pipewire-pulse wireplumber jq socat \
      noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
-     ttf-nerd-fonts-symbols qt6ct papirus-icon-theme network-manager-applet
+     ttf-nerd-fonts-symbols qt6ct papirus-icon-theme network-manager-applet \
+     libvips python-pillow python-numpy
 yay -S quickshell-git
 ```
 

@@ -1,27 +1,31 @@
 # Explosion glow right of centre behind a dark skyline; dark clouds top left.
-# Look: clock Noto Sans 200 112pt, accent #ff7a3d.
-base = "left"
+# Layout: Dark clock rising behind the skyline against the explosion glow (sky mask).
+
+[depth]
+background = "lock/bg-mask.png"
 
 [text]
 color = "#f9dcbf"
 accent = "#ff7a3d"
 font_family = "Noto Sans"
 font_weight = 200
-halign = "left"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0100603"
 
 [clock]
 font_family = "Noto Sans"
-font_weight = 200
-font_size = 112
-letter_spacing = 0
+font_weight = 500
+letter_spacing = -1
 format = "HH:mm"
 font_style = "normal"
-color = "#f9dcbf"
-shadow_strength = 1.6
-position = "5%, 14.1%"
+color = "#1d1414"
+shadow_strength = 0
+font_size = "15%"
+halign = "center"
+depth = "far"
+valign = "top"
+position = "4%, -47%"
 
 [date]
 font_family = "Noto Sans"
@@ -31,10 +35,13 @@ letter_spacing = 6
 uppercase = true
 format = "dddd, MMMM d"
 font_style = "normal"
-color = "#ff7a3d"
+color = "#2a1a14"
 opacity = 1
-shadow_strength = 1.6
-position = "5%, 3.5%"
+shadow_strength = 0
+halign = "center"
+below = ""
+above = "clock"
+gap = 26
 
 [greeting]
 show = true
@@ -48,14 +55,15 @@ uppercase = false
 color = "#f9dcbf"
 opacity = 0.75
 shadow_strength = 1.6
-position = "5%, -14%"
+halign = "center"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#5510070a"
 outer_color = "#66f9dcbf"
 highlight_color = "#1cffffff"
 accent_color = "#ff7a3d"
+halign = "center"
+valign = "bottom"
+position = "0%, 7%"

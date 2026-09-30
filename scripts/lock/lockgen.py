@@ -2,8 +2,8 @@
 """Resolve the lock screen's settings for the current wallpaper, as JSON for
 the Quickshell lock (qs/shell.qml).
 
-Placement and text style come from meta/<stem>.toml (see README.md), layered
-over meta/default.toml, so every wallpaper can be tuned on its own. The
+Placement and text style come from wallpapers/<stem>/lock.toml (see
+README.md), layered over meta/default.toml, so every wallpaper can be tuned on its own. The
 background is per monitor: the live Bevy scene of a live wallpaper (rendered
 in-process by the lock itself), a still cover-cropped to the monitor, or a flat
 colour.
@@ -175,7 +175,8 @@ def bevy_app(stem):
 
 
 def background(wall, mon, meta):
-    """{"kind": "live"|"still"|"color", ...} for one monitor."""
+    """{"kind": "live"|"still"|"color", ...} for one monitor. "own": the still is
+    the wallpaper itself (so its depth masks fit it)."""
     name, w, h = mon
     bgm = meta.get("background", {})
     out = {"kind": "color"}
@@ -214,9 +215,87 @@ def background(wall, mon, meta):
     if wall.is_file():
         img = still_background(wall, w, h)
         if img:
-            return {"kind": "still", "image": str(img)}
+            return {"kind": "still", "image": str(img), "own": True}
     else:
         log(f"{wall} not found")
+    return out
+
+
+# ---------------------------------------------------------------- depth
+
+# The shade LockSurface.qml draws over the background (top/bottom falloff, as
+# (colour, alpha at the edge, fraction of the height)); baked into the cut-outs.
+SHADE_RGB = (0x11, 0x11, 0x1b)
+SHADE_TOP = (0.9 * 0x59 / 255, 0.40)
+SHADE_BOTTOM = (0.9 * 0x66 / 255, 0.45)
+
+
+def depth_layers(wall, bg, meta, w, h):
+    """[depth] foreground/background masks -> per-monitor RGBA cut-outs of the
+    background (same cover crop, brightness and shade baked in) and the
+    subject's box (fractions of the screen). {} when there is nothing to do."""
+    dm = meta.get("depth", {})
+    if not dm or bg.get("kind") != "still" or not bg.get("own") or not wall:
+        return {}
+    folder = WALLPAPERS / wall.stem
+    masks = {}
+    for key in ("foreground", "background"):
+        if dm.get(key):
+            p = Path(os.path.expanduser(dm[key]))
+            p = p if p.is_absolute() else folder / p
+            if p.is_file():
+                masks[key] = p
+            else:
+                log(f"depth.{key} {p} not found")
+    if not masks:
+        return {}
+    try:
+        import numpy as np
+        from PIL import Image, ImageOps
+    except ImportError:
+        log("depth masks need python-pillow and python-numpy; drawing without depth")
+        return {}
+    Image.MAX_IMAGE_PIXELS = None
+    bright = max(0.0, min(1.0, float(meta.get("background", {}).get("brightness", 1.0))))
+    src = Path(bg["image"])
+    stamp = "|".join(f"{p}:{p.stat().st_mtime_ns}" for p in [src, *masks.values()])
+    key = hashlib.md5(f"{stamp}|{w}x{h}|{bright}|v1".encode()).hexdigest()[:16]
+    outdir = STATE / "depth"
+    outdir.mkdir(parents=True, exist_ok=True)
+    out = {}
+    names = {"foreground": "foreground", "background": "midground"}
+    todo = {k: outdir / f"{key}-{names[k]}.png" for k in masks}
+    fits = {}
+
+    def fit(p):
+        if p not in fits:
+            fits[p] = np.asarray(ImageOps.fit(Image.open(p).convert("L"), (w, h), Image.BILINEAR))
+        return fits[p]
+
+    if not all(p.is_file() for p in todo.values()):
+        rgb = np.asarray(ImageOps.fit(Image.open(src).convert("RGB"), (w, h), Image.LANCZOS), dtype=np.float32)
+        rgb = rgb * bright
+        y = (np.arange(h, dtype=np.float32) + 0.5) / h
+        top_a, top_f = SHADE_TOP
+        bot_a, bot_f = SHADE_BOTTOM
+        a = np.clip(top_a * (1 - y / top_f), 0, None) + np.clip(bot_a * (y - (1 - bot_f)) / bot_f, 0, None)
+        a = a[:, None, None]
+        rgb = rgb * (1 - a) + np.array(SHADE_RGB, dtype=np.float32) * a
+        rgb = np.clip(rgb + 0.5, 0, 255).astype(np.uint8)
+        for k, dst in todo.items():
+            alpha = fit(masks[k])
+            if k == "background":          # the far plane is white: cut out the rest
+                alpha = 255 - alpha
+            tmp = dst.with_suffix(f".tmp{os.getpid()}.png")
+            Image.fromarray(np.dstack([rgb, alpha])).save(tmp, compress_level=1)
+            tmp.replace(dst)
+    for k, dst in todo.items():
+        out[names[k]] = str(dst)
+    if "foreground" in masks:
+        ys, xs = np.nonzero(fit(masks["foreground"]) > 127)
+        if len(xs):
+            out["subject"] = [float(round(v, 4)) for v in (xs.min() / w, ys.min() / h,
+                              (xs.max() + 1 - xs.min()) / w, (ys.max() + 1 - ys.min()) / h)]
     return out
 
 
@@ -269,8 +348,9 @@ def element(meta, key):
     opts.update(meta.get(key, {}))
     for k in COLOR_KEYS & opts.keys():
         opts[k] = qcolor(opts[k])
-    if "position" in opts:
-        opts["position"] = parse_pos(opts["position"])
+    for k in ("position", "offset"):
+        if k in opts:
+            opts[k] = parse_pos(opts[k])
     return opts
 
 
@@ -289,8 +369,16 @@ def build(wall, mons):
         bg["brightness"] = float(bgm.get("live_brightness", 1.0) if bg["kind"] == "live"
                                  else bgm.get("brightness", 1.0))
         bg["blur"] = int(bgm.get("blur_passes", 0)) * int(bgm.get("blur_size", 6)) if bg["kind"] == "still" else 0
-        return {"name": name, "width": w, "height": h, "background": bg,
-                "elements": {k: element(meta, k) for k in ELEMENTS}}
+        depth = depth_layers(wall, bg, meta, w, h)
+        if depth:
+            # baked into the cut-outs; the background gets the same in QML
+            bg["brightness"] = float(bgm.get("brightness", 1.0))
+        bg.pop("own", None)
+        out = {"name": name, "width": w, "height": h, "background": bg, "depth": depth,
+               "elements": {k: element(meta, k) for k in ELEMENTS}}
+        if meta.get("text", {}).get("ui_scale"):
+            out["ui_scale"] = float(meta["text"]["ui_scale"])
+        return out
 
     with ThreadPoolExecutor(max_workers=len(mons)) as ex:
         screens = list(ex.map(one, mons))
@@ -318,8 +406,10 @@ def main():
     if a.check:
         for s in cfg["screens"]:
             b = s["background"]
+            d = s.get("depth") or {}
             log(f"{s['name'] or 'all'} {s['width']}x{s['height']}: {b['kind']} "
-                f"{b.get('library') or b.get('image') or b['color']}")
+                f"{b.get('library') or b.get('image') or b['color']}"
+                + (f" depth={'+'.join(k for k in ('midground', 'foreground') if k in d)} subject={d.get('subject')}" if d else ""))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 # Radio dishes across the middle under orange clouds; darker sky top right.
-# Look: clock Inter Display 700 96pt, accent #ffb454.
-base = "right"
+# Layout: Giant clock rising behind the big dish; date, greeting and field bottom right.
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [background]
 brightness = 0.75
@@ -10,7 +12,6 @@ color = "#fff1d6"
 accent = "#ffb454"
 font_family = "Inter Display"
 font_weight = 700
-halign = "right"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0120a04"
@@ -18,13 +19,17 @@ shadow_color = "#e0120a04"
 [clock]
 font_family = "Inter Display"
 font_weight = 700
-font_size = 96
-letter_spacing = -2
+letter_spacing = -4
 format = "HH:mm"
 font_style = "normal"
 color = "#fff1d6"
 shadow_strength = 1.5
-position = "-5%, 14%"
+font_size = "19%"
+halign = "center"
+depth = "behind"
+relative_to = "subject"
+valign = "top"
+position = "3%, 9%"
 
 [date]
 font_family = "Inter Display"
@@ -37,7 +42,10 @@ font_style = "normal"
 color = "#ffb454"
 opacity = 1
 shadow_strength = 1.5
-position = "-5%, 3.5%"
+halign = "right"
+below = ""
+above = "greeting"
+gap = 30
 
 [greeting]
 show = true
@@ -51,14 +59,15 @@ uppercase = false
 color = "#fff1d6"
 opacity = 0.7
 shadow_strength = 1.5
-position = "-5%, -14%"
+halign = "right"
 
 [input]
-halign = "right"
-position = "-5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66190e05"
 outer_color = "#66ffb454"
 highlight_color = "#20ffd9a0"
 accent_color = "#ffb454"
+halign = "right"
+valign = "bottom"
+position = "-4%, 8%"

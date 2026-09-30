@@ -1,13 +1,12 @@
 # Launch contrail rising left of centre over a sunset horizon; open blue sky right.
+# Layout: Serif clock high in the open sky on the right; field bottom right.
 # Look: clock Liberation Serif 400 116pt, accent #ff9a5a.
-base = "right"
 
 [text]
 color = "#ffdcb8"
 accent = "#ff9a5a"
 font_family = "Liberation Serif"
 font_weight = 400
-halign = "right"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#d0140a12"
@@ -15,13 +14,15 @@ shadow_color = "#d0140a12"
 [clock]
 font_family = "Liberation Serif"
 font_weight = 400
-font_size = 116
 letter_spacing = 0
 format = "h:mm"
 font_style = "italic"
 color = "#ffdcb8"
 shadow_strength = 1.4
-position = "-5%, 26.4%"
+font_size = "17%"
+halign = "right"
+valign = "top"
+position = "-7%, -12%"
 
 [date]
 font_family = "Noto Sans"
@@ -34,7 +35,7 @@ font_style = "normal"
 color = "#ff9a5a"
 opacity = 1
 shadow_strength = 1.4
-position = "-5%, 15.5%"
+halign = "right"
 
 [greeting]
 show = true
@@ -48,14 +49,15 @@ uppercase = false
 color = "#ffdcb8"
 opacity = 0.8
 shadow_strength = 1.4
-position = "-5%, -2%"
+halign = "right"
 
 [input]
-halign = "right"
-position = "-5%, -10%"
 size = [320, 54]
 rounding = 27
 inner_color = "#4d140a12"
 outer_color = "#66ffdcb8"
 highlight_color = "#22ffffff"
 accent_color = "#ff9a5a"
+halign = "right"
+valign = "bottom"
+position = "-7%, 12%"

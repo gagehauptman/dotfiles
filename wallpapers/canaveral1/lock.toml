@@ -1,6 +1,8 @@
 # Bright cloud tower top centre, trees lower right, dark cloud band on the left.
-# Look: clock Inter Display 300 100pt, accent #f0b56a.
-base = "left"
+# Layout: Clock sunk behind the treeline on the right (sky mask); field bottom left.
+
+[depth]
+background = "lock/bg-mask.png"
 
 [background]
 brightness = 0.7
@@ -10,7 +12,6 @@ color = "#fff0d8"
 accent = "#f0b56a"
 font_family = "Inter Display"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 6
 shadow_color = "#f0100a06"
@@ -18,13 +19,16 @@ shadow_color = "#f0100a06"
 [clock]
 font_family = "Inter Display"
 font_weight = 300
-font_size = 100
 letter_spacing = 10
 format = "HH:mm"
 font_style = "normal"
 color = "#fff0d8"
 shadow_strength = 2.4
-position = "5%, 14%"
+font_size = "20%"
+halign = "right"
+depth = "far"
+valign = "top"
+position = "-8%, -41%"
 
 [date]
 font_family = "Inter Display"
@@ -37,7 +41,10 @@ font_style = "normal"
 color = "#ffc880"
 opacity = 1
 shadow_strength = 2.4
-position = "5%, 3.5%"
+halign = "right"
+below = ""
+above = "clock"
+gap = 24
 
 [greeting]
 show = true
@@ -51,14 +58,15 @@ uppercase = false
 color = "#fff0d8"
 opacity = 0.85
 shadow_strength = 2.4
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 56]
 rounding = 28
 inner_color = "#66140e06"
 outer_color = "#66f8e6c8"
 highlight_color = "#1cffffff"
 accent_color = "#f0b56a"
+halign = "left"
+valign = "bottom"
+position = "5%, 8%"

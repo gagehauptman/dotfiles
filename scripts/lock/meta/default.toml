@@ -1,10 +1,28 @@
 # Lock screen layout every wallpaper starts from. A wallpaper's own
 # <stem>.toml only lists what it changes. See ../README.md.
 #
-# Positions are "x%, y%" of the monitor, offset from the halign/valign
-# anchor, +y up, so one layout fits both monitors. Sizes are px (font_size in
-# points at 96 dpi). Colours: rgb(rrggbb) / rgba(rrggbbaa) / "#rrggbb".
+# Positions are "x%, y%" of the monitor (or px), offset from the halign/valign
+# anchor, +y up, so one layout fits both monitors. Alignment is by the text's
+# ink (glyph edges x cap height), so different fonts/sizes share an edge.
+# Sizes are px (font_size in points at 96 dpi, or "N%" of the screen height),
+# designed for a 1440px-tall screen and scaled on others ([text] ui_scale = N
+# pins it). Colours: rgb(rrggbb) / rgba(rrggbbaa) / "#rrggbb".
 # Any element can be hidden with show = false.
+#
+# Per element, besides position:
+#   below / above = "clock"   hang off another element (clock, date, greeting,
+#                             input), `gap` px (or "N%") from its box, aligned
+#                             to its edge by this element's halign; `offset`
+#                             nudges. Set below = "" to place it freely again.
+#   relative_to = "subject"   anchor to the wallpaper subject's box ([depth]
+#                             foreground) instead of the screen
+#   depth = "front"|"behind"|"far"   plane (needs [depth]): behind = under the
+#                             subject, far = also under the midground
+#
+# [depth] (stills only; masks next to the wallpaper, made by scripts/lock/masks.py)
+#   foreground = "lock/fg-mask.png"   white = the subject, drawn over depth="behind" text
+#   background = "lock/bg-mask.png"   white = the far plane (sky); everything else
+#                                     is drawn over depth="far" text
 
 [background]
 color = "rgb(1b1923)"       # shown when there is no image/scene, and under it
@@ -37,7 +55,8 @@ shadow_color = "rgba(11111bcc)"
 halign = "center"
 valign = "center"
 
-# Vertical layout (+y up): clock 14%, date 3.5%, greeting -14%, field -22%.
+# Two groups: the clock with the date under it, and the field with the
+# greeting over it. Move a group by its anchor (clock / input position).
 [clock]
 font_weight = "extralight"
 format = "HH:mm"            # Qt date format (HH:mm, h:mm AP, ...)
@@ -51,7 +70,8 @@ format = "dddd, MMMM d"
 uppercase = true
 letter_spacing = 3
 font_size = 15
-position = "0, 3.5%"
+below = "clock"
+gap = 26
 
 [greeting]
 show = true
@@ -59,7 +79,8 @@ opacity = 0.75
 font_weight = "regular"
 text = "good {period}, {user}"   # {period}: morning/afternoon/evening
 font_size = 16
-position = "0, -14%"
+above = "input"
+gap = 22
 
 [input]
 size = [340, 58]

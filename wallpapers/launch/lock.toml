@@ -1,13 +1,15 @@
 # Contrail left of centre, power pole and wires on the right; clouds top left.
+# Layout: Clock behind the power pole and wires; field bottom left under the contrail.
 # Look: clock Inter Display 500 84pt, accent #ff8fb1.
-base = "left"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#f7ecff"
 accent = "#ff8fb1"
 font_family = "Inter Display"
 font_weight = 500
-halign = "left"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0100a20"
@@ -15,13 +17,16 @@ shadow_color = "#e0100a20"
 [clock]
 font_family = "Inter Display"
 font_weight = 500
-font_size = 84
 letter_spacing = 1
 format = "h:mm AP"
 font_style = "normal"
 color = "#f7ecff"
 shadow_strength = 1.6
-position = "5%, 14%"
+font_size = "20%"
+halign = "right"
+depth = "behind"
+valign = "top"
+position = "-7%, -14%"
 
 [date]
 font_family = "Inter Display"
@@ -34,7 +39,7 @@ font_style = "normal"
 color = "#ffb3cb"
 opacity = 1
 shadow_strength = 1.6
-position = "5%, 3.5%"
+halign = "right"
 
 [greeting]
 show = true
@@ -48,14 +53,15 @@ uppercase = false
 color = "#f7ecff"
 opacity = 0.85
 shadow_strength = 1.6
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#5a100a20"
 outer_color = "#66f7ecff"
 highlight_color = "#20ffffff"
 accent_color = "#ff8fb1"
+halign = "left"
+valign = "bottom"
+position = "5%, 9%"

@@ -1,13 +1,15 @@
 # Figure at a charging post right of centre; dark night sky above the fence.
+# Layout: Clock over the charging post, the figure's head in front of it.
 # Look: clock Noto Sans 300 104pt, accent #5fe0a8.
-base = "left"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#d5f2e6"
 accent = "#5fe0a8"
 font_family = "Noto Sans"
 font_weight = 300
-halign = "left"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#e0021610"
@@ -15,13 +17,16 @@ shadow_color = "#e0021610"
 [clock]
 font_family = "Noto Sans"
 font_weight = 300
-font_size = 104
 letter_spacing = 1
 format = "HH:mm"
 font_style = "normal"
 color = "#d5f2e6"
 shadow_strength = 1.5
-position = "5%, 14%"
+font_size = "22%"
+halign = "center"
+depth = "behind"
+valign = "top"
+position = "16%, -29%"
 
 [date]
 font_family = "Noto Sans"
@@ -34,7 +39,10 @@ font_style = "normal"
 color = "#5fe0a8"
 opacity = 1
 shadow_strength = 1.5
-position = "5%, 3.5%"
+halign = "center"
+below = ""
+above = "clock"
+gap = 26
 
 [greeting]
 show = true
@@ -48,14 +56,15 @@ uppercase = false
 color = "#d5f2e6"
 opacity = 0.7
 shadow_strength = 1.5
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 56]
 rounding = 28
 inner_color = "#55021610"
 outer_color = "#66d5f2e6"
 highlight_color = "#20ffffff"
 accent_color = "#5fe0a8"
+halign = "left"
+valign = "bottom"
+position = "5%, 9%"

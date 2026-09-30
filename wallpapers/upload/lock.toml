@@ -1,13 +1,15 @@
 # Figure at a pay phone on the far right; lamp row across the middle.
+# Layout: Loud yellow clock behind the man at the pay phone; field bottom left.
 # Look: clock Inter Display 800 84pt, accent #4fe0c4.
-base = "left"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#ffe9a8"
 accent = "#4fe0c4"
 font_family = "Inter Display"
 font_weight = 800
-halign = "left"
 shadow_passes = 2
 shadow_size = 5
 shadow_color = "#e0031412"
@@ -15,13 +17,16 @@ shadow_color = "#e0031412"
 [clock]
 font_family = "Inter Display"
 font_weight = 800
-font_size = 84
-letter_spacing = 0
+letter_spacing = -4
 format = "HH:mm"
 font_style = "normal"
 color = "#ffe9a8"
 shadow_strength = 1.6
-position = "5%, 14%"
+font_size = "21%"
+halign = "right"
+depth = "behind"
+valign = "top"
+position = "-4%, -34%"
 
 [date]
 font_family = "Inter Display"
@@ -34,7 +39,10 @@ font_style = "normal"
 color = "#4fe0c4"
 opacity = 1
 shadow_strength = 1.6
-position = "5%, 3.5%"
+halign = "right"
+below = ""
+above = "clock"
+gap = 24
 
 [greeting]
 show = true
@@ -48,14 +56,15 @@ uppercase = false
 color = "#ffe9a8"
 opacity = 0.7
 shadow_strength = 1.6
-position = "5%, -14%"
+halign = "left"
 
 [input]
-halign = "left"
-position = "5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#66031412"
 outer_color = "#66ffe9a8"
 highlight_color = "#20ffffff"
 accent_color = "#4fe0c4"
+halign = "left"
+valign = "bottom"
+position = "5%, 9%"

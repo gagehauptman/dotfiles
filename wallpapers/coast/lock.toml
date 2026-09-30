@@ -1,13 +1,15 @@
 # Molten arc falling through the centre, moon upper left; dark on the right.
+# Layout: Bold clock with the molten arc slicing through it; field bottom right in the dark.
 # Look: clock Adwaita Sans 700 88pt, accent #ff8a4c.
-base = "right"
+
+[depth]
+foreground = "lock/fg-mask.png"
 
 [text]
 color = "#ffe0c2"
 accent = "#ff8a4c"
 font_family = "Adwaita Sans"
 font_weight = 700
-halign = "right"
 shadow_passes = 2
 shadow_size = 4
 shadow_color = "#e0080310"
@@ -15,13 +17,16 @@ shadow_color = "#e0080310"
 [clock]
 font_family = "Adwaita Sans"
 font_weight = 700
-font_size = 88
 letter_spacing = -2
 format = "HH:mm"
 font_style = "normal"
 color = "#ffe0c2"
 shadow_strength = 1.3
-position = "-5%, 14%"
+font_size = "22%"
+halign = "center"
+depth = "behind"
+valign = "top"
+position = "4%, -16%"
 
 [date]
 font_family = "Adwaita Sans"
@@ -34,7 +39,7 @@ font_style = "normal"
 color = "#ff8a4c"
 opacity = 1
 shadow_strength = 1.3
-position = "-5%, 3.5%"
+halign = "center"
 
 [greeting]
 show = true
@@ -48,14 +53,15 @@ uppercase = false
 color = "#ffe0c2"
 opacity = 0.65
 shadow_strength = 1.3
-position = "-5%, -14%"
+halign = "right"
 
 [input]
-halign = "right"
-position = "-5%, -22%"
 size = [340, 58]
 rounding = 29
 inner_color = "#5a10070f"
 outer_color = "#66ff8a4c"
 highlight_color = "#1cffffff"
 accent_color = "#ff8a4c"
+halign = "right"
+valign = "bottom"
+position = "-5%, 9%"

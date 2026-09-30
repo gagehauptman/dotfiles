@@ -19,3 +19,7 @@ kitty/current-theme.conf
 zed/themes/wallpaper-current.json
 zed/settings.json.pre-wallpaper-theme
 wallpapers/local.conf
+
+# agent/manual backup copies (e.g. foo.qml.bak-2026-09-30-calendar)
+*.bak
+*.bak-*

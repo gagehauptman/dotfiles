@@ -3,6 +3,7 @@
 
 [depth]
 foreground = "lock/fg-mask.png"
+holes = true               # masks.py: clear the gaps in the dishes (see-through panels, lattice)
 
 [background]
 brightness = 0.75

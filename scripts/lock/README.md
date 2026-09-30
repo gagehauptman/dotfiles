@@ -85,6 +85,26 @@ the model is cached; set-up in its docstring): `masks.py STEM` for a subject,
 `masks.py --sky [--dark 0.1] STEM` for a skyline/treeline silhouette. 20
 wallpapers use a foreground mask, canaveral1 and evening_light a sky mask.
 
+**Crisp edges (2026-09-30).** The first masks were soft: BiRefNet only sees
+1024x1024, its answer was stretched to 2560 px, blurred (Gaussian 0.6), then
+stretched again (bilinear) to the monitor, so a 2-3 px model edge became a
+6-10 px ramp on a 3440 px screen. Now masks.py upsamples it with a colour guided
+filter onto the image's own edges, alpha-mattes a thin band along the edge (and
+whatever the model was unsure of, e.g. wires) with KNN matting, and stores the
+mask at the image's resolution (up to 3840 px), 0/1 everywhere else. lockgen.py
+then scales it per monitor (Lanczos) and redraws the edge `[depth]
+edge_softness` px wide (default 1.0: one antialiased pixel; 0 = the stored mask
+as is). The cut-out's colour is never blurred: it is the same Lanczos
+cover-crop as the background.
+
+**Holes.** BiRefNet paints see-through gaps (a dish's missing panels, lattices,
+gaps between struts) as subject. `holes = true` under `[depth]` (antenna) makes
+masks.py run GrabCut (OpenCV, seeded with the mask, remove-only) to find them and
+matte them, so the sky shows through and text behind the subject shows in the
+gaps; thin members (wires, struts) survive the matting. Needs
+`opencv-python-headless` in the masks venv. Old masks:
+`~/lock-masks-bak-2026-09-30-crisp/`.
+
 ## Testing safely
 
 - `lock.sh --preview [DIR]`: renders each monitor offscreen to `DIR/<monitor>.png`

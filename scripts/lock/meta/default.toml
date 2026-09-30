@@ -23,6 +23,15 @@
 #   foreground = "lock/fg-mask.png"   white = the subject, drawn over depth="behind" text
 #   background = "lock/bg-mask.png"   white = the far plane (sky); everything else
 #                                     is drawn over depth="far" text
+#   edge_softness = 1.0               width (screen px) of the cut-outs' antialiased
+#                                     edge; lockgen redraws the mask edge this wide at
+#                                     each monitor's size. 0.6 = razor, 2-3 = soft,
+#                                     0 = the mask exactly as stored (old look)
+#   holes = true                      masks.py only: also clear see-through gaps
+#                                     (lattices, missing panels) from the subject mask
+
+[depth]
+edge_softness = 1.0
 
 [background]
 color = "rgb(1b1923)"       # shown when there is no image/scene, and under it

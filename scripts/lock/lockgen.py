@@ -230,6 +230,22 @@ SHADE_TOP = (0.9 * 0x59 / 255, 0.40)
 SHADE_BOTTOM = (0.9 * 0x66 / 255, 0.45)
 
 
+def crisp_edge(m, soft):
+    """Re-draw a soft 8-bit mask's edge `soft` px wide (at screen resolution).
+    (a - 0.5) / |grad a| is roughly the signed distance (px) to the mask's 50%
+    contour, so this keeps the outline where it is and only tightens the ramp
+    across it: a resampled/feathered edge several px wide becomes a ~1 px
+    antialiased one. Flat areas (0/1) stay as they are."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    # a touch of blur first, so the gradient is not pixel noise (jaggies, specks)
+    a = np.asarray(Image.fromarray(m).filter(ImageFilter.GaussianBlur(0.6)), dtype=np.float32) / 255
+    gy, gx = np.gradient(a)
+    d = (a - 0.5) / np.maximum(np.hypot(gx, gy), 1e-3)
+    out = np.clip(0.5 + d / soft, 0, 1)
+    return (out * 255 + 0.5).astype(np.uint8)
+
+
 def depth_layers(wall, bg, meta, w, h):
     """[depth] foreground/background masks -> per-monitor RGBA cut-outs of the
     background (same cover crop, brightness and shade baked in) and the
@@ -257,9 +273,10 @@ def depth_layers(wall, bg, meta, w, h):
         return {}
     Image.MAX_IMAGE_PIXELS = None
     bright = max(0.0, min(1.0, float(meta.get("background", {}).get("brightness", 1.0))))
+    soft = max(0.0, float(dm.get("edge_softness", 1.0)))
     src = Path(bg["image"])
     stamp = "|".join(f"{p}:{p.stat().st_mtime_ns}" for p in [src, *masks.values()])
-    key = hashlib.md5(f"{stamp}|{w}x{h}|{bright}|v1".encode()).hexdigest()[:16]
+    key = hashlib.md5(f"{stamp}|{w}x{h}|{bright}|{soft}|v2".encode()).hexdigest()[:16]
     outdir = STATE / "depth"
     outdir.mkdir(parents=True, exist_ok=True)
     out = {}
@@ -269,7 +286,8 @@ def depth_layers(wall, bg, meta, w, h):
 
     def fit(p):
         if p not in fits:
-            fits[p] = np.asarray(ImageOps.fit(Image.open(p).convert("L"), (w, h), Image.BILINEAR))
+            m = np.asarray(ImageOps.fit(Image.open(p).convert("L"), (w, h), Image.LANCZOS))
+            fits[p] = crisp_edge(m, soft) if soft > 0 else m
         return fits[p]
 
     if not all(p.is_file() for p in todo.values()):

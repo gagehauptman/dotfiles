@@ -63,6 +63,9 @@ It adds `toolkit.legacyUserProfileCustomizations.stylesheets` to `user.js` if no
 (edited files are backed up once as `*.bak-wallpaper-theme`). Firefox reads chrome CSS when a
 window opens: new windows get the new colours, open ones keep theirs; restart once after the first run.
 Does nothing when Firefox or its profile is absent.
+Live colours (no restart) come from the `firefox-live/` extension; run
+`scripts/theme/firefox-live/install-autoconfig.sh` once per machine (sudo) so Firefox loads it on every
+start, see [firefox-live/README.md](firefox-live/README.md).
 
 ## Fonts
 

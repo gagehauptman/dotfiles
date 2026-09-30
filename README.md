@@ -48,6 +48,12 @@ sudo pacman -S hyprland kitty awww hyprlock neovim \
 yay -S quickshell-git
 ```
 
+Firefox live theming (once per machine, sudo; restart Firefox afterwards):
+
+```bash
+~/dotfiles/scripts/theme/firefox-live/install-autoconfig.sh
+```
+
 Hyprland needs to be 0.56 or newer (it reads `hyprland.lua` directly).
 Optional groups (Bevy widgets, globe, voice assistant) list their extra
 packages in [quickshell/README.md](quickshell/README.md#requirements).

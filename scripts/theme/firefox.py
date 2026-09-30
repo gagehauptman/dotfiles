@@ -8,9 +8,10 @@ Enables toolkit.legacyUserProfileCustomizations.stylesheets via user.js when no 
 The generated CSS is empty on purpose: Firefox reads chrome CSS once per window, so any colour set
 there would go stale and override the live theme. Live colours come from firefox-live/ (a
 WebExtension calling browser.theme.update(), fed by a native-messaging host that watches
-~/.cache/wallpaper_theme/current.json). update() registers that host's manifest; loading the
-extension itself is a one-time step per Firefox run (release Firefox refuses unsigned add-ons
-permanently), see firefox-live/README.md.
+~/.cache/wallpaper_theme/current.json). update() registers that host's manifest and links
+<profile>/chrome/wallpaper-theme-extension to the extension; the Firefox autoconfig from
+firefox-live/install-autoconfig.sh (once, sudo) loads that link as a temporary add-on on every start
+(release Firefox refuses unsigned add-ons permanently), see firefox-live/README.md.
 Silently does nothing when Firefox or its profile is missing.
 """
 import configparser, json, shutil
@@ -106,6 +107,18 @@ def ensure_native_host():
         write_if_changed(d / "wallpaper_theme.json", text)
 
 
+def ensure_extension_link(chrome):
+    """<profile>/chrome/wallpaper-theme-extension -> firefox-live/extension, for firefox-live/autoconfig."""
+    link, target = chrome / "wallpaper-theme-extension", HERE / "firefox-live/extension"
+    if link.is_symlink() and link.resolve() == target:
+        return
+    if link.is_symlink():
+        link.unlink()
+    elif link.exists():
+        return  # not ours
+    link.symlink_to(target)
+
+
 def update(t, wallpaper_dir):
     """Returns a short status string, or None when Firefox is not set up."""
     prof = profile_dir()
@@ -129,5 +142,6 @@ def update(t, wallpaper_dir):
         changed |= write_if_changed(chrome / gen, css)
         ensure_import(chrome / user_file, gen)
     ensure_native_host()
+    ensure_extension_link(chrome)
     added = ensure_pref(prof)
     return ("pref enabled (restart Firefox once); " if added else "") + ("css updated" if changed else "css unchanged")

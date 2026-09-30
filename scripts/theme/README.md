@@ -8,21 +8,19 @@ borders.
 ## Layout
 
     wallpapers/
-      clouds/clouds.png        the image (or <stem>.live descriptor)
+      clouds/clouds.png        the image (or <stem>.live descriptor); every file of a
+                               wallpaper lives in its own folder, nothing elsewhere
       clouds/theme.json        palette, fonts, rounding, borders
       clouds/lock.toml         lock screen layout + text styling (scripts/lock/lockgen.py)
       clouds/bar.json          Quickshell tweaks (panelOpacity)
       clouds/kitty.conf        extra kitty settings appended to the generated colours
       clouds/meta.json         name, description, file index (informational)
-      clouds.png -> clouds/clouds.png     symlink kept so the selector, the
-                                          saved path in wpsave.txt and the
-                                          lock screen still find it flat
       _presets/                shared themes others inherit from:
         catppuccin_mocha|macchiato|frappe|latte.json   the four Catppuccin flavours
         default.json           = Catppuccin Mocha (used when a wallpaper has no theme)
 
-A new wallpaper: `mkdir wallpapers/<stem>`, put the image in, symlink it flat
-(`ln -s <stem>/<file> wallpapers/<file>`) and add `theme.json`. Catppuccin is
+A new wallpaper: `mkdir wallpapers/<stem>`, put the image in it as `<stem>.<ext>`
+(a real file; no copies or symlinks elsewhere) and add `theme.json`. Catppuccin is
 the house look: a new wallpaper needs only `{"inherits": "catppuccin_mocha",
 "palette": {"accent": "#..."}}` (pick the flavour by brightness, the accent from
 Catppuccin's own accent colours; `fonts`/`style`/`palette` overrides win).
@@ -52,6 +50,17 @@ By hand: `scripts/theme/apply.py clouds`.
 In QML: `Theme.colors.*` as before, `Theme.fonts.ui|mono|display|icon`,
 `Theme.rs(px)` for radii (metrics.radius* already go through it),
 `Theme.bw(px)` for border widths.
+
+## Firefox
+
+`apply.py` also calls `firefox.py`, which fills `templates/firefox-chrome.css` and
+`templates/firefox-content.css` (about: pages) with the palette and writes them to the default
+profile's `chrome/wallpaper-theme*.css`; `userChrome.css`/`userContent.css` just `@import` them.
+Optional per-wallpaper `<stem>/firefox.css` and `<stem>/firefox-content.css` are appended.
+It adds `toolkit.legacyUserProfileCustomizations.stylesheets` to `user.js` if no prefs file sets it
+(edited files are backed up once as `*.bak-wallpaper-theme`). Firefox reads chrome CSS when a
+window opens: new windows get the new colours, open ones keep theirs; restart once after the first run.
+Does nothing when Firefox or its profile is absent.
 
 ## Fonts
 

@@ -16,3 +16,5 @@ bevy/build
 quickshell/modules/
 __pycache__/
 kitty/current-theme.conf
+zed/themes/wallpaper-current.json
+zed/settings.json.pre-wallpaper-theme

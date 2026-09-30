@@ -1,0 +1,9 @@
+{
+  "manifest_version": 2,
+  "name": "Wallpaper theme (live)",
+  "version": "1.0",
+  "description": "Applies the wallpaper theme to Firefox live via theme.update(); colours come from host.py (native messaging), no restart needed.",
+  "browser_specific_settings": { "gecko": { "id": "wallpaper-theme@dotfiles" } },
+  "permissions": ["theme", "nativeMessaging"],
+  "background": { "scripts": ["background.js"], "persistent": true }
+}

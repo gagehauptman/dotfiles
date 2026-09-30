@@ -7,12 +7,16 @@ Reads wallpapers/<stem>/theme.json + bar.json + kitty.conf (following "inherits"
 wallpapers/_presets/), writes the flattened result to
 $XDG_CACHE_HOME/wallpaper_theme/current.json, which Quickshell watches
 (quickshell/themes/Theme.qml) and repaints from, then updates the cheap
-consumers: kitty (colours, live) and Hyprland window borders (hyprctl eval). Missing theme
+consumers: Firefox (chrome CSS in the profile, see firefox.py), kitty (colours, live) and Hyprland window borders (hyprctl eval). Missing theme
 falls back to the "default" preset (Catppuccin Mocha). Safe to call often;
 does nothing when the result did not change.
 """
 import json, os, signal, subprocess, sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import firefox
+import zed
 
 HOME = Path.home()
 CFG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
@@ -96,6 +100,14 @@ def main():
     t["stem"] = stem
     folder_extras(stem, t)
     changed = write_if_changed(CACHE / "current.json", json.dumps(t, indent=1))
+    try:
+        firefox.update(t, WP / stem)  # tolerant: no Firefox/profile -> nothing
+    except Exception as e:
+        print(f"firefox theme: {e}", file=sys.stderr)
+    try:
+        zed.apply(t, stem, WP, write_if_changed)  # tolerant: no Zed config dir -> nothing
+    except Exception as e:
+        print(f"zed theme: {e}", file=sys.stderr)
     if not changed:
         return
     if write_if_changed(CFG / "kitty/current-theme.conf", kitty_conf(t)):

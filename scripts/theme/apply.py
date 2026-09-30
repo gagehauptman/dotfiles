@@ -11,7 +11,7 @@ consumers: Firefox (chrome CSS in the profile, see firefox.py), kitty (colours, 
 falls back to the "default" preset (Catppuccin Mocha). Safe to call often;
 does nothing when the result did not change.
 """
-import json, os, signal, subprocess, sys
+import functools, json, os, signal, subprocess, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,14 +26,26 @@ SAVE = CFG / "scripts/wallpaper/wpsave.txt"
 LIST = CFG / "scripts/wallpaper/list.sh"
 
 
+# Folders already known from the command line (a <stem>/<stem>.<ext> path).
+KNOWN_DIRS = {}
+
+
+@functools.cache
+def listing():
+    """list.sh's output, run at most once: it was most of this script's time
+    when every stem_dir() call (theme, inherits, extras, Firefox, Zed) ran it."""
+    try:
+        return subprocess.run([str(LIST)], capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
 def stem_dir(stem):
     """The wallpaper's folder: in wallpapers/, or in a folder added by the
     per-device wallpapers/local.conf (found through list.sh). Loose images have none."""
-    try:
-        out = subprocess.run([str(LIST)], capture_output=True, text=True, timeout=10).stdout
-    except (OSError, subprocess.SubprocessError):
-        out = ""
-    for line in out.splitlines():
+    if stem in KNOWN_DIRS:
+        return KNOWN_DIRS[stem]
+    for line in listing().splitlines():
         f = Path(line)
         if f.stem == stem and f.parent.name == stem:
             return f.parent
@@ -109,6 +121,9 @@ def write_if_changed(path, text):
 def main():
     arg = sys.argv[1] if len(sys.argv) > 1 else SAVE.read_text()
     stem = stem_of(arg)
+    f = Path(arg.strip())
+    if f.is_absolute() and f.parent.name == stem and f.is_file():
+        KNOWN_DIRS[stem] = f.parent
     t = load(stem) or load("default")
     if not t:
         return

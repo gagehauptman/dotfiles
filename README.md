@@ -53,6 +53,21 @@ ln -sf ~/dotfiles/wallpapers ~/.config/wallpapers
 
 ```
 
+## Your own wallpapers (per device)
+
+Add wallpapers or hide the ones shipped in the repo without touching tracked files:
+
+```bash
+cp ~/.config/wallpapers/local.conf.example ~/.config/wallpapers/local.conf
+```
+
+`wallpapers/local.conf` is gitignored. Directives (one per line): `add <folder-or-image>`
+(a folder of images, a folder of `<stem>/<stem>.<ext>` wallpaper folders, or one image),
+`disable <stem>`, `repo off` (hide the whole repo set) and `active <stem>` (applied at
+each login). Added images without a `theme.json` get the default Catppuccin Mocha look;
+see `scripts/theme/README.md` for themed ones. The selector, login restore and cache
+warm-up all read it through `scripts/wallpaper/list.sh`.
+
 ### Hyprland Plugins
 
 **[split-monitor-workspaces](https://github.com/zjeffer/split-monitor-workspaces)** - Gives each monitor its own independent workspace namespace (1-10 per monitor instead of shared global workspaces). Essential for multi-monitor setups. Requires Hyprland >= 0.55.0 with the Lua config.

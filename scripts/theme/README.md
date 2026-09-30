@@ -19,6 +19,8 @@ borders.
         catppuccin_mocha|macchiato|frappe|latte.json   the four Catppuccin flavours
         default.json           = Catppuccin Mocha (used when a wallpaper has no theme)
 
+Per-device wallpapers (`add`/`disable` in `wallpapers/local.conf`) can live outside the repo: a folder added there with this same layout is themed too.
+
 A new wallpaper: `mkdir wallpapers/<stem>`, put the image in it as `<stem>.<ext>`
 (a real file; no copies or symlinks elsewhere) and add `theme.json`. Catppuccin is
 the house look: a new wallpaper needs only `{"inherits": "catppuccin_mocha",

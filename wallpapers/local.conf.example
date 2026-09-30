@@ -1,0 +1,21 @@
+# Per-device wallpaper settings. Copy to local.conf (same folder, untracked):
+#   cp local.conf.example local.conf
+# One directive per line, "#" starts a comment. Read by scripts/wallpaper/list.sh,
+# so the selector, the login restore and the cache warm-up all follow it.
+
+# Add wallpapers: a folder of images, a folder of wallpaper folders
+# (<stem>/<stem>.<ext>, optionally with theme.json/bar.json/kitty.conf/lock.toml
+# next to it, see scripts/theme/README.md), or a single image. ~ and $HOME work.
+# Wallpapers without a theme.json use the default Catppuccin Mocha look.
+#add ~/Pictures/wallpapers
+#add ~/Pictures/me/beach.jpg
+
+# Hide wallpapers by stem (file name without extension), repo ones or your own.
+#disable nebula
+#disable street
+
+# Hide every wallpaper shipped in the repo (only your `add`ed ones remain).
+#repo off
+
+# Wallpaper applied at every login, instead of the last one picked in the selector.
+#active beach

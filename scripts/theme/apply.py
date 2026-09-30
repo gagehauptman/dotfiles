@@ -23,6 +23,21 @@ CFG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "wallpaper_theme"
 WP = CFG / "wallpapers"
 SAVE = CFG / "scripts/wallpaper/wpsave.txt"
+LIST = CFG / "scripts/wallpaper/list.sh"
+
+
+def stem_dir(stem):
+    """The wallpaper's folder: in wallpapers/, or in a folder added by the
+    per-device wallpapers/local.conf (found through list.sh). Loose images have none."""
+    try:
+        out = subprocess.run([str(LIST)], capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        out = ""
+    for line in out.splitlines():
+        f = Path(line)
+        if f.stem == stem and f.parent.name == stem:
+            return f.parent
+    return WP / stem
 
 
 def stem_of(arg):
@@ -30,7 +45,7 @@ def stem_of(arg):
 
 
 def load(stem, seen=()):
-    for p in (WP / stem / "theme.json", WP / "_presets" / f"{stem}.json"):
+    for p in (stem_dir(stem) / "theme.json", WP / "_presets" / f"{stem}.json"):
         if p.is_file():
             t = json.loads(p.read_text())
             parent = t.get("inherits")
@@ -48,7 +63,7 @@ def load(stem, seen=()):
 
 def folder_extras(stem, t):
     """Other files in the wallpaper's folder: bar.json -> t["bar"], kitty.conf -> t["kitty_extra"]."""
-    d = WP / stem
+    d = stem_dir(stem)
     try:
         t["bar"] = {k: v for k, v in json.loads((d / "bar.json").read_text()).items() if k != "_"}
     except (OSError, ValueError):
@@ -101,11 +116,11 @@ def main():
     folder_extras(stem, t)
     changed = write_if_changed(CACHE / "current.json", json.dumps(t, indent=1))
     try:
-        firefox.update(t, WP / stem)  # tolerant: no Firefox/profile -> nothing
+        firefox.update(t, stem_dir(stem))  # tolerant: no Firefox/profile -> nothing
     except Exception as e:
         print(f"firefox theme: {e}", file=sys.stderr)
     try:
-        zed.apply(t, stem, WP, write_if_changed)  # tolerant: no Zed config dir -> nothing
+        zed.apply(t, stem, stem_dir(stem).parent, write_if_changed)  # tolerant: no Zed config dir -> nothing
     except Exception as e:
         print(f"zed theme: {e}", file=sys.stderr)
     if not changed:

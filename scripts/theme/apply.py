@@ -45,6 +45,8 @@ def stem_dir(stem):
     per-device wallpapers/local.conf (found through list.sh). Loose images have none."""
     if stem in KNOWN_DIRS:
         return KNOWN_DIRS[stem]
+    if (WP / stem).is_dir():  # in the repo: no need to list
+        return WP / stem
     for line in listing().splitlines():
         f = Path(line)
         if f.stem == stem and f.parent.name == stem:
@@ -57,7 +59,11 @@ def stem_of(arg):
 
 
 def load(stem, seen=()):
-    for p in (stem_dir(stem) / "theme.json", WP / "_presets" / f"{stem}.json"):
+    # A parent ("inherits") is nearly always a preset: look there first, so
+    # resolving it does not run list.sh.
+    own = lambda: stem_dir(stem) / "theme.json"
+    preset = lambda: WP / "_presets" / f"{stem}.json"
+    for p in (f() for f in ((preset, own) if seen else (own, preset))):
         if p.is_file():
             t = json.loads(p.read_text())
             parent = t.get("inherits")
@@ -129,7 +135,20 @@ def main():
         return
     t["stem"] = stem
     folder_extras(stem, t)
+    # Quickshell's file first (its fade is the longest step), then kitty and
+    # the Hyprland borders in the background while Firefox and Zed are written.
     changed = write_if_changed(CACHE / "current.json", json.dumps(t, indent=1))
+    procs = []
+    if changed:
+        kitty = write_if_changed(CFG / "kitty/current-theme.conf", kitty_conf(t))
+        p = t["palette"]; c2 = (t.get("extra") or {}).get("accent2", p["blue"])
+        lua = ('hl.config({ general = { col = { active_border = { colors = { "0xFF%s", "0xFF%s" }, angle = 45 }, '
+               'inactive_border = "0xFF%s" } } })') % (p["accent"].lstrip("#"), c2.lstrip("#"), p["border"].lstrip("#"))
+        for cmd in ([["pkill", "-USR1", "-x", "kitty"]] if kitty else []) + [["hyprctl", "eval", lua]]:
+            try:
+                procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+            except OSError:
+                pass
     try:
         firefox.update(t, stem_dir(stem))  # tolerant: no Firefox/profile -> nothing
     except Exception as e:
@@ -138,14 +157,8 @@ def main():
         zed.apply(t, stem, stem_dir(stem).parent, write_if_changed)  # tolerant: no Zed config dir -> nothing
     except Exception as e:
         print(f"zed theme: {e}", file=sys.stderr)
-    if not changed:
-        return
-    if write_if_changed(CFG / "kitty/current-theme.conf", kitty_conf(t)):
-        subprocess.run(["pkill", "-USR1", "-x", "kitty"], check=False)
-    p = t["palette"]; c2 = (t.get("extra") or {}).get("accent2", p["blue"])
-    lua = ('hl.config({ general = { col = { active_border = { colors = { "0xFF%s", "0xFF%s" }, angle = 45 }, '
-           'inactive_border = "0xFF%s" } } })') % (p["accent"].lstrip("#"), c2.lstrip("#"), p["border"].lstrip("#"))
-    subprocess.run(["hyprctl", "eval", lua], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for proc in procs:
+        proc.wait()
 
 
 if __name__ == "__main__":

@@ -19,13 +19,13 @@ set -euo pipefail
 #   `--scene <stem>`). Switching between them is `show <stem>` on the FIFO:
 #   a redraw on the same layers, no restart.
 #
-# A dynamic wallpaper is picked by stem: wallpapers/<stem>.live (a descriptor
+# A dynamic wallpaper is picked by stem: wallpapers/<stem>/<stem>.live (a descriptor
 # the selector lists and previews live) runs bins/<stem>. Any other extension
 # with that stem (the old spinning_globe.png in a saved selection) works too.
 #
 # --preview: the selector is still open. Show the selection but don't save it.
 #   A dynamic wallpaper that isn't warm-capable only gets its still
-#   (wallpapers/<stem>.png, if it has one).
+#   (wallpapers/<stem>/<stem>.png, if it has one).
 # --warm: start warm-capable dynamic wallpapers hidden (if not running) and
 #   fill the pre-scaled cache in the background.
 mode=apply
@@ -146,7 +146,6 @@ scaled_path() {
 
 cacheable() {
   case ${1,,} in
-    *.gif) return 1 ;; # animated: awww plays it, a still copy would break that
     *) [[ -f $1 ]] ;;
   esac
 }
@@ -280,7 +279,8 @@ if [[ $mode == warm ]]; then
   mapfile -t outs < <(outputs)
   (( ${#outs[@]} )) || exit 0
   declare -A keep=()
-  for src in "$WALLPAPER_DIR"/*; do
+  mapfile -t wallpaper_files < <("$CONFIG_HOME/scripts/wallpaper/list.sh")
+  for src in "${wallpaper_files[@]}"; do
     cacheable "$src" || continue
     case ${src,,} in *.png|*.jpg|*.jpeg|*.webp|*.tif|*.tiff|*.bmp) ;; *) continue ;; esac
     for out in "${outs[@]}"; do
@@ -316,8 +316,8 @@ stem=${stem%.*}
 (exec 9>&- 8>&-; "$CONFIG_HOME/scripts/theme/apply.py" "$stem" >/dev/null 2>&1) &
 bin_dir="$BIN_ROOT/$stem"
 # Saved and listed as its descriptor, whatever path it came in as.
-if [[ -d $bin_dir && -f "$WALLPAPER_DIR/$stem.live" ]]; then
-  selection="$WALLPAPER_DIR/$stem.live"
+if [[ -d $bin_dir && -f "$WALLPAPER_DIR/$stem/$stem.live" ]]; then
+  selection="$WALLPAPER_DIR/$stem/$stem.live"
 fi
 
 if [[ -d "$bin_dir" ]]; then
@@ -340,8 +340,8 @@ if [[ -d "$bin_dir" ]]; then
     # show its preview image instead (a non-warm dynamic stays running).
     if running_is_warm; then send_control hide; fi
     start_awww
-    if [[ -f "$WALLPAPER_DIR/$stem.png" ]]; then
-      selection="$WALLPAPER_DIR/$stem.png"
+    if [[ -f "$WALLPAPER_DIR/$stem/$stem.png" ]]; then
+      selection="$WALLPAPER_DIR/$stem/$stem.png"
       show_static
     fi
     exit 0

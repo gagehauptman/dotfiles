@@ -13,7 +13,7 @@ gets a widget type of its own in `DashboardConfig.qml` (`globe` does, with
   scene, the `globe_scene` crate in `scripts/wallpaper/bins/spinning_globe/scene`
   (shader, geometry, layout), with raw wgpu at the monitor's size and
   box-filters it down to the card. The selector lists
-  `wallpapers/<stem>.live` descriptors and previews each with the app named
+  `wallpapers/<stem>/<stem>.live` descriptors and previews each with the app named
   `<stem>`; only while the selector is open and the entry is on screen.
 - `space_shuttle`: the live preview of the space shuttle wallpaper, built
   the same way from its `shuttle_scene` crate in

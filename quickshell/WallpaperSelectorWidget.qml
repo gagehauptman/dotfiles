@@ -7,7 +7,6 @@ import Quickshell.Services.Pipewire
 import Quickshell.Widgets
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import "themes"
@@ -64,13 +63,41 @@ Item {
 
     anchors.fill: parent
 
-    FolderListModel {
+    // One entry per wallpaper: wallpapers/<stem>/<stem>.<ext>, listed by
+    // scripts/wallpaper/list.sh. <stem>.live is a dynamic wallpaper
+    // (scripts/wallpaper/bins/<stem>) with no still of its own; the carousel
+    // shows it running (see the delegate).
+    ListModel {
         id: wallpaperModel
-        folder: "file://" + Quickshell.env("HOME") + "/.config/wallpapers"
-        // *.live: a dynamic wallpaper (scripts/wallpaper/bins/<stem>) with no
-        // still of its own; the carousel shows it running (see the delegate).
-        nameFilters: ["*.jpg", "*.png", "*.jpeg", "*.webp", "*.live"]
-        showDirs: false
+    }
+
+    property bool wallpapersReady: false
+
+    function loadWallpapers(text) {
+        wallpaperModel.clear();
+        for (let path of String(text).split("\n")) {
+            path = path.trim();
+            if (path.length === 0)
+                continue;
+            let file = path.substring(path.lastIndexOf("/") + 1);
+            let dot = file.lastIndexOf(".");
+            wallpaperModel.append({
+                filePath: path,
+                fileUrl: "file://" + path,
+                fileBaseName: dot < 0 ? file : file.substring(0, dot),
+                fileSuffix: dot < 0 ? "" : file.substring(dot + 1)
+            });
+        }
+        wallpapersReady = true;
+    }
+
+    Process {
+        id: wallpaperLister
+        command: [Quickshell.env("HOME") + "/.config/scripts/wallpaper/list.sh"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: wallpaperSelectorWidget.loadWallpapers(text)
+        }
     }
 
     property int selectedIndex: 0
@@ -151,8 +178,11 @@ Item {
     }
 
     onIsOpenChanged: {
-        if (!isOpen)
+        if (!isOpen) {
             commitWallpaper();
+            // Pick up added/removed wallpapers for the next open.
+            wallpaperLister.running = true;
+        }
     }
 
     FileView {
@@ -218,7 +248,7 @@ Item {
                     found = true;
                 } else {
                     for (let i = 0; i < wallpaperModel.count; i++) {
-                        if (sameWallpaper(wallpaperModel.get(i, "filePath"), savedWallpaperPath)) {
+                        if (sameWallpaper(wallpaperModel.get(i).filePath, savedWallpaperPath)) {
                             carousel.positionViewAtIndex(i, PathView.Center);
                             carousel.currentIndex = i;
                             found = true;
@@ -237,16 +267,16 @@ Item {
             // leader-vs-follower decision — both react to the same state change.
             let findIndex = () => Qt.callLater(applySelection);
 
-            if (wallpaperModel.status === FolderListModel.Ready) {
+            if (wallpapersReady) {
                 findIndex();
             } else {
                 const onReady = () => {
-                    if (wallpaperModel.status === FolderListModel.Ready) {
+                    if (wallpapersReady) {
                         findIndex();
-                        wallpaperModel.statusChanged.disconnect(onReady);
+                        wallpapersReadyChanged.disconnect(onReady);
                     }
                 };
-                wallpaperModel.statusChanged.connect(onReady);
+                wallpapersReadyChanged.connect(onReady);
             }
         }
     }
@@ -297,13 +327,20 @@ Item {
             if (restoringSelection || root.selectorWindows[0] !== barWindow)
                 return;
 
-            queueWallpaper(model.get(currentIndex, "filePath"));
+            queueWallpaper(model.get(currentIndex).filePath);
         }
 
         delegate: Rectangle {
             id: wallpaperDelegate
-            width: metrics.isVertical ? carousel.width * 0.6 : carousel.width / 6
-            height: width * 9/16 + metrics.s(30)
+            // Previews take this screen's aspect (the wallpaper renders at the
+            // monitor size) and, horizontally, are sized to fit the pocket's
+            // height (1.1x centre scale + label) so ultrawide and 16:9
+            // monitors both frame them fully.
+            readonly property real aspect: metrics.screenW / Math.max(1, metrics.screenH)
+            readonly property real labelHeight: metrics.s(30)
+            width: metrics.isVertical ? carousel.width * 0.6
+                : Math.min(carousel.width / 6, Math.max(1, carousel.height / 1.1 - labelHeight) * aspect)
+            height: width / aspect + labelHeight
             
             scale: PathView.iconScale 
             z: PathView.iconZ
@@ -349,7 +386,7 @@ Item {
             Item {
                 id: img
                 width: parent.width
-                height: width * 9/16
+                height: width / wallpaperDelegate.aspect
 
                 Image {
                     anchors.fill: parent

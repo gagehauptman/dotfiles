@@ -11,7 +11,7 @@ dotfiles/
 ├── nvim/           # Neovim config (lazy.nvim)
 ├── quickshell/     # Quickshell bar/widgets (QML)
 ├── scripts/        # Utility scripts
-└── wallpapers/     # Wallpaper collection
+└── wallpapers/     # One folder per wallpaper: <stem>/<stem>.<ext> + its theme/lock/bar/kitty files
 ```
 
 ## Dependencies

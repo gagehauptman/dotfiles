@@ -1,0 +1,18 @@
+# Everything in one right-aligned column near the right edge, for wallpapers
+# whose subject is in the middle or on the left. Use with base = "right".
+
+[text]
+halign = "right"
+
+[clock]
+position = "-5%, 14%"
+
+[date]
+position = "-5%, 3.5%"
+
+[greeting]
+position = "-5%, -14%"
+
+[input]
+halign = "right"
+position = "-5%, -22%"

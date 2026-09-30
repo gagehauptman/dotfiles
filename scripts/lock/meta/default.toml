@@ -1,0 +1,90 @@
+# Lock screen layout every wallpaper starts from. A wallpaper's own
+# <stem>.toml only lists what it changes. See ../README.md.
+#
+# Positions are "x%, y%" of the monitor, offset from the halign/valign
+# anchor, +y up, so one layout fits both monitors. Sizes are px (font_size in
+# points at 96 dpi). Colours: rgb(rrggbb) / rgba(rrggbbaa) / "#rrggbb".
+# Any element can be hidden with show = false.
+
+[background]
+color = "rgb(1b1923)"       # shown when there is no image/scene, and under it
+brightness = 0.85           # stills only (1 = as is)
+blur_passes = 0             # stills only: blur = passes * size
+blur_size = 6
+# image = "poster.png"      # use this still (in the wallpaper's own folder, or absolute) instead
+# live = true               # live wallpapers: the lock draws the running scene itself
+#                           # (a real Bevy view, animated); false = flat colour / still
+# live_brightness = 1.0     # dim the live scene (1 = as is)
+# live_fps = 0              # live scene frame rate; 0 = the monitor's refresh rate
+
+# ---- TEXT STYLE: fallback only; each wallpaper's toml sets its own look ------
+# Applies to clock, date, greeting AND the password field (its dots/text); any
+# element overrides these in its own table (font_family, font_weight, font_size,
+# letter_spacing, uppercase, font_style, color, opacity, shadow_strength).
+#   color        text colour (also the password field's font_color)
+#   font_family  any installed family
+#   font_weight  thin extralight light regular medium semibold bold extrabold
+#                black (or 100-1000)
+#   font_style   normal | italic
+[text]
+color = "rgb(cdd6f4)"      # Catppuccin Mocha text
+font_family = "Inter Display"
+font_weight = "medium"
+font_style = "normal"
+shadow_passes = 2           # 0 = no text shadow
+shadow_size = 4
+shadow_color = "rgba(11111bcc)"
+halign = "center"
+valign = "center"
+
+# Vertical layout (+y up): clock 14%, date 3.5%, greeting -14%, field -22%.
+[clock]
+font_weight = "extralight"
+format = "HH:mm"            # Qt date format (HH:mm, h:mm AP, ...)
+font_size = 110
+position = "0, 14%"
+
+[date]
+font_weight = "medium"
+opacity = 0.75             # softer than the clock (keeps any [text] colour)
+format = "dddd, MMMM d"
+uppercase = true
+letter_spacing = 3
+font_size = 15
+position = "0, 3.5%"
+
+[greeting]
+show = true
+opacity = 0.75
+font_weight = "regular"
+text = "good {period}, {user}"   # {period}: morning/afternoon/evening
+font_size = 16
+position = "0, -14%"
+
+[input]
+size = [340, 58]
+position = "0, -22%"
+halign = "center"
+valign = "center"
+glass = true                # faux glass sheen on the field (no blur)
+highlight_color = "#24ffffff"   # top sheen
+outline_thickness = 1.5
+rounding = 29               # corner radius, px
+outer_color = "rgba(cdd6f440)"   # idle outline
+inner_color = "rgba(11111b59)"   # fill
+accent_color = "rgb(b4befe)"     # outline while typing (Mocha lavender)
+check_color = "rgb(f9e2af)"      # while PAM checks (yellow)
+fail_color = "rgb(f38ba8)"       # after a wrong password (red)
+success_color = "rgb(a6e3a1)"    # on unlock (green)
+caps_color = "rgb(fab387)"       # caps lock warning (peach)
+fail_text = "wrong password"
+dots_size = 0.22            # dot diameter, fraction of the field height
+dots_spacing = 0.9          # gap, fraction of the dot diameter
+# font_color, font_family, font_weight come from [text] unless set here
+fade_on_empty = false
+hide_input = false          # true: show nothing while typing
+placeholder_text = "Password"
+
+# Per-monitor overrides go under [monitor."<name>".<element>], e.g.
+# [monitor."HDMI-A-3".clock]
+# position = "0, 25%"

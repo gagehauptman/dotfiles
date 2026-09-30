@@ -1,0 +1,4 @@
+# Fixture for lock.sh --test only (LOCK_PAM_CONFIG=test): accepts one made-up
+# password, never touches the real account or faillock.
+auth    required    pam_exec.so expose_authtok quiet /storage/git/dotfiles/scripts/lock/pam/test-check.sh
+account required    pam_permit.so

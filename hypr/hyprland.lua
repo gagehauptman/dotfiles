@@ -98,7 +98,7 @@ hl.bind(mainMod .. " + SHIFT + F",    hl.dsp.window.fullscreen({ mode = "maximiz
 hl.bind(mainMod .. " + Q",            hl.dsp.exec_cmd("~/.config/scripts/bar_toggle.sh"))
 hl.bind(mainMod .. " + SHIFT + Q",    hl.dsp.exec_cmd("hyprctl reload"))
 hl.bind(mainMod .. " + SHIFT + E",    hl.dsp.exit())
-hl.bind(mainMod .. " + L",            hl.dsp.exec_cmd("hyprlock"))
+hl.bind(mainMod .. " + L",            hl.dsp.exec_cmd("/home/v1k/.config/scripts/lock/lock.sh"))
 
 hl.bind(mainMod .. " + code:60",      hl.dsp.exec_cmd("playerctl --player spotifyd,%any next"))
 hl.bind(mainMod .. " + code:59",      hl.dsp.exec_cmd("playerctl --player spotifyd,%any previous"))

@@ -1,6 +1,6 @@
 #!/bin/bash
-# hyprlock greeting. Weight is pango markup since hyprlock has no font_weight;
-# keep it matched to the clock label in hyprlock.conf.
+# hyprlock greeting. --plain prints bare text (lockgen adds weight/style via
+# markup.sh); without it, the old fixed-weight markup for the static config.
 
 current_hour=$(date +%H)
 
@@ -12,4 +12,5 @@ else
     greeting="good evening, $USER"
 fi
 
+[[ $1 == --plain ]] && { echo "$greeting"; exit; }
 printf "<span weight='medium'>%s</span>\n" "$greeting"

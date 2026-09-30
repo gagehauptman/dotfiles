@@ -22,7 +22,7 @@ the other groups are only needed for the feature they belong to.
 | Bar and dashboard widgets | `playerctl`, `bluez-utils`, `lm_sensors`, `acpi`, `jq`, `curl`, `hyprlock`, `libnotify`, `awww` (wallpapers), `wl-clipboard`, `grim`, `slurp`, `wf-recorder`, `ffmpeg` (screenshot and recording buttons). Optional: `brightnessctl` for the brightness slider on laptops, `tailscale` for the Tailscale row, `network-manager-applet` for the tray applet started with Hyprland |
 | Bevy widgets | `rustup` (or `rust`), `cmake`, `ninja`, `gcc` or `clang`, `vulkan-headers`, `vulkan-icd-loader` and your Vulkan driver (`vulkan-radeon`, `vulkan-intel` or `nvidia-utils`) |
 | Globe widget | `python-numpy`, `python-pillow`, `hdf5` (its `h5dump` reads the NOAA weather mosaic), plus the Bevy group |
-| Voice assistant | `whisper-cpp`, `uv`, `pipewire`, `ffmpeg`, `libnotify`, `playerctl`, `openssh`. For offline speech, `piper` is not packaged: put the release binary in `~/.local/bin` (or install `piper-tts-bin` from the AUR) and a voice model in `~/.local/share/piper` |
+| Voice assistant | `uv`, `pipewire`, `ffmpeg`, `libnotify`, `playerctl`, `openssh`. For offline speech, `piper` is not packaged: put the release binary in `~/.local/bin` (or install `piper-tts-bin` from the AUR) and a voice model in `~/.local/share/piper` |
 
 `scripts/nova_voice.sh status` and the build script for Bevy both tell you
 what is missing on a machine.
@@ -384,7 +384,8 @@ workspace (0.16 with wgpu 24).
 
 Push-to-talk conversation with an [openclaw](https://openclaw.ai) agent.
 `scripts/nova_voice.sh` records the mic until you stop talking (Silero VAD),
-transcribes locally with whisper.cpp, streams the reply from the openclaw
+streams it to the Nova voice server (speech-to-text on ElevenLabs Scribe
+Realtime, live text while you talk), streams the reply from the openclaw
 gateway and speaks it sentence by sentence while the rest is still arriving.
 While a turn is in flight `VoiceBarWidget.qml` takes the music slot in the
 bar and shows the state, a level meter and the text. It reads
@@ -409,11 +410,9 @@ turns it on with two per-device files, described below.
    `NOVA_GATEWAY_URL` and `NOVA_GATEWAY_TOKEN`; everything else has a default.
    The presence of this file is also what makes the bar indicator exist on
    the machine.
-3. **Speech to text.** `scripts/nova_voice.sh setup whisper` downloads a
-   whisper.cpp model and installs `nova-whisper.service` (from
-   `scripts/nova-whisper.service.example`) as a user service running
-   `whisper-server` on `127.0.0.1:8178`. Edit the unit if you prefer the
-   `small.en` model to `base.en`.
+3. **Speech to text.** Happens on the voice server (`nova_client.py` streams
+   the mic to it from speech start; it relays to ElevenLabs Scribe Realtime).
+   Nothing to install here. (Local whisper.cpp was removed 2026-09-29.)
 4. **Text to speech.** With no further config the reply is spoken by
    [piper](https://github.com/rhasspy/piper) (`NOVA_PIPER_BIN` and a voice in
    `NOVA_PIPER_VOICE`). For better voices set either `NOVA_ELEVENLABS_API_KEY`

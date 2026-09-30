@@ -41,7 +41,7 @@ Item {
             label: "Lock",
             icon: "󰌾",
             color: Theme.colors.blue,
-            command: ["hyprlock"]
+            command: ["bash", Quickshell.env("HOME") + "/.config/scripts/lock/lock.sh"]
         },
         {
             label: "Logout",
@@ -87,7 +87,7 @@ Item {
                 color: Theme.colors.textPrimary
                 font.pixelSize: metrics.fontLarge
                 font.bold: true
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -125,11 +125,12 @@ Item {
                                 text: modelData.icon
                                 color: modelData.color
                                 font.pixelSize: metrics.fontXL
-                                font.family: "monospace"
+                                font.family: Theme.fonts.mono
                                 Layout.alignment: Qt.AlignHCenter
                             }
 
                             Text {
+                                font.family: Theme.fonts.ui
                                 text: modelData.label
                                 color: Theme.colors.textPrimary
                                 font.pixelSize: metrics.fontTiny

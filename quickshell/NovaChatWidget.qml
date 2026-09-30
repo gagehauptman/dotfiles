@@ -75,6 +75,11 @@ Item {
     if (m < 60) return m + "m " + (s % 60) + "s"
     return Math.floor(m / 60) + "h " + (m % 60) + "m"
   }
+  function agentModel(a) {
+    if (!a.model) return ""
+    let m = a.model.replace(/^claude-/, "").replace(/-(\d+)-(\d+)$/, "-$1.$2")
+    return m + " · thinking " + (a.thinking || "default")
+  }
   function agentWhen(a) {
     if (a.status === "queued") return "queued " + fmtDur(now - (a.startedAt || now))
     if (a.status === "running") return "running " + fmtDur(now - (a.startedAt || now))
@@ -330,7 +335,7 @@ Item {
       text: "Nova"
       color: Theme.colors.textPrimary
       font.pixelSize: metrics.fontLarge
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
     }
   }
 
@@ -359,7 +364,7 @@ Item {
         color: chat.agentsRunning ? Theme.colors.teal : chat.agentsQueued ? Theme.colors.yellow
                : chat.shownAgents.length ? Theme.colors.textSecondary : Theme.colors.textMuted
         font.pixelSize: metrics.fontSmall
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
       Text {
         anchors.right: parent.right
@@ -368,7 +373,7 @@ Item {
         text: chat.agentsOpen ? "󰅀" : "󰅂"
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontSmall
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
       MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.agentsOpen = !chat.agentsOpen }
     }
@@ -391,7 +396,7 @@ Item {
           text: "Nothing running. When you ask for something long, Nova hands it to a background agent and it shows up here."
           color: Theme.colors.textMuted
           font.pixelSize: metrics.fontSmall
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
         }
         Repeater {
           model: chat.shownAgents
@@ -408,7 +413,7 @@ Item {
             height: arowCol.implicitHeight + metrics.s(12)
             radius: metrics.radiusNormal
             color: arow.open ? Theme.colors.panelDeep : "transparent"
-            border.width: 1
+            border.width: Theme.bw(1)
             border.color: Theme.colors.border
             Column {
               id: arowCol
@@ -425,7 +430,7 @@ Item {
                         : arow.modelData.status === "done" ? "󰄬" : "󰅖"
                   color: arow.tint
                   font.pixelSize: metrics.fontNormal
-                  font.family: "monospace"
+                  font.family: Theme.fonts.mono
                   SequentialAnimation on opacity {
                     running: arow.modelData.status === "running" && chat.isOpen
                     loops: Animation.Infinite
@@ -442,7 +447,7 @@ Item {
                   text: arow.modelData.label
                   color: Theme.colors.textPrimary
                   font.pixelSize: metrics.fontSmall
-                  font.family: "monospace"
+                  font.family: Theme.fonts.mono
                 }
                 Row {                      // resumed agents: which run this is, and follow-ups waiting behind it
                   id: abadges
@@ -458,7 +463,7 @@ Item {
                       height: abadge.implicitHeight + metrics.s(2)
                       radius: height / 2
                       color: "transparent"
-                      border.width: 1
+                      border.width: Theme.bw(1)
                       border.color: modelData.startsWith("+") ? Theme.colors.yellow : arow.tint
                       Text {
                         id: abadge
@@ -466,7 +471,7 @@ Item {
                         text: parent.modelData
                         color: parent.border.color
                         font.pixelSize: metrics.fontTiny
-                        font.family: "monospace"
+                        font.family: Theme.fonts.mono
                       }
                     }
                   }
@@ -483,8 +488,18 @@ Item {
                   text: chat.agentWhen(arow.modelData)
                   color: Theme.colors.textMuted
                   font.pixelSize: metrics.fontTiny
-                  font.family: "monospace"
+                  font.family: Theme.fonts.mono
                 }
+              }
+              Text {                       // model and thinking level this agent runs on
+                visible: text !== ""
+                x: aicon.width + metrics.spacingSmall
+                width: parent.width - x
+                elide: Text.ElideRight
+                text: chat.agentModel(arow.modelData)
+                color: Theme.colors.textMuted
+                font.pixelSize: metrics.fontTiny
+                font.family: Theme.fonts.mono
               }
               TextEdit {
                 visible: arow.open && arow.modelData.task !== ""
@@ -494,7 +509,7 @@ Item {
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontTiny
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
               }
               TextEdit {                   // what this run was asked (a resumed agent's follow-up message)
                 visible: arow.open && !!arow.modelData.followup
@@ -504,7 +519,7 @@ Item {
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontTiny
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
               }
               TextEdit {
                 visible: arow.open
@@ -517,14 +532,14 @@ Item {
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textSecondary
                 font.pixelSize: metrics.fontSmall
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
               }
               Text {                       // earlier runs of a resumed agent, collapsed so they don't read as the current one
                 visible: arow.open && arow.earlier.length > 0
                 text: (chat.openRuns === arow.modelData.id ? "󰅀 " : "󰅂 ") + "Earlier runs (" + arow.earlier.length + ")"
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontTiny
-                font.family: "monospace"
+                font.family: Theme.fonts.mono
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
@@ -546,7 +561,7 @@ Item {
                   wrapMode: TextEdit.Wrap
                   color: Theme.colors.textMuted
                   font.pixelSize: metrics.fontTiny
-                  font.family: "monospace"
+                  font.family: Theme.fonts.mono
                 }
               }
             }
@@ -635,7 +650,7 @@ Item {
         text: row.speaker.charAt(0).toUpperCase() + row.speaker.slice(1)
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontTiny
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
       TextMetrics { id: tm; font: body.font; text: row.text }
       Rectangle {
@@ -664,7 +679,7 @@ Item {
           color: row.role === "error" ? Theme.colors.red : row.mine ? Theme.colors.textPrimary : Theme.colors.textSecondary
           selectionColor: Theme.colors.blue
           font.pixelSize: metrics.fontNormal
-          font.family: "monospace"
+          font.family: Theme.fonts.mono
         }
       }
     }
@@ -675,7 +690,7 @@ Item {
       text: "Type below, or press 󰍬 (or SUPER+T) to talk."
       color: Theme.colors.textMuted
       font.pixelSize: metrics.fontNormal
-      font.family: "monospace"
+      font.family: Theme.fonts.mono
     }
   }
 
@@ -725,9 +740,9 @@ Item {
     x: log.x + log.width - chat.gutter - width - metrics.spacingSmall
     y: log.y + log.height - height - metrics.spacingSmall
     color: Theme.colors.inset
-    border.width: 1
+    border.width: Theme.bw(1)
     border.color: Theme.colors.border
-    Text { anchors.centerIn: parent; text: "󰁅"; color: Theme.colors.blue; font.pixelSize: metrics.fontNormal; font.family: "monospace" }
+    Text { anchors.centerIn: parent; text: "󰁅"; color: Theme.colors.blue; font.pixelSize: metrics.fontNormal; font.family: Theme.fonts.mono }
     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.scrollDown(true) }
   }
 
@@ -758,7 +773,7 @@ Item {
           anchors.right: parent.right; anchors.top: parent.top; anchors.margins: metrics.s(2)
           width: metrics.s(18); height: width; radius: width / 2
           color: Theme.colors.panelDeep
-          Text { anchors.centerIn: parent; text: "󰅖"; color: Theme.colors.red; font.pixelSize: metrics.fontTiny; font.family: "monospace" }
+          Text { anchors.centerIn: parent; text: "󰅖"; color: Theme.colors.red; font.pixelSize: metrics.fontTiny; font.family: Theme.fonts.mono }
           MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.unattach(parent.parent.index) }
         }
       }
@@ -788,7 +803,7 @@ Item {
         text: chat.busy && chat.mode === "text" ? "Nova is answering…" : "Message Nova…"
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontNormal
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         visible: !input.text
       }
       TextInput {
@@ -798,7 +813,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         color: Theme.colors.textPrimary
         font.pixelSize: metrics.fontNormal
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         clip: true
         focus: true
         Keys.onPressed: event => {
@@ -831,7 +846,7 @@ Item {
         text: "󰍬"
         color: chat.mode === "voice" ? Theme.colors.background : Theme.colors.teal
         font.pixelSize: metrics.fontLarge
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
       MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.micPressed() }
     }
@@ -847,7 +862,7 @@ Item {
         text: chat.busy ? "󰓛" : "󰒊"
         color: chat.busy ? Theme.colors.red : Theme.colors.blue
         font.pixelSize: metrics.fontLarge
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
       }
       MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.busy ? chat.stop() : chat.send() }
     }

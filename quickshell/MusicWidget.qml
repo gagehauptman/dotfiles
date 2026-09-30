@@ -51,6 +51,12 @@ Item {
     }
     
     let player = parts[0].trim()
+    // Cider (Electron) shows up as "chromium" with empty MPRIS metadata; read its API instead.
+    ciderActive = player === "chromium" || player === "Cider"
+    if (player === "chromium") {
+      ciderProc.running = true
+      return
+    }
     let status = parts[1].trim()
     let artist = parts[2].trim()
     let title = parts.slice(3).join(musicFieldSeparator).trim()
@@ -99,9 +105,24 @@ Item {
     onTriggered: musicProc.running = true
   }
   
+  // Cider now-playing poller; only used while Cider is the active player.
+  PollProcess {
+    id: ciderProc
+    command: ["bash", root.home + "/.config/scripts/polls/ciderpoll.sh"]
+    interval: 3000
+    poll: musicWidget.ciderActive
+    onOutput: text => {
+      if (!musicWidget.ciderActive) return
+      if (text) musicWidget.updateMusicState(text)
+      else musicWidget.resetMusicState()
+    }
+  }
+  
   Process {
     id: togglePlaybackProc
-    command: ["playerctl", "--player=" + (musicWidget.activePlayer || "spotifyd,%any"), "play-pause"]
+    command: musicWidget.activePlayer === "Cider"
+      ? ["curl", "-s", "-X", "POST", "http://127.0.0.1:10767/api/v1/playback/playpause"]
+      : ["playerctl", "--player=" + (musicWidget.activePlayer || "spotifyd,%any"), "play-pause"]
   }
   
   // Launch data poller - uses Launch Library 2 API
@@ -148,6 +169,7 @@ Item {
   property string activePlayer: ""
   property string playbackStatus: ""
   property bool hasMusic: false
+  property bool ciderActive: false
   
   property string launchName: "Loading launch data..."
   property var launchTime: null
@@ -197,6 +219,7 @@ Item {
     }
     
     Text {
+      font.family: Theme.fonts.ui
       visible: !musicWidget.card
       anchors.centerIn: parent
       text: {
@@ -236,7 +259,7 @@ Item {
         color: Theme.colors.textPrimary
         font.pixelSize: metrics.fontLarge
         font.bold: true
-        font.family: "monospace"
+        font.family: Theme.fonts.mono
         Layout.fillWidth: true
         elide: Text.ElideRight
       }
@@ -248,6 +271,7 @@ Item {
       }
 
       Text {
+        font.family: Theme.fonts.ui
         Layout.fillWidth: true
         text: (musicWidget.hasMusic && musicWidget.musicText) ? musicWidget.musicText : "Nothing playing"
         color: musicWidget.hasMusic ? (musicMouse.containsMouse ? Theme.colors.yellow : Theme.colors.pink) : Theme.colors.textMuted
@@ -259,6 +283,7 @@ Item {
       }
 
       Text {
+        font.family: Theme.fonts.ui
         visible: musicWidget.hasMusic
         text: (musicWidget.playbackStatus === "Paused" ? "▶ Paused" : "⏸ Playing") + " · " + musicWidget.activePlayer
         color: Theme.colors.textSecondary
@@ -272,6 +297,7 @@ Item {
       }
 
       Text {
+        font.family: Theme.fonts.ui
         Layout.fillWidth: true
         text: "🚀 " + musicWidget.countdownText + " • " + musicWidget.launchName
         color: Theme.colors.orange

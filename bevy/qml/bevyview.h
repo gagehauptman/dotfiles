@@ -114,6 +114,7 @@ private:
     std::atomic<bool> m_kicked{false};
     bool m_lastDown = false;                       // GUI thread
     std::chrono::steady_clock::time_point m_due{}; // render thread
+    double m_optFps = 0;                           // render thread: `fps` from the options, 0 = none
 
     // Written on the render thread in beforeRendering, read in the sync phase
     uint64_t m_frameImage = 0;

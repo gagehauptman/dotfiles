@@ -5,6 +5,8 @@
 #include <QtQuick/qsgtexture_platform.h>
 #include <QRunnable>
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QFileInfo>
 #include <QDir>
 #include <QMutex>
@@ -208,6 +210,7 @@ void BevyView::beforeRendering()
         init.instance_extension_count = uint32_t(extPtrs.size());
         init.assets_dir = assets.constData();
         const QByteArray opts = m_options.toUtf8();
+        m_optFps = QJsonDocument::fromJson(opts).object().value("fps").toDouble(0);
         init.options = opts.constData();
         char cerr[512] = {0};
         m_bevy = m_api.create(&init, cerr, sizeof cerr);
@@ -229,7 +232,10 @@ void BevyView::beforeRendering()
         m_frameImage = image;
         m_frameSize = px;
     }
-    const uint32_t ms = m_api.nextFrame ? m_api.nextFrame(m_bevy) : 0;
+    uint32_t ms = m_api.nextFrame ? m_api.nextFrame(m_bevy) : 0;
+    // The options' `fps` (apps that read it for their own cap, e.g. the lock's
+    // full-rate scene) also lifts the harness pacing, which defaults to 30 fps.
+    if (m_optFps > 0) ms = std::min(ms, uint32_t(1000.0 / m_optFps));
     m_due = now + std::chrono::milliseconds(ms);
     // Controls and readouts changed by the app this frame
     uint64_t gen = m_uiGen;

@@ -1,8 +1,8 @@
 # Per-wallpaper themes
 
 Every wallpaper owns a theme: colours, three fonts, corner rounding and
-border weight. Changing the wallpaper (selector preview or commit, boot
-restore) re-skins Quickshell live, plus kittys colours and Hyprlands window
+border weight. Changing the wallpaper (selector commit once flipping pauses,
+boot restore) re-skins Quickshell live, plus kittys colours and Hyprlands window
 borders.
 
 ## Layout
@@ -42,7 +42,9 @@ Each wallpaper's theme.json keeps only what differs from its Catppuccin flavour 
 
 ## How it switches
 
-`wallpaper_select.sh` runs `apply.py <stem>` on every preview/apply. It writes
+`wallpaper_select.sh` runs `apply.py <wallpaper path>` on every apply (the
+selector's previews while flipping skip it; its commit ~0.3 s after the last
+step re-themes), one run at a time, dropping runs a newer one superseded. It writes
 `~/.cache/wallpaper_theme/current.json`; `quickshell/themes/Theme.qml` watches
 it, and the colours ease to the new values (`DynamicTheme.qml`). It also writes
 `kitty/current-theme.conf` (kitty reloads on SIGUSR1; generated, gitignored)

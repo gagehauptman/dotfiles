@@ -212,7 +212,9 @@ Item {
     }
 
     // Saves the previewed selection once navigation pauses (it's already on
-    // screen, so this doesn't affect how fast switching feels).
+    // screen, so this doesn't affect how fast switching feels). This is also
+    // when the desktop re-themes: previews skip it, so flipping fast doesn't
+    // re-skin the shell, kitty, Firefox and Zed for every wallpaper passed.
     Timer {
         id: wallpaperSettle
         interval: 250

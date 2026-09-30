@@ -23,7 +23,10 @@ set -euo pipefail
 # the selector lists and previews live) runs bins/<stem>. Any other extension
 # with that stem (the old spinning_globe.png in a saved selection) works too.
 #
-# --preview: the selector is still open. Show the selection but don't save it.
+# --preview: the selector is still open. Show the selection but don't save it
+#   and don't re-theme: the selector commits (plain mode) once navigation
+#   pauses, and only that re-themes, so flipping fast doesn't re-skin the
+#   whole desktop for every wallpaper it passes.
 #   A dynamic wallpaper that isn't warm-capable only gets its still
 #   (wallpapers/<stem>/<stem>.png, if it has one).
 # --warm: start warm-capable dynamic wallpapers hidden (if not running) and
@@ -45,6 +48,7 @@ PID_FILE="$STATE_DIR/dynamic.pid"
 STEM_FILE="$STATE_DIR/dynamic.stem"
 VISIBLE_FILE="$STATE_DIR/dynamic.visible"
 LATEST_FILE="$STATE_DIR/latest"
+THEME_LATEST_FILE="$STATE_DIR/theme.latest"
 LOG_DIR="$STATE_DIR/logs"
 # In RAM (tmpfs): kept warm, costs no disk, refilled by --warm after a reboot.
 SCALED_DIR="$RUNTIME_DIR/wallpaper_select/scaled"
@@ -311,13 +315,23 @@ fi
 
 stem=${selection##*/}
 stem=${stem%.*}
-# Re-theme the shell (Quickshell, kitty, borders) for this wallpaper; previews
-# too, so the whole look follows the selector live. See scripts/theme/apply.py.
-(exec 9>&- 8>&-; "$CONFIG_HOME/scripts/theme/apply.py" "$stem" >/dev/null 2>&1) &
 bin_dir="$BIN_ROOT/$stem"
 # Saved and listed as its descriptor, whatever path it came in as.
 if [[ -d $bin_dir && -f "$WALLPAPER_DIR/$stem/$stem.live" ]]; then
   selection="$WALLPAPER_DIR/$stem/$stem.live"
+fi
+# Re-theme the shell (Quickshell, kitty, borders, Firefox, Zed) for this
+# wallpaper, in the background. Runs one at a time and skips a run that a newer
+# one superseded while it waited, so the last selection's theme always wins.
+# See scripts/theme/apply.py.
+if [[ $mode == apply ]]; then
+  printf '%s\n' "$token" >"$THEME_LATEST_FILE"
+  (
+    exec 9>&- 8>&- 7>"$STATE_DIR/theme.lock"
+    flock -x 7
+    [[ $(cat "$THEME_LATEST_FILE" 2>/dev/null || true) == "$token" ]] || exit 0
+    "$CONFIG_HOME/scripts/theme/apply.py" "$selection" >/dev/null 2>&1
+  ) &
 fi
 
 if [[ -d "$bin_dir" ]]; then

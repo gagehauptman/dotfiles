@@ -79,7 +79,7 @@ Item {
       font.family: Theme.fonts.mono
       font.bold: true
 
-      Behavior on color { ColorAnimation { duration: 100 } }
+      Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 100 } }
 
       MouseArea {
         id: screenshotMouse
@@ -126,7 +126,7 @@ Item {
         }
       }
 
-      Behavior on color { ColorAnimation { duration: 200 } }
+      Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
 
       MouseArea {
         id: recordMouse

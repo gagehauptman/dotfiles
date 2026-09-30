@@ -70,7 +70,7 @@ Item {
       color: voiceBar.stateColor
       font.family: Theme.fonts.mono
       font.pixelSize: metrics.fontSmall
-      Behavior on color { ColorAnimation { duration: 250 } }
+      Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 250 } }
       SequentialAnimation on opacity {
         running: voiceBar.st === "listening" && voiceBar.visible
         loops: Animation.Infinite
@@ -109,7 +109,7 @@ Item {
       font.pixelSize: metrics.fontSmall
       elide: Text.ElideRight
       width: Math.min(implicitWidth, voiceBar.width - metrics.s(20) - iconText.width - metrics.s(8) - (voiceBar.barCount * metrics.s(4)) - metrics.s(8))
-      Behavior on color { ColorAnimation { duration: 250 } }
+      Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 250 } }
     }
   }
 }

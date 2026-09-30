@@ -218,7 +218,7 @@ ThreeRowWidget {
           if (servicesWidget.carState === "asleep") return Theme.colors.yellow
           return Theme.colors.red
         }
-        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 150 } }
       }
 
       // Name
@@ -299,7 +299,7 @@ ThreeRowWidget {
           color: servicesWidget.carClimateOn ? Theme.colors.blue : Theme.colors.textMuted
           font.pixelSize: metrics.fontNormal
           font.family: Theme.fonts.mono
-          Behavior on color { ColorAnimation { duration: 150 } }
+          Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 150 } }
 
           RotationAnimator on rotation {
             running: servicesWidget.carClimateOn

@@ -164,7 +164,7 @@ DataWidget {
                  : systemWidget.btDeviceConnected ? Theme.colors.green
                  : systemWidget.btPower === "on" ? Theme.colors.blue
                  : Theme.colors.textMuted
-            Behavior on color { ColorAnimation { duration: 200 } }
+            Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
           }
 
           Text {
@@ -199,7 +199,7 @@ DataWidget {
             font.italic: true
             font.family: Theme.fonts.mono
 
-            Behavior on color { ColorAnimation { duration: 200 } }
+            Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
           }
         }
 
@@ -232,7 +232,7 @@ DataWidget {
             if (d <= 30) return Theme.colors.yellow
             return Theme.colors.red
           }
-          Behavior on color { ColorAnimation { duration: 200 } }
+          Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
         }
 
         Text {
@@ -263,7 +263,7 @@ DataWidget {
           font.italic: true
           font.family: Theme.fonts.mono
 
-          Behavior on color { ColorAnimation { duration: 200 } }
+          Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
         }
       }
     }

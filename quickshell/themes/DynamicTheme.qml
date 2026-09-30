@@ -32,30 +32,34 @@ ColorTheme {
     success: "#a6e3a1"
     warning: "#f9e2af"
 
-
-    Behavior on red { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on orange { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on yellow { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on green { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on teal { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on cyan { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on blue { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on indigo { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on violet { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on lavender { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on pink { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on background { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on panel { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on panelDeep { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on inset { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on border { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on textPrimary { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on textSecondary { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on textMuted { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on accent { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on error { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on success { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on warning { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    Behavior on onAccent { ColorAnimation { duration: dyn.fade; easing.type: Easing.OutCubic } }
-    property int fade: 450
+    Behavior on red { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on orange { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on yellow { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on green { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on teal { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on cyan { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on blue { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on indigo { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on violet { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on lavender { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on pink { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on background { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on panel { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on panelDeep { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on inset { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on border { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on textPrimary { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on textSecondary { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on textMuted { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on accent { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on error { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on success { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on warning { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    Behavior on onAccent { ColorAnimation { duration: dyn.fade; easing.type: dyn.fadeEasing } }
+    // The wallpaper-change fade: every role eases to its new value over this
+    // long. Each frame of it repaints everything drawn in theme colours, so the
+    // shell's CPU cost per change grows with it (~0.5 s at 450 ms, ~0.2 s at
+    // 200 ms). Front-loaded easing: most of the change lands in the first half.
+    property int fade: 200
+    property int fadeEasing: Easing.OutCubic
 }

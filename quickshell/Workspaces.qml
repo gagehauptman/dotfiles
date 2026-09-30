@@ -93,6 +93,7 @@ Item {
         }
 
         Behavior on color {
+          enabled: !Theme.fading
           ColorAnimation {
             duration: 150
           }

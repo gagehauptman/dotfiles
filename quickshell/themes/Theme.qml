@@ -19,6 +19,17 @@ Singleton {
 
     readonly property DynamicTheme colors: DynamicTheme {}
 
+    // True while the colours fade to a new wallpaper's theme. Widgets with their
+    // own `Behavior on color` turn it off meanwhile (enabled: !Theme.fading):
+    // otherwise every frame of the fade restarts their animation, which costs
+    // CPU and leaves them trailing the rest of the shell by their duration.
+    property bool fading: false
+    Timer {
+        id: fadeEnd
+        interval: root.colors.fade
+        onTriggered: root.fading = false
+    }
+
     // Font families: ui = body text, mono = numbers/terminal-ish (and the bar's
     // icons), display = clock/headings, icon = Nerd Font glyphs on their own.
     // Every family goes through pickFont(): a theme font that is not installed
@@ -58,6 +69,8 @@ Singleton {
         if (!t || !t.palette) return;
         console.log("theme: " + t.name + " (" + t.stem + ")");
         let p = t.palette;
+        fading = true;
+        fadeEnd.restart();
         for (let k in p)
             if (typeof colors[k] !== "undefined" && typeof p[k] === "string") colors[k] = p[k];
         let bar = t.bar || {};

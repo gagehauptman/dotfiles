@@ -13,9 +13,10 @@
 #   nova_voice.sh enroll alex  # teach the speaker service this voice from the last clip (no name = list profiles)
 #   nova_voice.sh status       # what is running, what is configured, recent timings
 #   nova_voice.sh setup        # one-time: venv, Silero VAD model, config file from the example
-#   nova_voice.sh setup whisper  # also: whisper model + a user service running whisper-server
 #
-# Pipeline (all overlapped, see nova_voice.py): pw-record + Silero VAD -> whisper-server (local)
+# Engine: NOVA_ENGINE (normally nova_client.py from the nova repo: speech-to-text, the agent and TTS all run on the
+#   voice server, which streams the mic into ElevenLabs Scribe Realtime; local whisper was removed 2026-09-29).
+# Legacy local pipeline (nova_voice.py, needs a whisper-server it no longer has): pw-record + Silero VAD -> STT
 #   -> gateway /v1/chat/completions stream:true -> sentence chunks -> streaming TTS -> pw-play
 # Voice id (optional, NOVA_SPEAKER_URL): each turn also goes to nova-speaker /identify, so the agent is told
 #   whether it is you, someone else in the house, or a guest (names: ~/.config/nova-voice/speakers.json).
@@ -32,7 +33,6 @@ CONF="${NOVA_CONF:-${XDG_CONFIG_HOME:-$HOME/.config}/nova-voice/env}"
 : "${NOVA_SHARE:=${XDG_DATA_HOME:-$HOME/.local/share}/nova-voice}"
 : "${NOVA_PY:=$NOVA_SHARE/venv/bin/python}"
 : "${NOVA_ENGINE:=$(dirname "$(readlink -f "$0")")/nova_voice.py}"
-: "${NOVA_WHISPER_URL:=http://127.0.0.1:8178/inference}"
 : "${NOVA_VAD_MODEL:=$NOVA_SHARE/silero_vad.onnx}"
 export NOVA_VAD_MODEL
 
@@ -73,22 +73,7 @@ setup() {
     cp "$(dirname "$(readlink -f "$0")")/nova_voice.env.example" "$CONF"
     echo "wrote $CONF — set NOVA_GATEWAY_URL and NOVA_GATEWAY_TOKEN"
   fi
-  if [ "${1:-}" = whisper ]; then
-    local model="${NOVA_WHISPER_MODEL:-${XDG_DATA_HOME:-$HOME/.local/share}/whisper/ggml-base.en.bin}"
-    if [ ! -f "$model" ]; then
-      mkdir -p "$(dirname "$model")"
-      echo "fetching $(basename "$model") (whisper.cpp model, ~150 MB)"
-      curl -fL -o "$model" "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$(basename "$model")"
-    fi
-    local unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/nova-whisper.service"
-    if [ ! -f "$unit" ]; then
-      mkdir -p "$(dirname "$unit")"
-      sed "s|ggml-base.en.bin|$(basename "$model")|" "$(dirname "$(readlink -f "$0")")/nova-whisper.service.example" > "$unit"
-      systemctl --user daemon-reload && systemctl --user enable --now nova-whisper.service && echo "whisper-server running as a user service"
-    fi
-  fi
-  echo "also needed on this machine: whisper-server (whisper.cpp) on ${NOVA_WHISPER_URL%/inference} (nova_voice.sh setup whisper),"
-  echo "pw-record/pw-play (pipewire), ffmpeg, notify-send; optional: piper + a voice for offline TTS. See: nova_voice.sh status"
+  echo "also needed on this machine: pw-record/pw-play (pipewire), ffmpeg, notify-send; optional: piper + a voice for offline TTS. See: nova_voice.sh status"
 }
 
 status() {
@@ -98,7 +83,6 @@ status() {
   echo "gateway: ${NOVA_GATEWAY_URL:-MISSING (NOVA_GATEWAY_URL)} token=$([ -n "${NOVA_GATEWAY_TOKEN:-}" ] && echo set || echo MISSING)"
   echo "venv: $NOVA_PY $([ -x "$NOVA_PY" ] && echo ok || echo MISSING — nova_voice.sh setup)"
   echo "vad model: $NOVA_VAD_MODEL $([ -f "$NOVA_VAD_MODEL" ] && echo ok || echo MISSING — nova_voice.sh setup)"
-  curl -s -m 2 -o /dev/null -w "whisper-server: http=%{http_code}\n" "${NOVA_WHISPER_URL%/inference}/" || echo "whisper-server: unreachable"
   local tts="${NOVA_TTS:-auto}"; local chain=""
   [ -n "${NOVA_ELEVENLABS_API_KEY:-}" ] && [ -n "${NOVA_ELEVENLABS_VOICE:-}" ] && chain="$chain elevenlabs"
   [ -n "${NOVA_GATEWAY_SSH:-}" ] && chain="$chain gateway(${NOVA_GATEWAY_SSH})"
@@ -121,5 +105,5 @@ case "${1:-toggle}" in
   enroll) shift; exec "$NOVA_PY" "$NOVA_ENGINE" enroll "$@" ;;
   status) status ;;
   setup)  shift; setup "${1:-}" ;;
-  *) echo "usage: $0 {toggle|cancel|ask <text>|say <text>|enroll [name] [--last N]|status|setup [whisper]}"; exit 2 ;;
+  *) echo "usage: $0 {toggle|cancel|ask <text>|say <text>|enroll [name] [--last N]|status|setup}"; exit 2 ;;
 esac

@@ -60,7 +60,7 @@ requires it from `hypr/plugins/` (gitignored):
 mkdir -p ~/.config/hypr/plugins && cd ~/.config/hypr/plugins
 git clone https://github.com/zjeffer/split-monitor-workspaces
 cd split-monitor-workspaces
-git checkout release/0.55.x   # match your Hyprland release; stay on main for hyprland-git
+git checkout release/0.56.x   # match your Hyprland release; stay on main for hyprland-git
 ```
 
 Pull it again (and switch release branch) after Hyprland updates.

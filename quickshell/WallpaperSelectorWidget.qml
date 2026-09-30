@@ -219,9 +219,13 @@ Item {
     // screen, so this doesn't affect how fast switching feels). This is also
     // when the desktop re-themes: previews skip it, so flipping fast doesn't
     // re-skin the shell, kitty, Firefox and Zed for every wallpaper passed.
+    // The theme starts changing this long after the preview (itself 60 ms
+    // after the last step); key repeat (25/s) stays under it, taps ~0.2 s apart
+    // re-theme each step (cheap since the fade is short).
+    readonly property int themeSettleMs: 150
     Timer {
         id: wallpaperSettle
-        interval: 250
+        interval: wallpaperSelectorWidget.themeSettleMs
         repeat: false
         onTriggered: {
             if (wallpaperDebounce.running || carousel.dragging || carousel.flicking) {

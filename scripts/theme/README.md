@@ -43,12 +43,21 @@ Each wallpaper's theme.json keeps only what differs from its Catppuccin flavour 
 ## How it switches
 
 `wallpaper_select.sh` runs `apply.py <wallpaper path>` on every apply (the
-selector's previews while flipping skip it; its commit ~0.3 s after the last
+selector's previews while flipping skip it; its commit ~0.2 s after the last
 step re-themes), one run at a time, dropping runs a newer one superseded. It writes
 `~/.cache/wallpaper_theme/current.json`; `quickshell/themes/Theme.qml` watches
 it, and the colours ease to the new values (`DynamicTheme.qml`). It also writes
 `kitty/current-theme.conf` (kitty reloads on SIGUSR1; generated, gitignored)
 and sets the Hyprland border gradient with `hyprctl eval`.
+Quickshell's file is written first; kitty and the borders update in parallel
+with Firefox and Zed (a run takes ~45 ms, the file lands after ~25 ms).
+
+Tuning: the fade is `fade` (200 ms) and `fadeEasing` (OutCubic) in
+`quickshell/themes/DynamicTheme.qml`; the pause before re-theming is
+`themeSettleMs` (150 ms, plus the 60 ms preview debounce) in
+`quickshell/WallpaperSelectorWidget.qml`. A longer fade costs Quickshell more
+CPU per change (~0.2 s at 200 ms, ~0.5 s at 450 ms).
+
 By hand: `scripts/theme/apply.py clouds`.
 
 In QML: `Theme.colors.*` as before, `Theme.fonts.ui|mono|display|icon`,

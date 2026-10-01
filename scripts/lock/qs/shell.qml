@@ -213,7 +213,7 @@ ShellRoot {
 
   // Test hook (test mode only): type a password once the surfaces are up.
   Timer {
-    running: root.mode === "test" && Quickshell.env("LOCK_TEST_PASSWORD") !== ""
+    running: root.mode === "test" && (Quickshell.env("LOCK_TEST_PASSWORD") || "") !== ""
     interval: 2500
     onTriggered: { root.buffer = Quickshell.env("LOCK_TEST_PASSWORD"); root.status = "idle"; root.submit() }
   }

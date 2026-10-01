@@ -56,6 +56,8 @@ class BevyView : public QQuickItem
     Q_PROPERTY(QString options READ options WRITE setOptions NOTIFY optionsChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
+    // The app has drawn its first frame (the item shows the scene, not nothing)
+    Q_PROPERTY(bool frameReady READ frameReady NOTIFY frameReadyChanged)
     // Controls and readouts the app declares, as JSON {"controls": [...], "info": [...]}
     Q_PROPERTY(QString ui READ ui NOTIFY uiChanged)
 public:
@@ -71,6 +73,7 @@ public:
     Q_INVOKABLE void send(const QString &id, const QString &value);
     QString error() const { return m_error; }
     bool ready() const { return m_ready; }
+    bool frameReady() const { return m_frameReady; }
     Q_INVOKABLE void pointer(qreal x, qreal y, bool down);
 
 signals:
@@ -78,6 +81,7 @@ signals:
     void optionsChanged();
     void errorChanged();
     void readyChanged();
+    void frameReadyChanged();
     void uiChanged();
 
 protected:
@@ -101,6 +105,8 @@ private:
     BevyWidget *m_bevy = nullptr;
     bool m_failed = false;
     bool m_ready = false;
+    bool m_frameReady = false;  // GUI thread
+    bool m_deferred = false;    // render thread: the app is built after the window's first frame
     QString m_error;
     QString m_ui;          // GUI thread
     uint64_t m_uiGen = 0;  // render thread

@@ -172,6 +172,15 @@ void BevyView::beforeRendering()
     if (m_failed || !m_window || !isVisible() || width() < 1 || height() < 1 || m_library.isEmpty()) return;
     QSGRendererInterface *ri = m_window->rendererInterface();
     if (!m_bevy) {
+        // Building the app takes a few hundred ms on this thread, and a new
+        // window shows nothing until its first frame is done: let that frame
+        // go out without the scene (the lock screen's poster and text are up
+        // at once), build it for the next.
+        if (!m_deferred) {
+            m_deferred = true;
+            QMetaObject::invokeMethod(this, [this] { update(); }, Qt::QueuedConnection);
+            return;
+        }
         if (!ri || ri->graphicsApi() != QSGRendererInterface::Vulkan) {
             fail("needs the Vulkan scene graph backend (QSG_RHI_BACKEND=vulkan)");
             return;
@@ -229,6 +238,8 @@ void BevyView::beforeRendering()
     if (!kicked && now < m_due && m_frameImage && px == m_frameSize) return;
     uint64_t image = m_api.frame(m_bevy, uint32_t(px.width()), uint32_t(px.height()));
     if (image) {
+        if (!m_frameImage)
+            QMetaObject::invokeMethod(this, [this] { if (!m_frameReady) { m_frameReady = true; emit frameReadyChanged(); } }, Qt::QueuedConnection);
         m_frameImage = image;
         m_frameSize = px;
     }
@@ -264,9 +275,11 @@ void BevyView::invalidate()
     // device state is tied to it.
     if (m_bevy && m_api.destroy) m_api.destroy(m_bevy);
     m_bevy = nullptr;
+    m_deferred = false;
     for (auto &r : m_retired) delete r.tex;
     m_retired.clear();
     m_frameImage = m_nodeImage = 0;
+    QMetaObject::invokeMethod(this, [this] { if (m_frameReady) { m_frameReady = false; emit frameReadyChanged(); } }, Qt::QueuedConnection);
 }
 
 void BevyView::releaseResources()

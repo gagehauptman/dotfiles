@@ -265,6 +265,22 @@ def depth_layers(wall, bg, meta, w, h):
                 log(f"depth.{key} {p} not found")
     if not masks:
         return {}
+    bright = max(0.0, min(1.0, float(meta.get("background", {}).get("brightness", 1.0))))
+    soft = max(0.0, float(dm.get("edge_softness", 1.0)))
+    src = Path(bg["image"])
+    stamp = "|".join(f"{p}:{p.stat().st_mtime_ns}" for p in [src, *masks.values()])
+    key = hashlib.md5(f"{stamp}|{w}x{h}|{bright}|{soft}|v2".encode()).hexdigest()[:16]
+    outdir = STATE / "depth"
+    names = {"foreground": "foreground", "background": "midground"}
+    todo = {k: outdir / f"{key}-{names[k]}.png" for k in masks}
+    # The result (cut-out paths + subject box) is cached next to the cut-outs,
+    # so a lock with everything cached does no image work at all.
+    done = outdir / f"{key}.json"
+    if done.is_file() and all(p.is_file() for p in todo.values()):
+        try:
+            return json.loads(done.read_text())
+        except ValueError:
+            pass
     try:
         import numpy as np
         from PIL import Image, ImageOps
@@ -272,16 +288,8 @@ def depth_layers(wall, bg, meta, w, h):
         log("depth masks need python-pillow and python-numpy; drawing without depth")
         return {}
     Image.MAX_IMAGE_PIXELS = None
-    bright = max(0.0, min(1.0, float(meta.get("background", {}).get("brightness", 1.0))))
-    soft = max(0.0, float(dm.get("edge_softness", 1.0)))
-    src = Path(bg["image"])
-    stamp = "|".join(f"{p}:{p.stat().st_mtime_ns}" for p in [src, *masks.values()])
-    key = hashlib.md5(f"{stamp}|{w}x{h}|{bright}|{soft}|v2".encode()).hexdigest()[:16]
-    outdir = STATE / "depth"
     outdir.mkdir(parents=True, exist_ok=True)
     out = {}
-    names = {"foreground": "foreground", "background": "midground"}
-    todo = {k: outdir / f"{key}-{names[k]}.png" for k in masks}
     fits = {}
 
     def fit(p):
@@ -314,6 +322,9 @@ def depth_layers(wall, bg, meta, w, h):
         if len(xs):
             out["subject"] = [float(round(v, 4)) for v in (xs.min() / w, ys.min() / h,
                               (xs.max() + 1 - xs.min()) / w, (ys.max() + 1 - ys.min()) / h)]
+    tmp = done.with_suffix(f".tmp{os.getpid()}")
+    tmp.write_text(json.dumps(out))
+    tmp.replace(done)
     return out
 
 

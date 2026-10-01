@@ -11,6 +11,14 @@
 //                    here may LOCK_PAM_DIR/LOCK_PAM_CONFIG swap the PAM
 //                    service, LOCK_TEST_PASSWORD auto-type a password.
 //
+//   LOCK_RESIDENT=1  start hidden and stay resident (lock.sh --warm): IPC
+//                    `engage` locks (Super+L), and after an unlock it goes back
+//                    to hidden instead of quitting. Hidden means NOT locked:
+//                    no lock object, no surfaces, nothing to bypass, only the
+//                    compiled QML and the decoded images are kept. lock.sh
+//                    waits for `state` = "secure" after `engage`, else kills it
+//                    and starts a fresh lock (which falls back to hyprlock).
+//
 // Unlock is only ever done after PAM says yes, by the timer above, or by
 // `lock.sh --unlock` (IPC) from a TTY.
 import QtQuick
@@ -26,10 +34,15 @@ ShellRoot {
   readonly property string mode: Quickshell.env("LOCK_MODE") === "test" ? "test" : "lock"
   readonly property real seconds: Number(Quickshell.env("LOCK_SECONDS") || 0)
   readonly property string user: Quickshell.env("USER") || ""
+  readonly property bool resident: Quickshell.env("LOCK_RESIDENT") === "1"
+  property real t0: Number(Quickshell.env("LOCK_T0") || 0)   // when asked to show (epoch ms), for timing logs
+  property bool testShown: !root.resident
+  readonly property bool shown: root.mode === "test" ? root.testShown : lock.locked
 
   // ---- settings (lockgen.py's JSON)
   property var config: ({ screens: [] })
   FileView {
+    id: configFile
     path: Quickshell.env("LOCK_CONFIG")
     blockLoading: true
     onLoaded: {
@@ -37,6 +50,19 @@ ShellRoot {
       catch (e) { console.error("lock: bad config " + path + ": " + e.message) }
     }
     onLoadFailed: err => console.error("lock: cannot read " + path + " (" + err + "); using defaults")
+  }
+  // Resident: keep every image the screens show decoded (Qt's pixmap cache is
+  // keyed by url + fill mode), so a shown lock has them in its first frame.
+  Instantiator {
+    model: {
+      if (!root.resident) return []
+      let out = []
+      for (const s of root.config.screens ?? [])
+        for (const p of [s.background?.image, s.background?.poster, s.depth?.foreground, s.depth?.midground])
+          if (p && !out.includes(p)) out.push(p)
+      return out
+    }
+    delegate: Image { required property string modelData; source: "file://" + modelData; fillMode: Image.PreserveAspectCrop; visible: false }
   }
   function screenConfig(screen) {
     let list = root.config.screens ?? []
@@ -107,12 +133,36 @@ ShellRoot {
     interval: 520
     onTriggered: {
       if (root.mode === "lock") lock.locked = false
+      else root.testShown = false
       // Give the compositor its unlock request before the process goes away:
       // exiting while locked would leave it on the "lock died" screen.
-      quitTimer.start()
+      if (root.resident) root.reset()
+      else quitTimer.start()
     }
   }
   Timer { id: quitTimer; interval: 1200; onTriggered: Qt.quit() }
+
+  // ---- resident: show (lock) on request, back to hidden after an unlock
+  function reset() {
+    root.unlocking = false
+    root.buffer = ""
+    root.status = "idle"
+    root.keyIndex = 0
+  }
+  function reloadConfig() {
+    configFile.reload()
+    try { root.config = JSON.parse(configFile.text()) }
+    catch (e) { console.error("lock: bad config " + configFile.path + ": " + e.message) }
+  }
+  function show() {
+    if (root.shown || root.unlocking) return "shown"
+    root.reset()
+    root.reloadConfig()
+    root.t0 = Date.now()
+    if (root.mode === "lock") lock.locked = true
+    else root.testShown = true
+    return "ok"
+  }
 
   // ---- caps lock: the keyboards' LEDs (lock.sh lists their sysfs paths); the
   // key events carry no lock state.
@@ -126,7 +176,7 @@ ShellRoot {
       required property string modelData
       property FileView file: FileView { path: led.modelData; blockLoading: true }
       property Timer poll: Timer {
-        interval: 250; repeat: true; running: true; triggeredOnStart: true
+        interval: 250; repeat: true; running: root.shown; triggeredOnStart: true
         onTriggered: {
           led.file.reload()
           let on = led.file.text().trim() === "1"
@@ -150,6 +200,15 @@ ShellRoot {
   IpcHandler {
     target: "lock"
     function unlock(): void { root.unlock() }
+    // resident (lock.sh): lock now
+    function engage(): string { return root.resident ? root.show() : "not resident" }
+    // secure (the compositor confirmed the lock) | locking | hidden
+    function state(): string {
+      if (root.mode === "test") return root.testShown ? "secure" : "hidden"
+      return lock.secure ? "secure" : lock.locked ? "locking" : "hidden"
+    }
+    // the settings changed (wallpaper): re-read them and their images
+    function reload(): void { if (!root.shown) root.reloadConfig() }
   }
 
   // Test hook (test mode only): type a password once the surfaces are up.
@@ -192,12 +251,12 @@ ShellRoot {
     onLockedChanged: {
       if (!locked && !root.unlocking) { console.error("lock: compositor refused or ended the lock"); Qt.exit(3) }
     }
-    onSecureChanged: if (!secure && root.unlocking) Qt.quit()
+    onSecureChanged: if (!secure && root.unlocking && !root.resident) Qt.quit()
   }
 
   // Test mode: overlay layer surfaces, not a lock.
   Variants {
-    model: root.mode === "test" ? Quickshell.screens : []
+    model: root.mode === "test" && root.testShown ? Quickshell.screens : []
     PanelWindow {
       required property var modelData
       screen: modelData
@@ -212,6 +271,6 @@ ShellRoot {
   }
 
   Component.onCompleted: {
-    if (root.mode === "lock") lock.locked = true
+    if (root.mode === "lock" && !root.resident) lock.locked = true
   }
 }

@@ -118,9 +118,9 @@ FocusScope {
     interval: 2000; repeat: true
     onTriggered: { console.warn("lock fps " + (surface.screenData.name ?? "?") + ": " + (surface.frames / 2).toFixed(1)); surface.frames = 0 }
   }
-  // Startup timing (LOCK_T0 = when it was asked to show, epoch ms): logs this
+  // Startup timing (shell.t0 = when it was asked to show, epoch ms): logs this
   // screen's first frame and the live scene's first frame.
-  readonly property real t0: Number(Quickshell.env("LOCK_T0") || 0)
+  readonly property real t0: surface.shell.t0 || 0
   function since() { return surface.t0 > 0 ? (Date.now() - surface.t0) + " ms" : "?" }
   Connections {
     id: firstFrame

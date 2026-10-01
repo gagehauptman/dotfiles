@@ -5,7 +5,7 @@ client: a Quickshell `WlSessionLock` (`qs/shell.qml`, run as its own instance,
 not the bar). It draws the current wallpaper's **live, animated Bevy scene**
 itself through the `Bevy` QML module (same renderer the bar/wallpaper selector
 use), so there is no workspace switching, no see-through lock, no snapshot, no
-cat. PAM is Quickshell's `PamContext` on the `hyprlock` service (auth include
+cat. It stays resident and hidden between locks (see Startup speed). PAM is Quickshell's `PamContext` on the `hyprlock` service (auth include
 login), so the login password works. If the client dies within 3s of starting,
 `lock.sh` falls back to `hyprlock` (static `~/.config/hypr/hyprlock.conf`).
 
@@ -151,3 +151,33 @@ xray version), and point Super+L / PowerMenuWidget back at `hyprlock`.
 - Every wallpaper has its own typography (font, weight, size, tracking, casing, colours,
   shadow, field shape) in `meta/<stem>.toml`.
 - Backups: `*.bak-2026-09-29-polish`.
+
+## Startup speed (2026-09-30)
+
+- **Resident lock.** `lock.sh --warm` (Hyprland start; also after any normal
+  unlock of a fresh lock) runs `qs/shell.qml` with `LOCK_RESIDENT=1`: compiled,
+  hidden, images decoded, 0% CPU, ~140-200 MB. Hidden is *not locked*: no lock
+  object, no surfaces. Super+L runs lockgen, then IPC `engage`, which sets
+  `WlSessionLock.locked`; lock.sh waits for `state` = `secure` (the compositor's
+  `locked` event). No answer/no confirmation within ~3 s: it kills the resident
+  and starts a fresh lock (hyprlock fallback as before). After an unlock the
+  resident goes back to hidden instead of quitting. A wallpaper change
+  (`wallpaper_select.sh --warm`, niced) only makes caches and has the resident
+  re-read lock.json; it never starts one at nice 19.
+- **Not possible: a warm, paused Bevy scene.** Quickshell creates the lock
+  surfaces only when the lock is taken and destroys them on unlock
+  (`WlSessionLock::unlock`), and each window has its own Vulkan device, so the
+  Bevy app cannot outlive one lock without patching Quickshell. Instead the
+  scene starts after the first frame (BevyView builds the app on the window's
+  second frame) over a **poster**: a frame of the scene the lock saves to
+  `~/.cache/lockscreen/poster/<stem>-WxH.png` 3 s into a lock (again when the app
+  is rebuilt), cross-faded once the scene draws (`frameReady`).
+- lockgen caches the depth result (`<key>.json` next to the cut-outs), so a
+  cached lock does no image work (0.24 s -> 0.05 s); `--warm` makes the caches
+  at login and on every wallpaper change.
+- Images load synchronously (no black first frame), fade-in 250 ms (was 900).
+- Timing: `lock.log` has "first frame <monitor> at N ms" and "live scene up";
+  resident locks also "resident lock secure N ms after the key".
+- Revert to a fresh process per lock: `kill $(cat $XDG_RUNTIME_DIR/lockscreen/resident.pid)`
+  and drop the `lock.sh --warm` line from hypr/hyprland.lua (lock.sh will start
+  one again after the next normal unlock unless that `exec "$0" --warm` goes too).

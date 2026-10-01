@@ -72,6 +72,8 @@ hl.on("hyprland.start", function()
     -- Vulkan scene graph + module path: needed by the in-process Bevy dashboard widget (bevy/build.sh)
     hl.exec_cmd("QT_QPA_PLATFORMTHEME=qt6ct QSG_RHI_BACKEND=vulkan QML2_IMPORT_PATH=" .. os.getenv("HOME") .. "/.config/quickshell/modules quickshell")
     hl.exec_cmd("~/.config/scripts/init/wallpaper.sh")
+    -- the lock screen, resident and hidden (not locked), so Super+L only shows it
+    hl.exec_cmd("~/.config/scripts/lock/lock.sh --warm")
     hl.exec_cmd("nm-applet")
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
     for _, cmd in ipairs(DEVICE.startup) do hl.exec_cmd(cmd) end

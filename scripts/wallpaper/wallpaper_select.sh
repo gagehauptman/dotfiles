@@ -301,8 +301,9 @@ if [[ $mode == warm ]]; then
   exec 9>&-
 
   # The lock screen's caches for the saved wallpaper (screen-sized still,
-  # depth cut-outs), so the first lock after a reboot or a change finds them.
-  python3 "$CONFIG_HOME/scripts/lock/lockgen.py" --out "$RUNTIME_DIR/lockscreen/lock.json" >/dev/null 2>&1 || true
+  # depth cut-outs), so the first lock after a reboot or a change finds them,
+  # and the resident lock re-reads its settings.
+  "$CONFIG_HOME/scripts/lock/lock.sh" --warm >/dev/null 2>&1 || true
 
   # Fill the cache for every still image and output size, one job at a time.
   exec 8>"$STATE_DIR/cache.lock"

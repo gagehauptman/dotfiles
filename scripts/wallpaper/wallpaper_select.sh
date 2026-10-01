@@ -29,10 +29,10 @@ set -euo pipefail
 #   whole desktop for every wallpaper it passes.
 #   A dynamic wallpaper that isn't warm-capable only gets its still
 #   (wallpapers/<stem>/<stem>.png, if it has one).
-# --warm: start warm-capable dynamic wallpapers hidden (if not running) and
-#   fill the pre-scaled cache in the background, plus the selector's
-#   thumbnails (THUMB_DIR/<stem>.png, 400 px high like its previews), so the
-#   carousel never decodes a 5-8K original.
+# --warm: start warm-capable dynamic wallpapers hidden (if not running), make
+#   the lock screen's caches (lockgen.py), and fill the pre-scaled cache in the
+#   background, plus the selector's thumbnails (THUMB_DIR/<stem>.png, 400 px
+#   high like its previews), so the carousel never decodes a 5-8K original.
 mode=apply
 case ${1:-} in
   --preview) mode=preview; shift ;;
@@ -299,6 +299,10 @@ if [[ $mode == warm ]]; then
   fi
   flock -u 9
   exec 9>&-
+
+  # The lock screen's caches for the saved wallpaper (screen-sized still,
+  # depth cut-outs), so the first lock after a reboot or a change finds them.
+  python3 "$CONFIG_HOME/scripts/lock/lockgen.py" --out "$RUNTIME_DIR/lockscreen/lock.json" >/dev/null 2>&1 || true
 
   # Fill the cache for every still image and output size, one job at a time.
   exec 8>"$STATE_DIR/cache.lock"

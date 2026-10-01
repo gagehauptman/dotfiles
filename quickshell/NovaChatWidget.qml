@@ -157,6 +157,51 @@ Item {
     return n > 0 && messages.get(n - 1).role === "nova" && messages.get(n - 1).pending ? n - 1 : -1
   }
 
+  // ---- assistant replies: strip voice-only markers, collect MEDIA: lines, fetch those files from vic-server
+  // Voice markers ([quiet] [listen] [end]) and bracketed stage directions ("[laughs]") never show; markdown links
+  // "[text](url)" and task boxes "[x]" are kept. MEDIA:<path> lines become inline images (the path lives on the
+  // gateway host, so the file is scp'd once into mediaDir; a path that exists locally is used as is).
+  readonly property string mediaDir: (Quickshell.env("XDG_CACHE_HOME") || (root.home + "/.cache")) + "/nova-chat-media"
+  readonly property string mediaHost: Quickshell.env("NOVA_GATEWAY_SSH") || "vic-server"
+  function cleanText(s) {
+    return s.replace(/^[ \t]*MEDIA:.*$/gm, "")
+            .replace(/\[(?:quiet|listen|end)\]/gi, "")
+            .replace(/\[[^\[\]\n`]*\](?![(\[:])/g, m => /^\[[ xX]\]$/.test(m) ? m : "")
+            .replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim()
+  }
+  function mediaPaths(s) {
+    let out = []
+    let re = /^[ \t]*MEDIA:[ \t]*(\S.*?)[ \t]*$/gm, m
+    while ((m = re.exec(s)) !== null) out.push(m[1])
+    return out
+  }
+  function mediaLocal(p) { return mediaDir + "/" + p.replace(/[^A-Za-z0-9._-]/g, "_") }
+  property var mediaState: ({})      // remote path -> "loading" | "ok" | "fail"
+  property var mediaQueue: []
+  property string mediaCurrent: ""
+  function mediaFetch(p) {
+    if (mediaState[p] !== undefined) return
+    mediaState[p] = "loading"; mediaState = Object.assign({}, mediaState)
+    mediaQueue = mediaQueue.concat([p])
+    mediaNext()
+  }
+  function mediaNext() {
+    if (mediaProc.running || mediaQueue.length === 0) return
+    mediaCurrent = mediaQueue[0]; mediaQueue = mediaQueue.slice(1)
+    mediaProc.running = true
+  }
+  Process {
+    id: mediaProc
+    command: ["bash", "-c", "p=\"$1\"; d=\"$2\"; f=\"$3\"; mkdir -p \"$d\"; [ -s \"$f\" ] && exit 0; " +
+              "if [ -s \"$p\" ]; then cp \"$p\" \"$f\"; else scp -q -o BatchMode=yes -o ConnectTimeout=8 \"$4:$p\" \"$f.part\" && mv \"$f.part\" \"$f\"; fi",
+              "bash", chat.mediaCurrent, chat.mediaDir, chat.mediaLocal(chat.mediaCurrent), chat.mediaHost]
+    onExited: (code, st) => {
+      chat.mediaState[chat.mediaCurrent] = code === 0 ? "ok" : "fail"
+      chat.mediaState = Object.assign({}, chat.mediaState)
+      chat.mediaNext()
+    }
+  }
+
   // ---- one turn = one client process
   // ---- images: Ctrl+V from the clipboard (wl-paste) or dropped files, sent with the next message
   property var attachments: []
@@ -593,52 +638,81 @@ Item {
       required property bool pending
       required property int hl
       required property int spoken      // chars of text that were read aloud; -1 = not a spoken turn (or all spoken)
-      // Always RichText (escaped): switching textFormat back to PlainText after reading made the TextEdit show its own
-      // generated HTML. The word being read aloud (hl) gets <i>.
-      // Spoken turns: whatever wasn't read aloud (after [quiet], a late answer, a long pause) is dimmed behind a
-      // muted-speaker glyph, so it's clear what you heard vs what only landed here.
-      readonly property int cut: (row.role === "nova" && row.spoken >= 0 && row.spoken < row.text.length) ? row.spoken : -1
-      function richText() {
-        let out = "", n = -1, off = 0, dim = false
-        for (let part of row.text.split(/(\s+)/)) {
-          if (part === "") continue
-          if (row.cut >= 0 && !dim && off >= row.cut && !/^\s+$/.test(part)) {
-            dim = true
-            out += "<span style=\"color:" + Theme.colors.textMuted + "\">" + "󰖁 "
-          }
-          off += part.length
-          if (/^\s+$/.test(part)) { out += part.replace(/\n/g, "<br>"); continue }
-          n++
-          let e = part.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-          out += n === row.hl ? "<i>" + e + "</i>" : e
-        }
-        if (dim) out += "</span>"
-        return out + (row.pending ? " ▍" : "")
-      }
       required property string imgs
-      readonly property var pics: imgs ? imgs.split("\n") : []
       readonly property bool mine: role === "user"
+      readonly property bool md: role === "nova"      // assistant replies render as markdown; yours and errors stay plain
+      // Spoken turns: whatever wasn't read aloud (after [quiet], a late answer, a long pause) is shown dimmed behind a
+      // muted-speaker glyph, so it's clear what you heard vs what only landed here. (The word-by-word highlight of
+      // the reply being read aloud is gone: it can't be done inside markdown.)
+      readonly property int cut: (row.md && row.spoken >= 0 && row.spoken < row.text.length) ? row.spoken : -1
+      readonly property string mainText: row.md ? chat.cleanText(row.cut >= 0 ? row.text.slice(0, row.cut) : row.text) : row.text
+      readonly property string dimText: row.cut >= 0 ? chat.cleanText(row.text.slice(row.cut)) : ""
+      function plainRich() {
+        let e = row.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
+        return e + (row.pending ? " ▍" : "")
+      }
+      // QML's TextEdit can't recolor links (the default is dark blue); a styled span inside the link text does
+      function linked(t) { return t.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, '[<span style="color:' + Theme.colors.blue + '">$1</span>]($2)') }
+      function mdText() { return linked(row.mainText) + (row.pending && row.dimText === "" ? " ▍" : "") }
+      readonly property var pics: {
+        let l = row.imgs ? row.imgs.split("\n") : []
+        if (row.md) for (let p of chat.mediaPaths(row.text)) l.push(p)
+        return l
+      }
       readonly property real maxW: (log.width - chat.gutter) * 0.82
+      readonly property real gap: metrics.s(4)
       width: log.width - chat.gutter
-      height: (who.visible ? who.height : 0) + (picRow.visible ? picRow.height + metrics.s(4) : 0)
+      height: (who.visible ? who.height : 0) + (picRow.visible ? picRow.height + gap : 0)
               + (bubble.visible ? bubble.height : 0)
 
-      Row {
+      Flow {
         id: picRow
         visible: row.pics.length > 0
-        y: who.visible ? who.height : 0
+        y: row.md ? (bubble.visible ? bubble.y + bubble.height + row.gap : 0) : (who.visible ? who.height : 0)
         anchors.right: row.mine ? parent.right : undefined
+        width: row.maxW
         spacing: metrics.s(4)
+        layoutDirection: row.mine ? Qt.RightToLeft : Qt.LeftToRight
         Repeater {
           model: row.pics
-          Image {
+          Rectangle {
+            id: pic
             required property string modelData
-            source: "file://" + modelData
-            height: metrics.s(120)
-            width: Math.min(implicitWidth * height / Math.max(1, implicitHeight), row.maxW)
-            fillMode: Image.PreserveAspectFit
-            asynchronous: true
-            sourceSize.height: metrics.s(240)
+            // pasted images are local files; MEDIA paths come from the gateway host and are cached by mediaFetch
+            readonly property bool remote: row.md && !row.imgs.split("\n").includes(modelData)
+            readonly property string st: !remote ? "ok" : (chat.mediaState[modelData] || "")
+            readonly property string src: !remote ? modelData : chat.mediaLocal(modelData)
+            Component.onCompleted: if (remote && !row.pending) chat.mediaFetch(modelData)
+            Connections { target: row; function onPendingChanged() { if (pic.remote && !row.pending) chat.mediaFetch(pic.modelData) } }
+            height: metrics.s(st === "fail" ? 28 : 200)
+            width: st === "ok" ? Math.max(metrics.s(40), Math.min(img.implicitWidth * (height / Math.max(1, img.implicitHeight)), row.maxW))
+                   : Math.min(metrics.s(220), row.maxW)
+            radius: metrics.radiusNormal
+            color: Theme.colors.inset
+            clip: true
+            Image {
+              id: img
+              anchors.fill: parent
+              visible: pic.st === "ok"
+              source: pic.st === "ok" ? "file://" + pic.src : ""
+              fillMode: Image.PreserveAspectFit
+              asynchronous: true
+              sourceSize.height: metrics.s(480)
+            }
+            Text {
+              anchors.centerIn: parent
+              visible: pic.st !== "ok"
+              text: pic.st === "fail" ? "󰋩  image unavailable" : "󰋩  loading…"
+              color: pic.st === "fail" ? Theme.colors.red : Theme.colors.textMuted
+              font.pixelSize: metrics.fontSmall
+              font.family: Theme.fonts.mono
+            }
+            MouseArea {
+              anchors.fill: parent
+              enabled: pic.st === "ok"
+              cursorShape: Qt.PointingHandCursor
+              onClicked: Quickshell.execDetached(["xdg-open", pic.src])
+            }
           }
         }
       }
@@ -652,34 +726,58 @@ Item {
         font.pixelSize: metrics.fontTiny
         font.family: Theme.fonts.mono
       }
-      TextMetrics { id: tm; font: body.font; text: row.text }
+      TextMetrics { id: tm; font: body.font; text: row.md ? row.mainText + row.dimText : row.text }
       Rectangle {
         id: bubble
-        visible: row.text !== ""
-        y: (who.visible ? who.height : 0) + (picRow.visible ? picRow.height + metrics.s(4) : 0)
+        visible: row.md ? (row.mainText !== "" || row.dimText !== "" || row.pending) : row.text !== ""
+        y: (who.visible ? who.height : 0) + (picRow.visible && !row.md ? picRow.height + row.gap : 0)
         anchors.right: row.mine ? parent.right : undefined
         anchors.left: row.mine ? undefined : parent.left
-        width: Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
-        height: body.implicitHeight + metrics.s(14)
+        width: row.md && row.mainText.indexOf("\n") >= 0 ? row.maxW : Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
+        height: bodyCol.implicitHeight + metrics.s(14)
         radius: metrics.radiusNormal
         color: row.role === "error" ? Qt.rgba(Theme.colors.red.r, Theme.colors.red.g, Theme.colors.red.b, 0.15)
              : row.mine ? Theme.colors.inset : Theme.colors.panelDeep
         border.width: row.mine ? 0 : 1
         border.color: row.role === "error" ? Theme.colors.red : Theme.colors.border
-        TextEdit {
-          id: body
+        Column {
+          id: bodyCol
           x: metrics.s(12)
           y: metrics.s(7)
           width: parent.width - metrics.s(24)
-          text: row.richText()
-          readOnly: true
-          selectByMouse: true
-          wrapMode: TextEdit.Wrap
-          textFormat: TextEdit.RichText
-          color: row.role === "error" ? Theme.colors.red : row.mine ? Theme.colors.textPrimary : Theme.colors.textSecondary
-          selectionColor: Theme.colors.blue
-          font.pixelSize: metrics.fontNormal
-          font.family: Theme.fonts.mono
+          spacing: metrics.s(4)
+          TextEdit {
+            id: body
+            visible: row.md ? (row.mainText !== "" || row.pending) : true
+            width: parent.width
+            text: row.md ? row.mdText() : row.plainRich()
+            readOnly: true
+            selectByMouse: true
+            wrapMode: TextEdit.Wrap
+            textFormat: row.md ? TextEdit.MarkdownText : TextEdit.RichText
+            color: row.role === "error" ? Theme.colors.red : row.mine ? Theme.colors.textPrimary : Theme.colors.textSecondary
+            selectionColor: Theme.colors.blue
+            font.pixelSize: metrics.fontNormal
+            font.family: Theme.fonts.mono
+            palette.link: Theme.colors.blue
+            onLinkActivated: link => Qt.openUrlExternally(link)
+            HoverHandler { cursorShape: body.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
+          }
+          TextEdit {
+            visible: row.dimText !== ""
+            width: parent.width
+            text: "󰖁 " + row.dimText + (row.pending ? " ▍" : "")
+            readOnly: true
+            selectByMouse: true
+            wrapMode: TextEdit.Wrap
+            textFormat: TextEdit.MarkdownText
+            palette.link: Theme.colors.blue
+            color: Theme.colors.textMuted
+            selectionColor: Theme.colors.blue
+            font.pixelSize: metrics.fontNormal
+            font.family: Theme.fonts.mono
+            onLinkActivated: link => Qt.openUrlExternally(link)
+          }
         }
       }
     }

@@ -12,9 +12,9 @@ ShellRoot {
   readonly property string mode: "test"
   readonly property string user: Quickshell.env("USER") || ""
   property string buffer: Quickshell.env("LOCK_PREVIEW_TYPED") || ""
-  property string status: "idle"
+  property string status: Quickshell.env("LOCK_PREVIEW_STATUS") || "idle"   // idle | checking | failed
   property bool unlocking: false
-  property bool capsLock: false
+  property bool capsLock: Quickshell.env("LOCK_PREVIEW_CAPS") === "1"
   function handleKey(e) {}
 
   property var config: ({ screens: [] })

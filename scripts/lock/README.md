@@ -111,6 +111,8 @@ gaps; thin members (wires, struts) survive the matting. Needs
   (default `$XDG_RUNTIME_DIR/lockscreen/preview`); nothing appears on screen, no
   PAM. `LOCK_WALLPAPER=~/.config/wallpapers/clouds/clouds.png lock.sh --preview`
   previews another wallpaper; `LOCK_PREVIEW_BOXES=1` outlines the alignment boxes.
+  Field states: `LOCK_PREVIEW_TYPED=abc` (something typed), `LOCK_PREVIEW_STATUS=checking|failed`,
+  `LOCK_PREVIEW_CAPS=1`.
   Live (Bevy) scenes show as their flat colour there.
 
 - `lock.sh --test [SECS]`: same screens as overlay windows, NOT a lock, closes

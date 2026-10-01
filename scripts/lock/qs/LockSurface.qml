@@ -2,8 +2,8 @@
 // with the clock, date, greeting and password field over it. Placement and text
 // style come from screenData (lockgen.py's resolved lock.toml); the palette is
 // Catppuccin Mocha by default. Nothing full-screen is blurred or shadowed: the
-// live scene is drawn once, the password field is faux glass (translucent fill,
-// thin border, top sheen; no blur, so no bleed), and text shadows are stacked
+// live scene is drawn once, the password field is a bare hairline rule (no box,
+// no fill), and text shadows are stacked
 // copies of the glyphs. Every text element takes its own font, weight, size,
 // tracking, casing, colour, opacity and shadow, so each wallpaper can differ.
 //
@@ -383,42 +383,71 @@ FocusScope {
         NumberAnimation { target: field; property: "shake"; to: -3; duration: 60 }
         NumberAnimation { target: field; property: "shake"; to: 0; duration: 55 }
       }
-      onFailedChanged: if (failed) { shakeAnim.restart(); failWash.restart() }
+      onFailedChanged: if (failed) { shakeAnim.restart(); failPulse.restart() }
 
-      // Faux glass: translucent fill, thin state-coloured border, a soft sheen
-      // over the top half. Nothing here samples the scene, so nothing bleeds.
-      Rectangle {
-        id: box
-        anchors.fill: parent
-        radius: field.radius
-        color: field.cfg.inner_color ?? "#5511111b"
-        border.width: Math.max(1, (field.cfg.outline_thickness ?? 1.5) * surface.s)
-        border.color: field.ring
-        Behavior on border.color { ColorAnimation { duration: 180 } }
-      }
-      Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(0, field.radius - 1)
-        visible: field.glass
-        gradient: Gradient {
-          GradientStop { position: 0; color: field.cfg.highlight_color ?? "#24ffffff" }
-          GradientStop { position: 0.55; color: "#00ffffff" }
+      // No box, no bubble: just a hairline rule under the typed marks. Idle it
+      // is a faint line that fades out at both ends; typing grows the state
+      // colour out from the centre; checking runs a bright comet along it;
+      // a wrong password turns it red and thickens it for a beat.
+      Item {
+        id: rule
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        readonly property real th: Math.max(1, Math.round((field.cfg.outline_thickness ?? 1.5) * surface.s * (1 + 1.2 * pulse)))
+        height: th
+        clip: true
+        property real pulse: 0
+        property color lineColor: field.ring
+        Behavior on lineColor { ColorAnimation { duration: 200 } }
+        readonly property bool full: field.failed || field.checking || field.ok
+        property real reach: full ? 1 : inner.spread
+        Behavior on reach { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+
+        SequentialAnimation {
+          id: failPulse
+          NumberAnimation { target: rule; property: "pulse"; to: 1; duration: 80 }
+          NumberAnimation { target: rule; property: "pulse"; to: 0; duration: 700; easing.type: Easing.OutCubic }
         }
-      }
 
-      // wrong password: a red wash over the fill that fades with the shake
-      Rectangle {
-        anchors.fill: parent
-        radius: field.radius
-        color: field.failColor
-        opacity: 0
-        visible: opacity > 0
-        SequentialAnimation on opacity {
-          id: failWash
-          running: false
-          NumberAnimation { to: 0.22; duration: 70 }
-          NumberAnimation { to: 0; duration: 650; easing.type: Easing.OutCubic }
+        // idle rule
+        Rectangle {
+          id: idleRule
+          readonly property color c: field.cfg.outer_color ?? field.alpha(field.fontColor, 0.25)
+          anchors.fill: parent
+          gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: field.alpha(idleRule.c, 0) }
+            GradientStop { position: 0.2; color: idleRule.c }
+            GradientStop { position: 0.8; color: idleRule.c }
+            GradientStop { position: 1; color: field.alpha(idleRule.c, 0) }
+          }
+        }
+        // active rule, grows from the centre
+        Rectangle {
+          width: Math.round(parent.width * rule.reach)
+          height: parent.height
+          x: Math.round((parent.width - width) / 2)
+          opacity: field.checking ? 0.35 : 1
+          visible: width > 0
+          gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: field.alpha(rule.lineColor, 0) }
+            GradientStop { position: 0.18; color: rule.lineColor }
+            GradientStop { position: 0.82; color: rule.lineColor }
+            GradientStop { position: 1; color: field.alpha(rule.lineColor, 0) }
+          }
+        }
+        // checking: a comet runs along the rule
+        Rectangle {
+          readonly property real w: rule.width * 0.28
+          width: w
+          height: parent.height
+          x: Math.round((rule.width + w) * inner.sweep - w)
+          visible: field.checking
+          gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: field.alpha(field.checkColor, 0) }
+            GradientStop { position: 1; color: field.checkColor }
+          }
         }
       }
 
@@ -427,6 +456,7 @@ FocusScope {
         anchors.fill: parent
         anchors.leftMargin: field.height * 0.6
         anchors.rightMargin: field.height * 0.6
+        anchors.bottomMargin: field.height * 0.2      // the marks sit just above the rule
 
         // The typed text as a fixed track of short dashes, like a redacted word:
         // it only says "something is typed", never how much. Each keystroke
@@ -546,9 +576,9 @@ FocusScope {
         }
       }
 
-      // caps lock: a key glyph at the right end of the field (plus the hint)
+      // caps lock: a small key glyph at the right end of the rule (plus the hint)
       Text {
-        anchors { right: parent.right; rightMargin: field.height * 0.3; verticalCenter: parent.verticalCenter }
+        anchors { right: parent.right; rightMargin: field.height * 0.1; verticalCenter: parent.verticalCenter; verticalCenterOffset: -field.height * 0.1 }
         opacity: shell.capsLock && !field.ok ? 0.9 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: 180 } }

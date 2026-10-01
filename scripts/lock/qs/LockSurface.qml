@@ -359,13 +359,15 @@ FocusScope {
 
       readonly property color fontColor: cfg.font_color ?? surface.cText
       readonly property color accent: cfg.accent_color ?? surface.cLavender
-      readonly property color ring: ok ? (cfg.success_color ?? surface.cGreen)
-                                  : failed ? (cfg.fail_color ?? surface.cRed)
-                                  : checking ? (cfg.check_color ?? surface.cYellow)
+      readonly property color ring: ok ? okColor
+                                  : failed ? failColor
+                                  : checking ? checkColor
                                   : !empty ? accent
                                   : (cfg.outer_color ?? "#40cdd6f4")
-      readonly property real dot: Math.round(height * (cfg.dots_size ?? 0.22))
-      readonly property real gap: dot * (cfg.dots_spacing ?? 0.9)
+      readonly property color failColor: cfg.fail_color ?? surface.cRed
+      readonly property color okColor: cfg.success_color ?? surface.cGreen
+      readonly property color checkColor: cfg.check_color ?? surface.cYellow
+      function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
       readonly property real radius: Math.min(cfg.rounding !== undefined ? cfg.rounding * surface.s : height / 2, height / 2)
       readonly property bool glass: cfg.glass !== false
 
@@ -381,7 +383,7 @@ FocusScope {
         NumberAnimation { target: field; property: "shake"; to: -3; duration: 60 }
         NumberAnimation { target: field; property: "shake"; to: 0; duration: 55 }
       }
-      onFailedChanged: if (failed) shakeAnim.restart()
+      onFailedChanged: if (failed) { shakeAnim.restart(); failWash.restart() }
 
       // Faux glass: translucent fill, thin state-coloured border, a soft sheen
       // over the top half. Nothing here samples the scene, so nothing bleeds.
@@ -405,69 +407,115 @@ FocusScope {
         }
       }
 
+      // wrong password: a red wash over the fill that fades with the shake
+      Rectangle {
+        anchors.fill: parent
+        radius: field.radius
+        color: field.failColor
+        opacity: 0
+        visible: opacity > 0
+        SequentialAnimation on opacity {
+          id: failWash
+          running: false
+          NumberAnimation { to: 0.22; duration: 70 }
+          NumberAnimation { to: 0; duration: 650; easing.type: Easing.OutCubic }
+        }
+      }
+
       Item {
         id: inner
         anchors.fill: parent
         anchors.leftMargin: field.height * 0.6
         anchors.rightMargin: field.height * 0.6
-        clip: true
 
-        // Dots. `shown` eases toward the real length, and every dot sits at
-        // x0 + i * pitch, so adding or deleting slides the rest smoothly (centred
-        // while it fits, newest at the right edge once it does not). Each dot
-        // fades and scales in/out by itself; nothing is created or destroyed
-        // while visible.
-        property real shown: shell.buffer.length
-        Behavior on shown { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-        readonly property real pitch: field.dot + field.gap
-        readonly property real total: Math.max(0, shown * pitch - field.gap)
-        readonly property real x0: total <= width ? (width - total) / 2 : width - total
-        property int peak: 0
+        // The typed text as a fixed track of short dashes, like a redacted word:
+        // it only says "something is typed", never how much. Each keystroke
+        // lights the next dash (a tall lit tick that sinks back, with a faint
+        // trail); the first one starts at a random dash, so the lit position
+        // says nothing either. Backspace dims the tick and steps it back.
+        // Empty -> typed: the track opens out from the centre; cleared (escape,
+        // a wrong password, unlock): it closes back in, in the state's colour.
+        // Checking: a soft wave of the check colour runs along it.
+        readonly property int count: Math.max(3, Math.min(24, field.cfg.marks ?? 9))
+        readonly property real pitch: width * Math.max(0.2, Math.min(1, field.cfg.marks_width ?? 0.86)) / count
+        readonly property real markW: Math.max(2, Math.round(pitch * 0.46))
+        readonly property real markH: Math.max(2, Math.round(field.height * (field.cfg.marks_thickness ?? 0.05)))
+        property int head: 0
+        property int prevLen: 0
+        property real spread: field.empty ? 0 : 1
+        Behavior on spread {
+          NumberAnimation { duration: field.empty ? (field.checking || field.failed ? 420 : 260) : 300; easing.type: field.empty ? Easing.InCubic : Easing.OutCubic }
+        }
+        function mark(i) { return marks.itemAt(((i % count) + count) % count) }
         Connections {
           target: shell
           function onBufferChanged() {
-            if (shell.buffer.length > inner.peak) inner.peak = shell.buffer.length
-            trim.restart()
+            const n = shell.buffer.length
+            if (n > inner.prevLen) {
+              inner.head = inner.prevLen === 0 ? Math.floor(Math.random() * inner.count) : (inner.head + 1) % inner.count
+              inner.mark(inner.head - 1)?.hit(0.35)
+              inner.mark(inner.head)?.hit(1)
+            } else if (n < inner.prevLen && n > 0) {
+              inner.mark(inner.head)?.hit(-1)
+              inner.head = (inner.head - 1 + inner.count) % inner.count
+            }
+            inner.prevLen = n
           }
         }
-        Timer { id: trim; interval: 500; onTriggered: inner.peak = shell.buffer.length }
+
+        // checking: a wave position along the track, 0..1, looping
+        property real sweep: 0
+        NumberAnimation on sweep {
+          running: field.checking
+          loops: Animation.Infinite
+          from: 0; to: 1; duration: 1100; easing.type: Easing.InOutSine
+        }
 
         Item {
-          id: dots
+          id: track
           anchors.fill: parent
-          visible: !(field.cfg.hide_input === true)
-          opacity: field.ok ? 0 : 1
-          Behavior on opacity { NumberAnimation { duration: 200 } }
-          // the "checking" pulse lives on its own layer so it never fights the fades
-          property real pulse: 1
-          SequentialAnimation {
-            running: field.checking
-            loops: Animation.Infinite
-            onRunningChanged: if (!running) dots.pulse = 1
-            NumberAnimation { target: dots; property: "pulse"; to: 0.4; duration: 450; easing.type: Easing.InOutSine }
-            NumberAnimation { target: dots; property: "pulse"; to: 1; duration: 450; easing.type: Easing.InOutSine }
-          }
+          visible: !(field.cfg.hide_input === true) && inner.spread > 0.001
           Repeater {
-            model: inner.peak
+            id: marks
+            model: inner.count
             Rectangle {
-              id: d
+              id: m
               required property int index
-              property bool armed: false
-              readonly property bool present: armed && index < shell.buffer.length
-              Component.onCompleted: armed = true
-              x: inner.x0 + index * inner.pitch
-              y: (inner.height - height) / 2
-              width: field.dot; height: field.dot; radius: width / 2
-              color: field.failed ? (field.cfg.fail_color ?? surface.cRed) : field.fontColor
-              opacity: present ? dots.pulse : 0
-              scale: present ? 1 : 0.4
-              visible: opacity > 0.01
-              Behavior on opacity { enabled: !field.checking; NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-              Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
-              Behavior on color { ColorAnimation { duration: 180 } }
+              // keystroke pulse: 1 = just typed, -1 = just deleted, eases to 0
+              property real heat: 0
+              NumberAnimation { id: cool; target: m; property: "heat"; to: 0; duration: 700; easing.type: Easing.OutQuad }
+              function hit(v) { cool.stop(); m.heat = v; cool.start() }
+              readonly property real glow: field.checking ? Math.max(0, 1 - Math.abs(inner.sweep * (inner.count + 3) - 1.5 - index) / 1.6) : 0
+              readonly property real lit: Math.min(1, Math.max(0, heat) + glow * 0.6)
+              readonly property real rel: (index - (inner.count - 1) / 2) / ((inner.count - 1) / 2)    // -1..1
+              readonly property real off: rel * (inner.count - 1) / 2 * inner.pitch * inner.spread
+              readonly property real taper: 1 - 0.55 * rel * rel                             // fainter towards the ends
+              readonly property color tint: field.ok ? field.okColor
+                                          : field.failed ? field.failColor
+                                          : field.checking ? Qt.tint(field.fontColor, field.alpha(field.checkColor, 0.35 + 0.65 * glow))
+                                          : Qt.tint(field.fontColor, field.alpha(field.accent, Math.max(0, heat)))
+
+              width: inner.markW
+              height: inner.markH
+              radius: height / 2
+              x: Math.round(inner.width / 2 + off - width / 2)
+              y: Math.round((inner.height - height) / 2)
+              color: field.alpha(tint, 1 - 0.9 * lit)       // the dash gives way to the caret
+              opacity: inner.spread * Math.max(0.12, Math.min(1, 0.7 * taper + 0.6 * heat + 0.5 * glow))
+              // lit: a thin caret stands up through the dash and sinks back
+              Rectangle {
+                anchors.centerIn: parent
+                width: Math.max(2, inner.markH)
+                height: Math.round(field.height * 0.46 * (0.45 + 0.55 * m.lit))
+                radius: width / 2
+                color: m.tint
+                opacity: m.lit * m.lit
+                visible: opacity > 0.01
+              }
             }
           }
         }
+
         Text {
           anchors.centerIn: parent
           visible: opacity > 0
@@ -481,6 +529,34 @@ FocusScope {
           font.letterSpacing: 0.5
           renderType: Text.NativeRendering
         }
+
+        // unlock: a check mark where the track closed
+        Text {
+          id: okMark
+          anchors.centerIn: parent
+          opacity: field.ok ? 1 : 0
+          visible: opacity > 0
+          scale: 0.7 + 0.3 * opacity
+          Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+          text: visible ? String.fromCodePoint(0xF012C) : ""      // nf-md-check
+          color: field.okColor
+          font.family: "JetBrainsMono Nerd Font"
+          font.pixelSize: Math.round(field.height * 0.42)
+          renderType: Text.NativeRendering
+        }
+      }
+
+      // caps lock: a key glyph at the right end of the field (plus the hint)
+      Text {
+        anchors { right: parent.right; rightMargin: field.height * 0.3; verticalCenter: parent.verticalCenter }
+        opacity: shell.capsLock && !field.ok ? 0.9 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        text: visible ? String.fromCodePoint(0xF0632) : ""      // nf-md-apple_keyboard_caps
+        color: field.cfg.caps_color ?? surface.cPeach
+        font.family: "JetBrainsMono Nerd Font"
+        font.pixelSize: Math.round(field.height * 0.34)
+        renderType: Text.NativeRendering
       }
 
       // status line under the field: wrong password / caps lock

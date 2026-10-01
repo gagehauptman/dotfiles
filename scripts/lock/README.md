@@ -154,6 +154,22 @@ xray version), and point Super+L / PowerMenuWidget back at `hyprlock`.
   shadow, field shape) in `meta/<stem>.toml`.
 - Backups: `*.bak-2026-09-29-polish`.
 
+## Password field (2026-09-30)
+
+- The dots are gone: typing shows a fixed track of short dashes, like a redacted
+  word, so a glance says "something is typed", never how much. Each key stands a
+  thin caret up on the next dash (accent colour, sinks back over 0.7 s, faint
+  trail); the first key starts at a random dash, so the caret position says
+  nothing either. Backspace dims the dash and steps back. The track opens from
+  the centre on the first key and closes back in on escape / wrong password /
+  unlock.
+- Checking: a soft wave of the check colour runs along the track. Wrong
+  password: shake + a red wash over the fill, the track closes in red, hint
+  underneath. Unlock: it closes in green into a check mark. Caps lock: a key
+  glyph at the right end of the field (JetBrainsMono Nerd Font) plus the hint.
+- `[input] marks / marks_width / marks_thickness` tune it (`dots_*` are gone).
+  Still only Rectangles and two Text items: no shader, nothing loaded async.
+
 ## Startup speed (2026-09-30)
 
 - **Resident lock.** `lock.sh --warm` (Hyprland start; also after any normal

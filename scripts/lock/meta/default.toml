@@ -45,7 +45,7 @@ blur_size = 6
 # live_fps = 0              # live scene frame rate; 0 = the monitor's refresh rate
 
 # ---- TEXT STYLE: fallback only; each wallpaper's toml sets its own look ------
-# Applies to clock, date, greeting AND the password field (its dots/text); any
+# Applies to clock, date, greeting AND the password field (its marks/text); any
 # element overrides these in its own table (font_family, font_weight, font_size,
 # letter_spacing, uppercase, font_style, color, opacity, shadow_strength).
 #   color        text colour (also the password field's font_color)
@@ -108,8 +108,11 @@ fail_color = "rgb(f38ba8)"       # after a wrong password (red)
 success_color = "rgb(a6e3a1)"    # on unlock (green)
 caps_color = "rgb(fab387)"       # caps lock warning (peach)
 fail_text = "wrong password"
-dots_size = 0.22            # dot diameter, fraction of the field height
-dots_spacing = 0.9          # gap, fraction of the dot diameter
+# Typing shows a fixed track of short dashes (never the length); each key
+# stands a caret up on the next dash, from a random start.
+marks = 9                   # dashes in the track (3-24)
+marks_width = 0.86          # track length, fraction of the field's inner width
+marks_thickness = 0.05      # dash thickness, fraction of the field height
 # font_color, font_family, font_weight come from [text] unless set here
 fade_on_empty = false
 hide_input = false          # true: show nothing while typing

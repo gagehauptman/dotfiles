@@ -36,6 +36,8 @@ WALLPAPERS = CONFIG / "wallpapers"
 SAVE_FILE = CONFIG / "scripts/wallpaper/wpsave.txt"
 # wallpaper_select.sh --warm keeps screen-sized copies of every still here.
 SCALED = RUNTIME / "wallpaper_select/scaled"
+# Frames of live scenes the lock grabbed, shown while the scene starts (kept across reboots).
+POSTERS = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "lockscreen/poster"
 
 ELEMENTS = ("clock", "date", "greeting", "input")
 TEXT_ELEMENTS = ("clock", "date", "greeting")
@@ -200,8 +202,23 @@ def background(wall, mon, meta):
             # cap is set above the rate so it never skips a vblank; the swap chain
             # paces the frames.
             fps = float(bgm.get("live_fps", 0)) or REFRESH.get(name, 60.0)
-            return {"kind": "live", "library": str(lib),
-                    "options": {"output": [w, h], "fps": round(fps * 2, 1)}}
+            out = {"kind": "live", "library": str(lib),
+                   "options": {"output": [w, h], "fps": round(fps * 2, 1)}}
+            # A frame of the scene, shown at once while the scene starts. The lock
+            # grabs one (`poster_out`) when there is none or the app is newer.
+            poster = POSTERS / f"{wall.stem}-{w}x{h}.png"
+            if poster.is_file() and poster.stat().st_mtime >= lib.stat().st_mtime:
+                out["poster"] = str(poster)
+            else:
+                POSTERS.mkdir(parents=True, exist_ok=True)
+                out["poster_out"] = str(poster)
+                for ext in STILL_EXTS:
+                    p = wall.with_suffix(ext)
+                    img = still_background(p, w, h) if p.is_file() else None
+                    if img:
+                        out["poster"] = str(img)
+                        break
+            return out
         if not lib:
             log(f"no Bevy app for live wallpaper {wall.stem}; using a still or flat colour")
         # A still of the scene next to its descriptor, if one was made.

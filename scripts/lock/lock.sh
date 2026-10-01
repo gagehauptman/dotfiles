@@ -18,6 +18,7 @@
 #   lock.sh --unlock        unlock a running lock (from a TTY: Ctrl+Alt+F3)
 #   lock.sh --recover       lock client died and left the screen on the red
 #                           "lock died" screen: start a 3s lock to clear it
+LOCK_T0=$(( ${EPOCHREALTIME/./} / 1000 )); export LOCK_T0      # startup timing in lock.log (ms)
 dir=$(dirname "$(realpath "$0")")
 run=${XDG_RUNTIME_DIR:-/run/user/$UID}
 state=$run/lockscreen

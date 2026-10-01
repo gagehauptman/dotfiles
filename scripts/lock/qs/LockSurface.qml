@@ -118,6 +118,15 @@ FocusScope {
     interval: 2000; repeat: true
     onTriggered: { console.warn("lock fps " + (surface.screenData.name ?? "?") + ": " + (surface.frames / 2).toFixed(1)); surface.frames = 0 }
   }
+  // Startup timing (LOCK_T0 = when it was asked to show, epoch ms): logs this
+  // screen's first frame and the live scene's first frame.
+  readonly property real t0: Number(Quickshell.env("LOCK_T0") || 0)
+  function since() { return surface.t0 > 0 ? (Date.now() - surface.t0) + " ms" : "?" }
+  Connections {
+    id: firstFrame
+    target: surface.t0 > 0 && !surface.preview ? surface.Window.window : null
+    function onFrameSwapped() { console.warn("lock: first frame " + (surface.screenData.name ?? "?") + " at " + surface.since()); firstFrame.target = null }
+  }
   readonly property string period: clock.date.getHours() < 12 ? "morning" : clock.date.getHours() < 18 ? "afternoon" : "evening"
 
   // ---- background (the only thing that moves every frame)
@@ -127,13 +136,40 @@ FocusScope {
 
     Rectangle { anchors.fill: parent; color: bg.color ?? "#ff1e1e2e" }
 
+    // Live: a frame of the scene (lockgen's `poster`) from the first frame on;
+    // the scene fades in over it once it draws (Live.qml).
+    Image {
+      anchors.fill: parent
+      visible: source != ""
+      source: surface.bg.kind === "live" && surface.bg.poster ? "file://" + surface.bg.poster : ""
+      fillMode: Image.PreserveAspectCrop
+    }
+
     Loader {
+      id: live
       anchors.fill: parent
       active: surface.bg.kind === "live"
       source: "Live.qml"
       onLoaded: {
         item.library = Qt.binding(() => surface.bg.library ?? "")
         item.options = Qt.binding(() => JSON.stringify(surface.bg.options ?? {}))
+      }
+    }
+    Connections {
+      target: live.item
+      function onFrameReadyChanged() {
+        if (surface.t0 > 0) console.warn("lock: live scene up " + (surface.screenData.name ?? "?") + " at " + surface.since())
+        if (surface.bg.poster_out) posterGrab.start()
+      }
+    }
+    // No poster yet (or the app changed): save one once the scene has run a little.
+    Timer {
+      id: posterGrab
+      interval: 3000
+      onTriggered: {
+        const out = surface.bg.poster_out
+        if (out && live.item && !surface.shell.unlocking)
+          live.item.grabToImage(r => { if (!r.saveToFile(out)) console.warn("lock: could not save the poster " + out) })
       }
     }
 
@@ -145,7 +181,8 @@ FocusScope {
         anchors.fill: parent
         source: surface.bg.kind === "still" ? "file://" + surface.bg.image : ""
         fillMode: Image.PreserveAspectCrop
-        asynchronous: !surface.preview
+        // Images load synchronously (screen-sized, cached by lockgen): the first
+        // frame already has them, no black frame, no cut-out arriving late.
         visible: !(surface.bg.blur > 0)
       }
       MultiEffect {
@@ -196,13 +233,13 @@ FocusScope {
     opacity: appear * (1 - leave)
     property real appear: surface.preview ? 1 : 0
     property real leave: 0
-    NumberAnimation on appear { running: !surface.preview; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
+    NumberAnimation on appear { running: !surface.preview; from: 0; to: 1; duration: 250; easing.type: Easing.OutCubic }
     NumberAnimation on leave {
       running: surface.shell.unlocking
       from: 0; to: 1; duration: 330; easing.type: Easing.InCubic
     }
     // a little lift as it appears
-    property real lift: (1 - appear) * 14
+    property real lift: (1 - appear) * 8
   }
   component Plane: Item {
     anchors.fill: parent
@@ -213,7 +250,6 @@ FocusScope {
   component Cutout: Image {
     anchors.fill: parent
     fillMode: Image.PreserveAspectCrop
-    asynchronous: !surface.preview
     visible: source != ""
   }
 

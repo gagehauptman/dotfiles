@@ -52,6 +52,15 @@ lock_env() {   # MODE SECS
   LOCK_CAPS_LEDS=$(printf "%s|" /sys/class/leds/*capslock/brightness 2>/dev/null); export LOCK_CAPS_LEDS
   export LOCK_MODE=$1 LOCK_SECONDS=$2 LOCK_CONFIG=$conf LOCK_DIR=$dir
 }
+# Live scenes: Hyprland draws the desktop under the lock (session_lock_xray)
+# while the lock's own scene starts (~0.7 s; LockSurface `bridging` keeps the
+# background see-through until then), so the running wallpaper stays on screen
+# instead of a stale poster frame. Off again 5 s later, the lock is opaque by then.
+xray_bridge() {
+  grep -qE '"kind": ?"live"' "$conf" || return 0
+  hyprctl eval 'hl.config({misc={session_lock_xray=true}})' >/dev/null
+  setsid -f sh -c "sleep 5; hyprctl eval 'hl.config({misc={session_lock_xray=false}})'" </dev/null >/dev/null 2>&1
+}
 lockgen() { python3 "$dir/lockgen.py" "$@" --out "$conf" 2>"$state/lockgen.log" || echo '{"screens":[]}' >"$conf"; }
 
 case $1 in
@@ -84,6 +93,7 @@ case $1 in
     ls "$out"/*.png
     exit ;;
   --recover)
+    hyprctl eval 'hl.config({misc={session_lock_xray=false}})' >/dev/null
     hyprctl eval 'hl.config({misc={allow_session_lock_restore=true}})' >/dev/null
     "$0" --try 3
     hyprctl eval 'hl.config({misc={allow_session_lock_restore=false}})' >/dev/null
@@ -106,6 +116,7 @@ pgrep -xu "$UID" hyprlock >/dev/null && exit 0
 rpid=$(resident_pid)
 if [[ $mode == lock && $secs == 0 && -n $rpid ]]; then
   lockgen
+  xray_bridge
   case $(timeout 2 quickshell ipc --pid "$rpid" call lock engage 2>/dev/null) in
     ok|shown)
       for _ in {1..40}; do
@@ -130,6 +141,7 @@ wall=(); [[ $mode == test && -n $LOCK_WALLPAPER ]] && wall=(--wallpaper "$LOCK_W
 lockgen "${wall[@]}"
 
 lock_env "$mode" "$secs"
+[[ $mode == lock ]] && xray_bridge
 if [[ $mode == test ]]; then
   export LOCK_PAM_DIR=$dir/pam LOCK_PAM_CONFIG=test
   [[ -n $LOCK_TEST_PASSWORD ]] && export LOCK_TEST_PASSWORD

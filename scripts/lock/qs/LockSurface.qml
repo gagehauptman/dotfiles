@@ -33,6 +33,17 @@ FocusScope {
   readonly property var bg: screenData.background ?? ({ kind: "color", color: "#ff1e1e2e" })
   readonly property var els: screenData.elements ?? ({})
   readonly property var depth: screenData.depth ?? ({})
+
+  // Live scenes: until this screen's own scene has drawn and faded in, the
+  // background is see-through and lock.sh has Hyprland keep drawing the desktop
+  // under the lock (misc:session_lock_xray), so the running wallpaper (the same
+  // wall-clock scene) shows instead of the poster, whose frame is from an
+  // earlier lock and so a different moment (2026-10-02). 3 s at most; no scene
+  // by then: the poster / colour as before.
+  property bool bridged: false
+  readonly property bool bridging: bg.kind === "live" && !preview && !bridged
+  Timer { running: surface.bridging; interval: 3000; onTriggered: surface.bridged = true }
+  Timer { id: bridgeEnd; interval: 200; onTriggered: surface.bridged = true }   // after Live.qml's 160 ms fade
   focus: true
   Keys.onPressed: e => shell.handleKey(e)
 
@@ -134,13 +145,13 @@ FocusScope {
     id: stage
     anchors.fill: parent
 
-    Rectangle { anchors.fill: parent; color: bg.color ?? "#ff1e1e2e" }
+    Rectangle { anchors.fill: parent; color: bg.color ?? "#ff1e1e2e"; visible: !surface.bridging }
 
     // Live: a frame of the scene (lockgen's `poster`) from the first frame on;
     // the scene fades in over it once it draws (Live.qml).
     Image {
       anchors.fill: parent
-      visible: source != ""
+      visible: source != "" && !surface.bridging
       source: surface.bg.kind === "live" && surface.bg.poster ? "file://" + surface.bg.poster : ""
       fillMode: Image.PreserveAspectCrop
     }
@@ -158,6 +169,7 @@ FocusScope {
     Connections {
       target: live.item
       function onFrameReadyChanged() {
+        if (live.item.frameReady) bridgeEnd.start()
         if (surface.t0 > 0) console.warn("lock: live scene up " + (surface.screenData.name ?? "?") + " at " + surface.since())
         if (surface.bg.poster_out) posterGrab.start()
       }
@@ -233,10 +245,10 @@ FocusScope {
     opacity: appear * (1 - leave)
     property real appear: surface.preview ? 1 : 0
     property real leave: 0
-    NumberAnimation on appear { running: !surface.preview; from: 0; to: 1; duration: 250; easing.type: Easing.OutCubic }
+    NumberAnimation on appear { running: !surface.preview; from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }
     NumberAnimation on leave {
       running: surface.shell.unlocking
-      from: 0; to: 1; duration: 330; easing.type: Easing.InCubic
+      from: 0; to: 1; duration: 200; easing.type: Easing.InCubic
     }
     // a little lift as it appears
     property real lift: (1 - appear) * 8

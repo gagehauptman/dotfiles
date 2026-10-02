@@ -199,3 +199,17 @@ xray version), and point Super+L / PowerMenuWidget back at `hyprlock`.
 - Revert to a fresh process per lock: `kill $(cat $XDG_RUNTIME_DIR/lockscreen/resident.pid)`
   and drop the `lock.sh --warm` line from hypr/hyprland.lua (lock.sh will start
   one again after the next normal unlock unless that `exec "$0" --warm` goes too).
+
+## Seamless live start (2026-10-02)
+
+- The poster flashed: it is a frame from an earlier lock, but the scenes run on
+  wall-clock time (the globe turns once every ~42 s), so it showed the wrong
+  moment, frozen for the ~0.7 s the lock's own scene takes to start, then jumped.
+- Now, for live wallpapers, `lock.sh` turns on `misc:session_lock_xray` before
+  locking (`xray_bridge`) and LockSurface keeps the background see-through
+  (`bridging`) until its scene has drawn and faded in, so the running desktop
+  wallpaper shows until then (any windows on screen stay visible behind the
+  lock UI for that moment). Xray goes off again 5 s later; the poster/colour
+  remain the fallback if the scene isn't up within 3 s.
+- Revert: restore the `*.bak-2026-10-02` copies of lock.sh, qs/LockSurface.qml,
+  qs/shell.qml, then `kill $(cat $XDG_RUNTIME_DIR/lockscreen/resident.pid); lock.sh --warm`.

@@ -130,7 +130,7 @@ ShellRoot {
   }
   Timer {
     id: releaseTimer
-    interval: 520
+    interval: 320
     onTriggered: {
       if (root.mode === "lock") lock.locked = false
       else root.testShown = false
@@ -245,8 +245,8 @@ ShellRoot {
     locked: false
     WlSessionLockSurface {
       id: lockSurface
-      color: "#ff000000"
-      LockSurface { anchors.fill: parent; shell: root; screenData: root.screenConfig(lockSurface.screen) }
+      color: lockView.bridging ? "transparent" : "#ff000000"   // see LockSurface `bridging`
+      LockSurface { id: lockView; anchors.fill: parent; shell: root; screenData: root.screenConfig(lockSurface.screen) }
     }
     onLockedChanged: {
       if (!locked && !root.unlocking) { console.error("lock: compositor refused or ended the lock"); Qt.exit(3) }

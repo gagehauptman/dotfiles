@@ -34,6 +34,7 @@ bool loadApi(const QString &path, BevyApi &api, QString &err)
     a.ui = reinterpret_cast<bevy_ui_fn>(dlsym(h, "bevy_widget_ui"));
     a.event = reinterpret_cast<bevy_event_fn>(dlsym(h, "bevy_widget_event"));
     a.nextFrame = reinterpret_cast<bevy_next_frame_fn>(dlsym(h, "bevy_widget_next_frame"));
+    a.shown = reinterpret_cast<bevy_shown_fn>(dlsym(h, "bevy_widget_shown"));
     a.destroy = reinterpret_cast<bevy_destroy_fn>(dlsym(h, "bevy_widget_destroy"));
     if (!a.create || !a.frame || !a.pointer || !a.scroll || !a.ui || !a.event || !a.destroy) {
         err = path + " is not a quickshell-bevy app (missing bevy_widget_* symbols)";
@@ -44,24 +45,45 @@ bool loadApi(const QString &path, BevyApi &api, QString &err)
     return true;
 }
 
-// Tears Bevy down on the render thread (the device must go idle there).
-class Cleanup : public QRunnable
+// Frees an app's GPU state on its window's render thread, never on the GUI
+// thread: Qt's render thread records and submits frames that sample the app's
+// image at any time, and Qt owns the VkQueue (the device wait in destroy
+// needs it). Runs from a render job after the next sync, when the item's node
+// is gone or no longer shows the image (frames before that are covered by the
+// device wait), or from sceneGraphInvalidated if the window goes first. If
+// neither ever runs, it leaks rather than free anything at the wrong time.
+struct Reaper
 {
-public:
-    Cleanup(BevyApi a, BevyWidget *b, std::vector<QSGTexture *> t) : api(a), bevy(b), textures(std::move(t)) {}
-    void run() override
+    BevyApi api;
+    BevyWidget *bevy = nullptr;
+    std::vector<QSGTexture *> textures;
+    std::atomic<bool> done{false};
+    std::mutex lock;
+    QMetaObject::Connection invalidated;
+    void run()
     {
+        if (done.exchange(true)) return;
+        {
+            std::lock_guard l(lock);
+            QObject::disconnect(invalidated);
+        }
         for (QSGTexture *t : textures) delete t;
         if (bevy && api.destroy) api.destroy(bevy);
     }
-    BevyApi api;
-    BevyWidget *bevy;
-    std::vector<QSGTexture *> textures;
+};
+
+class ReapJob : public QRunnable
+{
+public:
+    explicit ReapJob(std::shared_ptr<Reaper> r) : reaper(std::move(r)) {}
+    void run() override { reaper->run(); }
+    std::shared_ptr<Reaper> reaper;
 };
 }
 
-BevyView::BevyView()
+BevyView::BevyView() : m_guard(std::make_shared<Guard>())
 {
+    m_guard->view = this;
     setFlag(ItemHasContents, true);
     m_timer.setSingleShot(true);
     m_timer.setTimerType(Qt::PreciseTimer);
@@ -88,28 +110,46 @@ void BevyView::schedule(int ms)
 
 BevyView::~BevyView()
 {
+    // Waits for a render-thread hook that is running; later ones see null
+    std::lock_guard lock(m_guard->lock);
+    m_guard->view = nullptr;
     detach();
-    std::vector<QSGTexture *> texs;
-    for (auto &r : m_retired) texs.push_back(r.tex);
-    m_retired.clear();
-    if (m_window && (m_bevy || !texs.empty()))
-        m_window->scheduleRenderJob(new Cleanup(m_api, m_bevy, std::move(texs)), QQuickWindow::BeforeSynchronizingStage);
-    else if (m_bevy && m_api.destroy)
-        m_api.destroy(m_bevy);
-    m_bevy = nullptr;
 }
 
 void BevyView::setLibrary(const QString &path)
 {
     if (path == m_library) return;
-    m_library = path;
+    {
+        // Another app: the old one goes like a removed item's (after the sync
+        // that drops its image from the node), the new one starts after it.
+        std::lock_guard lock(m_guard->lock);
+        if (m_window) retire(m_window, false);
+        m_library = path;
+        m_failed = false;
+    }
+    if (!m_error.isEmpty()) { m_error.clear(); emit errorChanged(); }
+    if (m_ready) { m_ready = false; emit readyChanged(); }
+    if (m_frameReady) { m_frameReady = false; emit frameReadyChanged(); }
     emit libraryChanged();
     update();
 }
 
+void BevyView::setOptions(const QString &json)
+{
+    if (json == m_options) return;
+    {
+        std::lock_guard lock(m_guard->lock);
+        m_options = json;
+    }
+    emit optionsChanged();
+}
+
 void BevyView::pointer(qreal x, qreal y, bool down)
 {
-    if (m_bevy && m_api.pointer) m_api.pointer(m_bevy, float(x), float(y), down);
+    {
+        std::lock_guard lock(m_inputLock);
+        if (m_bevy && m_api.pointer) m_api.pointer(m_bevy, float(x), float(y), down);
+    }
     // A press, drag or release wants a frame now; hovering waits for the next.
     if (down || down != m_lastDown) kick();
     m_lastDown = down;
@@ -117,21 +157,34 @@ void BevyView::pointer(qreal x, qreal y, bool down)
 
 void BevyView::scroll(qreal dy)
 {
-    if (m_bevy && m_api.scroll) m_api.scroll(m_bevy, float(dy));
+    {
+        std::lock_guard lock(m_inputLock);
+        if (m_bevy && m_api.scroll) m_api.scroll(m_bevy, float(dy));
+    }
     kick();
 }
 
 void BevyView::send(const QString &id, const QString &value)
 {
-    if (m_bevy && m_api.event) m_api.event(m_bevy, id.toUtf8().constData(), value.toUtf8().constData());
+    {
+        std::lock_guard lock(m_inputLock);
+        if (m_bevy && m_api.event) m_api.event(m_bevy, id.toUtf8().constData(), value.toUtf8().constData());
+    }
     kick();
 }
 
 void BevyView::itemChange(ItemChange change, const ItemChangeData &value)
 {
     if (change == ItemSceneChange) {
-        detach();
-        if (value.window) attach(value.window);
+        // The app lives on the old window's device: it goes with the window
+        // change (on that window's render thread) and starts again on the new one.
+        bool hadFrame = m_frameReady;
+        {
+            std::lock_guard lock(m_guard->lock);
+            detach();
+            if (value.window) attach(value.window);
+        }
+        if (hadFrame) { m_frameReady = false; emit frameReadyChanged(); }
     } else if (change == ItemVisibleHasChanged && value.boolValue) {
         update();
     }
@@ -143,10 +196,17 @@ void BevyView::attach(QQuickWindow *win)
     m_window = win;
     // Render-thread hooks: Bevy renders in beforeRendering (its queue work is
     // submitted before Qt's frame, on the same queue), and afterRendering asks
-    // for the next frame so the scene animates while the item is shown.
-    m_conns.push_back(connect(win, &QQuickWindow::beforeRendering, this, &BevyView::beforeRendering, Qt::DirectConnection));
-    m_conns.push_back(connect(win, &QQuickWindow::afterRendering, this, &BevyView::afterRendering, Qt::DirectConnection));
-    m_conns.push_back(connect(win, &QQuickWindow::sceneGraphInvalidated, this, &BevyView::invalidate, Qt::DirectConnection));
+    // for the next frame so the scene animates while the item is shown. They
+    // go through the guard (see Guard), with the window as the context.
+    auto hook = [g = m_guard](void (BevyView::*fn)()) {
+        return [g, fn] {
+            std::lock_guard lock(g->lock);
+            if (g->view) (g->view->*fn)();
+        };
+    };
+    m_conns.push_back(connect(win, &QQuickWindow::beforeRendering, win, hook(&BevyView::beforeRendering), Qt::DirectConnection));
+    m_conns.push_back(connect(win, &QQuickWindow::afterRendering, win, hook(&BevyView::afterRendering), Qt::DirectConnection));
+    m_conns.push_back(connect(win, &QQuickWindow::sceneGraphInvalidated, win, hook(&BevyView::invalidate), Qt::DirectConnection));
     update();
 }
 
@@ -154,7 +214,41 @@ void BevyView::detach()
 {
     for (auto &c : m_conns) disconnect(c);
     m_conns.clear();
+    // Also from the destructor: Qt drops the item's node at the window's next
+    // sync, and the app and its textures go right after it.
+    if (m_window) retire(m_window, true);
     m_window = nullptr;
+}
+
+void BevyView::retire(QQuickWindow *win, bool textures)
+{
+    auto r = std::make_shared<Reaper>();
+    r->api = m_api;
+    {
+        std::lock_guard lock(m_inputLock);
+        r->bevy = m_bevy;
+        m_bevy = nullptr;
+    }
+    if (textures) {
+        for (auto &t : m_retired) r->textures.push_back(t.tex);
+        m_retired.clear();
+        if (m_nodeTex) r->textures.push_back(m_nodeTex);
+        m_nodeTex = nullptr;
+        m_nodeImage = 0;
+    }
+    // Without textures the item stays: its next sync sees no image and drops
+    // the node, which is before the job runs.
+    m_frameImage = 0;
+    m_frameSize = QSize();
+    m_deferred = false;
+    m_uiGen = 0;
+    if (!r->bevy && r->textures.empty()) return;
+    {
+        std::lock_guard lock(r->lock);
+        r->invalidated = QObject::connect(win, &QQuickWindow::sceneGraphInvalidated, win, [r] { r->run(); }, Qt::DirectConnection);
+    }
+    win->scheduleRenderJob(new ReapJob(r), QQuickWindow::AfterSynchronizingStage);
+    win->update();
 }
 
 void BevyView::fail(const QString &msg)
@@ -222,13 +316,20 @@ void BevyView::beforeRendering()
         m_optFps = QJsonDocument::fromJson(opts).object().value("fps").toDouble(0);
         init.options = opts.constData();
         char cerr[512] = {0};
-        m_bevy = m_api.create(&init, cerr, sizeof cerr);
-        if (!m_bevy) {
+        BevyWidget *bevy = m_api.create(&init, cerr, sizeof cerr);
+        if (!bevy) {
             fail(QString::fromUtf8(cerr[0] ? cerr : "bevy failed to start"));
             return;
         }
+        {
+            std::lock_guard lock(m_inputLock);
+            m_bevy = bevy;
+        }
         QMetaObject::invokeMethod(this, [this] { m_ready = true; emit readyChanged(); }, Qt::QueuedConnection);
     }
+    // What the scene graph samples this frame (synced just before), so the
+    // app frees an old target only once Qt is done with it
+    if (m_api.shown) m_api.shown(m_bevy, m_nodeImage);
     const qreal dpr = m_window->effectiveDevicePixelRatio();
     const QSize px(qMax(1, int(width() * dpr)), qMax(1, int(height() * dpr)));
     // Not due yet (the window redraws for another item, say): keep showing
@@ -272,20 +373,31 @@ void BevyView::afterRendering()
 void BevyView::invalidate()
 {
     // Scene graph going away (window destroyed / GPU context lost): the Bevy
-    // device state is tied to it.
-    if (m_bevy && m_api.destroy) m_api.destroy(m_bevy);
-    m_bevy = nullptr;
-    m_deferred = false;
+    // device state is tied to it. Qt has deleted the nodes already and the
+    // device is still there.
+    BevyWidget *bevy;
+    {
+        std::lock_guard lock(m_inputLock);
+        bevy = m_bevy;
+        m_bevy = nullptr;
+    }
     for (auto &r : m_retired) delete r.tex;
     m_retired.clear();
+    delete m_nodeTex;
+    m_nodeTex = nullptr;
+    if (bevy && m_api.destroy) m_api.destroy(bevy);
+    m_deferred = false;
     m_frameImage = m_nodeImage = 0;
+    m_frameSize = QSize();
+    m_uiGen = 0;
     QMetaObject::invokeMethod(this, [this] { if (m_frameReady) { m_frameReady = false; emit frameReadyChanged(); } }, Qt::QueuedConnection);
 }
 
 void BevyView::releaseResources()
 {
-    // Called on the GUI thread with the render thread idle; textures are owned
-    // by the node (deleted with it) or by m_retired (deleted on the render thread).
+    // Called on the GUI thread with the render thread idle; the textures (the
+    // node doesn't own its own) are deleted on the render thread: with the
+    // node in updatePaintNode, or by the reaper / invalidate.
 }
 
 QSGNode *BevyView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
@@ -296,6 +408,11 @@ QSGNode *BevyView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         if (++it->frames > 3) { delete it->tex; it = m_retired.erase(it); } else ++it;
     }
     if (!m_frameImage) {
+        // No image (another app is starting): the node goes, and the image
+        // with it after this sync (see retire)
+        if (m_nodeTex) m_retired.push_back({m_nodeTex, 0});
+        m_nodeTex = nullptr;
+        m_nodeImage = 0;
         delete node;
         return nullptr;
     }
@@ -303,6 +420,8 @@ QSGNode *BevyView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         node = new QSGSimpleTextureNode;
         node->setFiltering(QSGTexture::Linear);
         node->setOwnsTexture(false);
+        if (m_nodeTex) m_retired.push_back({m_nodeTex, 0});
+        m_nodeTex = nullptr;
         m_nodeImage = 0;
     }
     if (m_nodeImage != m_frameImage) {
@@ -311,8 +430,9 @@ QSGNode *BevyView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         QSGTexture *tex = QNativeInterface::QSGVulkanTexture::fromNative(
             reinterpret_cast<VkImage>(m_frameImage), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_window, m_frameSize,
             QQuickWindow::TextureHasAlphaChannel);
-        if (QSGTexture *prev = node->texture()) m_retired.push_back({prev, 0});
+        if (m_nodeTex) m_retired.push_back({m_nodeTex, 0});
         node->setTexture(tex);
+        m_nodeTex = tex;
         m_nodeImage = m_frameImage;
     }
     node->setRect(boundingRect());

@@ -28,7 +28,12 @@
 //! Qt samples it and never changes the layout because the texture is imported
 //! as SHADER_READ_ONLY_OPTIMAL. Two explicit barriers per frame, submitted on
 //! the shared queue in order, keep both sides' view of the layout true.
-//! Everything runs on Qt's render thread.
+//! Everything runs on Qt's render thread, `destroy` included: the image is
+//! Qt's to sample until its scene graph lets go, and wgpu only knows about
+//! its own submissions. So an old target (after a resize) lives until Qt
+//! reports through `bevy_widget_shown` that it shows something else and has
+//! finished the frames that still sampled it, and `destroy` waits for the
+//! device to go idle before anything is freed.
 use std::ffi::{c_char, CStr, CString};
 use std::sync::{Arc, Mutex};
 
@@ -529,6 +534,10 @@ macro_rules! widget {
             $crate::ffi::next_frame(w)
         }
         #[no_mangle]
+        pub unsafe extern "C" fn bevy_widget_shown(w: *mut $crate::ffi::Widget, image: u64) {
+            $crate::ffi::shown(w, image)
+        }
+        #[no_mangle]
         pub unsafe extern "C" fn bevy_widget_destroy(w: *mut $crate::ffi::Widget) {
             $crate::ffi::destroy(w)
         }
@@ -736,7 +745,7 @@ pub mod ffi {
         app: App,
         sync: QueueSync,
         target: Option<Target>,
-        retired: Vec<(Handle<Image>, u64)>,
+        retired: Retired,
         frame: u64,
         /// When the next frame is due, in ms after this one (0 = next display
         /// frame); see [`FramePacing`].
@@ -892,8 +901,24 @@ pub mod ffi {
         }
     }
 
+    /// The VkImage Qt's scene graph samples in the frame being rendered (0 =
+    /// none), called once per Qt frame before `frame`. Old targets are freed
+    /// only once they have been out of the scene graph for a few Qt frames;
+    /// without these calls (an older plugin) they go after a few frames of
+    /// the new target.
     /// # Safety
-    /// Render thread only; waits for the device to go idle first.
+    /// Render thread only (the thread that calls `frame`).
+    pub unsafe fn shown(w: *mut Widget, image: u64) {
+        if w.is_null() {
+            return;
+        }
+        (*w).retired.shown(image);
+    }
+
+    /// # Safety
+    /// Render thread only, never while Qt may still submit work that samples
+    /// the image (Qt's `BevyView` runs it from a render job after the sync
+    /// that dropped its node); waits for the device to go idle first.
     pub unsafe fn destroy(w: *mut Widget) {
         if w.is_null() {
             return;
@@ -1011,25 +1036,23 @@ pub mod ffi {
         }
         app.finish();
         app.cleanup();
-        Ok(Widget { input, ui, ui_json: CString::default(), ui_gen: 0, app, sync, target: None, retired: Vec::new(), frame: 0, next_ms: 0, dead: false })
+        Ok(Widget { input, ui, ui_json: CString::default(), ui_gen: 0, app, sync, target: None, retired: Retired::default(), frame: 0, next_ms: 0, dead: false })
     }
 
     impl Widget {
         fn frame(&mut self, width: u32, height: u32) -> vk::Image {
             let (width, height) = (width.max(1), height.max(1));
             self.frame += 1;
-            let frame = self.frame;
-            // New size: a fresh target; the old one stays alive a few frames
-            // since Qt may still be sampling it.
+            // New size: a fresh target; the old one stays alive until Qt's
+            // scene graph has let go of it (see `Retired`).
             if self.target.as_ref().map_or(true, |t| t.width != width || t.height != height) {
                 let handle = new_target(self.app.world_mut(), width, height);
                 self.app.world_mut().insert_resource(WidgetTarget { handle: handle.clone(), width, height });
                 if let Some(old) = self.target.take() {
-                    self.retired.push((old.handle, frame));
+                    self.retired.push(old.handle, old.image.as_raw());
                 }
                 self.target = Some(Target { handle, width, height, image: vk::Image::null(), shown: false });
             }
-            self.retired.retain(|(_, f)| frame - *f < 6);
 
             // Back to the layout wgpu expects before it renders into the target again
             if let Some(t) = self.target.as_ref() {
@@ -1072,7 +1095,152 @@ pub mod ffi {
                 vk::AccessFlags::SHADER_READ,
             );
             t.shown = true;
+            self.retired.handed_out();
             t.image
+        }
+    }
+
+    /// Qt frames an image has to be out of the scene graph before it is
+    /// freed: the Vulkan RHI keeps two frames in flight, plus one spare.
+    const QT_FRAMES_IN_FLIGHT: u32 = 3;
+    /// Without `shown` reports (an older plugin): frames handing out the new
+    /// target before an old one goes. Qt takes the new image at the next
+    /// sync, so this is that frame plus the frames in flight, with margin.
+    const LEGACY_FRAMES: u32 = 8;
+
+    /// Old targets (replaced on a resize) waiting for Qt to finish with them.
+    /// Dropping the handle frees the VkImage at the next update, and wgpu
+    /// only waits for its own submissions, not for Qt's frames sampling it.
+    pub struct Retired<H = Handle<Image>> {
+        entries: Vec<RetiredTarget<H>>,
+        /// Qt reports what it shows (`shown`); else the legacy count applies.
+        reported: bool,
+    }
+
+    impl<H> Default for Retired<H> {
+        fn default() -> Self {
+            Retired { entries: Vec::new(), reported: false }
+        }
+    }
+
+    struct RetiredTarget<H> {
+        handle: H,
+        image: u64,
+        /// Qt frames since the scene graph last showed it
+        out_for: u32,
+        /// frames that handed out a newer image (legacy rule)
+        newer: u32,
+    }
+
+    impl<H> Retired<H> {
+        pub fn push(&mut self, handle: H, image: u64) {
+            self.entries.push(RetiredTarget { handle, image, out_for: 0, newer: 0 });
+        }
+
+        /// One Qt frame, sampling `image` (0 = nothing of ours).
+        pub fn shown(&mut self, image: u64) {
+            self.reported = true;
+            for e in &mut self.entries {
+                if image != 0 && e.image == image {
+                    e.out_for = 0;
+                } else {
+                    e.out_for = e.out_for.saturating_add(1);
+                }
+            }
+            self.entries.retain(|e| e.out_for <= QT_FRAMES_IN_FLIGHT);
+        }
+
+        /// A frame handed the current target to Qt.
+        pub fn handed_out(&mut self) {
+            if self.reported {
+                return;
+            }
+            for e in &mut self.entries {
+                e.newer = e.newer.saturating_add(1);
+            }
+            self.entries.retain(|e| e.newer < LEGACY_FRAMES);
+        }
+
+        pub fn len(&self) -> usize {
+            self.entries.len()
+        }
+
+        pub fn is_empty(&self) -> bool {
+            self.entries.is_empty()
+        }
+
+        pub fn handles(&self) -> impl Iterator<Item = &H> {
+            self.entries.iter().map(|e| &e.handle)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn kept_while_shown_then_freed_after_frames_in_flight() {
+            let mut r = Retired::<u32>::default();
+            r.push(1, 100);
+            // Qt still shows the old image (it takes the new one at its next sync)
+            for _ in 0..20 {
+                r.shown(100);
+            }
+            assert_eq!(r.len(), 1);
+            // switched: kept for the frames still in flight
+            for _ in 0..QT_FRAMES_IN_FLIGHT {
+                r.shown(200);
+                assert_eq!(r.len(), 1);
+            }
+            r.shown(200);
+            assert!(r.is_empty());
+        }
+
+        #[test]
+        fn handing_out_frames_do_not_free_when_reported() {
+            let mut r = Retired::<u32>::default();
+            r.shown(0);
+            r.push(1, 100);
+            r.shown(100);
+            for _ in 0..100 {
+                r.handed_out();
+            }
+            assert_eq!(r.len(), 1);
+        }
+
+        #[test]
+        fn nothing_shown_counts_as_out() {
+            let mut r = Retired::<u32>::default();
+            r.push(1, 100);
+            r.push(2, 0); // never resolved to an image
+            for _ in 0..=QT_FRAMES_IN_FLIGHT {
+                r.shown(0);
+            }
+            assert!(r.is_empty());
+        }
+
+        #[test]
+        fn two_resizes_free_each_once_out() {
+            let mut r = Retired::<u32>::default();
+            r.push(1, 100);
+            r.push(2, 200);
+            // Qt shows the middle one: the first counts down, the second stays
+            for _ in 0..=QT_FRAMES_IN_FLIGHT {
+                r.shown(200);
+            }
+            assert_eq!(r.handles().copied().collect::<Vec<_>>(), vec![2]);
+        }
+
+        #[test]
+        fn legacy_rule_without_reports() {
+            let mut r = Retired::<u32>::default();
+            r.push(1, 100);
+            for _ in 0..LEGACY_FRAMES - 1 {
+                r.handed_out();
+            }
+            assert_eq!(r.len(), 1);
+            r.handed_out();
+            assert!(r.is_empty());
         }
     }
 

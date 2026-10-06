@@ -6,12 +6,15 @@
 //!
 //!   bevy-snapshot <lib.so> <out.png> [--size 1400x900] [--seconds 20]
 //!                 [--options '{"json": true}'] [--scroll 3] [--drag x0,y0,x1,y1]
-//!                 [--send id=value]... [--bg 1e1e2e]
+//!                 [--send id=value]... [--bg 1e1e2e] [--resize WxH]
 //!
 //! Drag coordinates are fractions of the frame. `--send` presses a control
 //! the app declares (a toggle takes true/false), and the app's controls and
 //! readouts are printed at the end. `--bg` composites the frame over a colour
-//! (the target is transparent outside what the app draws).
+//! (the target is transparent outside what the app draws). `--resize`
+//! switches between the two sizes every 5 frames until the last second and
+//! reports the shown image back one frame late, as Qt does, to exercise the
+//! harness's target retirement.
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -28,6 +31,7 @@ type ScrollFn = unsafe extern "C" fn(*mut Widget, f32);
 type UiFn = unsafe extern "C" fn(*mut Widget, *mut u64) -> *const c_char;
 type EventFn = unsafe extern "C" fn(*mut Widget, *const c_char, *const c_char);
 type DestroyFn = unsafe extern "C" fn(*mut Widget);
+type ShownFn = unsafe extern "C" fn(*mut Widget, u64);
 
 struct Args {
     lib: String,
@@ -40,14 +44,15 @@ struct Args {
     drag: Option<[f32; 4]>,
     send: Vec<(String, String)>,
     bg: Option<[u8; 3]>,
+    resize: Option<(u32, u32)>,
 }
 
 fn parse_args() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);
-    let usage = "usage: bevy-snapshot <lib.so> <out.png> [--size WxH] [--seconds N] [--options JSON] [--scroll N] [--drag x0,y0,x1,y1] [--send id=value]... [--bg rrggbb]";
+    let usage = "usage: bevy-snapshot <lib.so> <out.png> [--size WxH] [--seconds N] [--options JSON] [--scroll N] [--drag x0,y0,x1,y1] [--send id=value]... [--bg rrggbb] [--resize WxH]";
     let lib = it.next().ok_or(usage)?;
     let out = it.next().ok_or(usage)?;
-    let mut a = Args { lib, out, width: 1400, height: 900, seconds: 20.0, options: "{}".into(), scroll: 0.0, drag: None, send: Vec::new(), bg: None };
+    let mut a = Args { lib, out, width: 1400, height: 900, seconds: 20.0, options: "{}".into(), scroll: 0.0, drag: None, send: Vec::new(), bg: None, resize: None };
     while let Some(flag) = it.next() {
         let val = it.next().ok_or_else(|| format!("{flag} needs a value"))?;
         match flag.as_str() {
@@ -55,6 +60,10 @@ fn parse_args() -> Result<Args, String> {
                 let (w, h) = val.split_once('x').ok_or("--size wants WxH")?;
                 a.width = w.parse().map_err(|_| "bad width")?;
                 a.height = h.parse().map_err(|_| "bad height")?;
+            }
+            "--resize" => {
+                let (w, h) = val.split_once('x').ok_or("--resize wants WxH")?;
+                a.resize = Some((w.parse().map_err(|_| "bad width")?, h.parse().map_err(|_| "bad height")?));
             }
             "--seconds" => a.seconds = val.parse().map_err(|_| "bad --seconds")?,
             "--options" => a.options = val,
@@ -231,6 +240,9 @@ fn run() -> Result<(), String> {
         )
     };
 
+    // Optional, like in the Qt plugin
+    let shown = unsafe { lib.get::<*const ()>(b"bevy_widget_shown\0") }.ok().map(|s| unsafe { std::mem::transmute::<*const (), ShownFn>(*s) });
+
     let assets = Path::new(&args.lib).parent().map(|p| p.join("assets")).unwrap_or_default();
     let assets = CString::new(assets.to_string_lossy().into_owned()).unwrap_or_default();
     let options = CString::new(args.options.clone()).map_err(|_| "options contain a NUL byte")?;
@@ -261,6 +273,8 @@ fn run() -> Result<(), String> {
     let mut input_done = false;
     let mut image = vk::Image::null();
     let mut drag_step = 0u32;
+    let mut frames = 0u32;
+    let mut images = std::collections::HashSet::new();
     while start.elapsed() < total {
         let t = start.elapsed();
         if t >= input_at && !input_done {
@@ -285,11 +299,27 @@ fn run() -> Result<(), String> {
                 input_done = true;
             }
         }
-        image = vk::Image::from_raw(unsafe { frame(widget, args.width, args.height) });
+        let (w, h) = match args.resize {
+            Some(size) if (frames / 5) % 2 == 1 && t + Duration::from_secs(1) < total => size,
+            _ => (args.width, args.height),
+        };
+        frames += 1;
+        if let Some(shown) = shown {
+            // what a scene graph synced before this frame would sample
+            unsafe { shown(widget, image.as_raw()) };
+        }
+        let next = vk::Image::from_raw(unsafe { frame(widget, w, h) });
+        if next != vk::Image::null() {
+            image = next;
+            images.insert(next);
+        }
         std::thread::sleep(Duration::from_millis(16));
     }
     if image == vk::Image::null() {
         return Err("the app never produced a frame".into());
+    }
+    if args.resize.is_some() {
+        eprintln!("{frames} frames, {} distinct target images", images.len());
     }
     let mut gen = 0u64;
     let json = unsafe { ui(widget, &mut gen) };

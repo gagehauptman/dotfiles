@@ -10,6 +10,8 @@
 #include <QtQml/qqmlregistration.h>
 #include <atomic>
 #include <chrono>
+#include <memory>
+#include <mutex>
 #include <vector>
 
 extern "C" {
@@ -33,6 +35,7 @@ typedef void (*bevy_scroll_fn)(BevyWidget *w, float dy);
 typedef const char *(*bevy_ui_fn)(BevyWidget *w, uint64_t *generation);
 typedef void (*bevy_event_fn)(BevyWidget *w, const char *id, const char *value);
 typedef uint32_t (*bevy_next_frame_fn)(BevyWidget *w);
+typedef void (*bevy_shown_fn)(BevyWidget *w, uint64_t image);
 typedef void (*bevy_destroy_fn)(BevyWidget *w);
 }
 // The entry points of one loaded app library
@@ -45,6 +48,9 @@ struct BevyApi {
     bevy_event_fn event = nullptr;
     // Optional (older apps lack it): ms until the app wants its next frame
     bevy_next_frame_fn nextFrame = nullptr;
+    // Optional (older apps lack it): the image the scene graph samples this
+    // frame, so the app frees an old target only once Qt is done with it
+    bevy_shown_fn shown = nullptr;
     bevy_destroy_fn destroy = nullptr;
 };
 
@@ -66,7 +72,7 @@ public:
     QString library() const { return m_library; }
     void setLibrary(const QString &path);
     QString options() const { return m_options; }
-    void setOptions(const QString &json) { if (json != m_options) { m_options = json; emit optionsChanged(); } }
+    void setOptions(const QString &json);
     Q_INVOKABLE void scroll(qreal dy);
     QString ui() const { return m_ui; }
     // A control press: the id and, for a toggle, the new state "true"/"false"
@@ -90,14 +96,32 @@ protected:
     void releaseResources() override;
 
 private:
+    // The render-thread hooks reach the item through this, never directly:
+    // the item can be deleted on the GUI thread while the render thread is
+    // in the middle of a frame. The destructor clears `view` under `lock`,
+    // so a hook either finishes first or sees null.
+    struct Guard {
+        std::mutex lock;
+        BevyView *view = nullptr;
+    };
+    std::shared_ptr<Guard> m_guard;
+
+    // GUI thread, m_guard->lock held
     void attach(QQuickWindow *win);
     void detach();
-    void beforeRendering();   // render thread
-    void afterRendering();    // render thread
-    void invalidate();        // render thread
+    // Hands the app (and, with `textures`, the scene-graph textures) to `win`'s
+    // render thread, which frees them after the next sync, when no frame can
+    // sample the image any more. GUI thread, m_guard->lock held.
+    void retire(QQuickWindow *win, bool textures);
+    void beforeRendering();   // render thread, m_guard->lock held
+    void afterRendering();    // render thread, m_guard->lock held
+    void invalidate();        // render thread, m_guard->lock held
     void fail(const QString &msg);
 
     QQuickWindow *m_window = nullptr;
+    // m_bevy for input calls on the GUI thread, against the render thread
+    // creating or destroying it
+    std::mutex m_inputLock;
     std::vector<QMetaObject::Connection> m_conns;
     QString m_library;
     QString m_options;
@@ -126,6 +150,7 @@ private:
     uint64_t m_frameImage = 0;
     QSize m_frameSize;
     uint64_t m_nodeImage = 0;
+    QSGTexture *m_nodeTex = nullptr;  // the node's (not owned by it)
     struct Retired { QSGTexture *tex; int frames; };
     std::vector<Retired> m_retired;
 };

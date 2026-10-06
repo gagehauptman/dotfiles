@@ -325,7 +325,26 @@ FocusScope {
     readonly property real sh: (cfg.shadow_size ?? 4) * surface.s
     Glyphs { lbl: lbl; y: lbl.sh * 1.6; color: lbl.cfg.shadow_color ?? "#cc11111b"; opacity: Math.min(1, 0.22 * lbl.strength); visible: lbl.shadowOn }
     Glyphs { lbl: lbl; y: lbl.sh * 0.6; color: lbl.cfg.shadow_color ?? "#cc11111b"; opacity: Math.min(1, 0.35 * lbl.strength); visible: lbl.shadowOn }
+    // ghost_color: a second plate printed off register (ghost_offset px, x
+    // right / y down), like the cheap offset prints of a poster
+    Glyphs {
+      lbl: lbl
+      readonly property var o: lbl.cfg.ghost_offset ?? [4, 3]
+      x: Math.round(o[0] * surface.s); y: Math.round(o[1] * surface.s)
+      color: lbl.cfg.ghost_color ?? "transparent"
+      visible: lbl.cfg.ghost_color !== undefined
+    }
     Glyphs { id: t; lbl: lbl }
+    // rule_color: a solid bar over the label (rule_size [w, h] px, rule_gap
+    // px above the cap height), aligned to its left edge
+    Rectangle {
+      readonly property var sz: lbl.cfg.rule_size ?? [120, 8]
+      visible: lbl.cfg.rule_color !== undefined
+      color: lbl.cfg.rule_color ?? "transparent"
+      x: lbl.ink.x
+      width: Math.round(sz[0] * surface.s); height: Math.max(1, Math.round(sz[1] * surface.s))
+      y: Math.round(t.baselineOffset - lbl.capH - (lbl.cfg.rule_gap ?? 24) * surface.s - height)
+    }
     // LOCK_PREVIEW_BOXES=1: outline the box each label is aligned by
     Rectangle {
       visible: surface.preview && (Quickshell.env("LOCK_PREVIEW_BOXES") || "") !== ""
@@ -382,6 +401,9 @@ FocusScope {
       function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
       readonly property real radius: Math.min(cfg.rounding !== undefined ? cfg.rounding * surface.s : height / 2, height / 2)
       readonly property bool glass: cfg.glass !== false
+      // text_align = "left": placeholder and status line start at the field's
+      // left edge (a field set on a left margin) instead of centred
+      readonly property bool leftText: cfg.text_align === "left"
 
       // wrong password: shake
       property real shake: 0
@@ -427,10 +449,11 @@ FocusScope {
           anchors.fill: parent
           gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: field.alpha(idleRule.c, 0) }
+            // rule_fade = false: a solid rule, square ends
+            GradientStop { position: 0; color: field.cfg.rule_fade === false ? idleRule.c : field.alpha(idleRule.c, 0) }
             GradientStop { position: 0.2; color: idleRule.c }
             GradientStop { position: 0.8; color: idleRule.c }
-            GradientStop { position: 1; color: field.alpha(idleRule.c, 0) }
+            GradientStop { position: 1; color: field.cfg.rule_fade === false ? idleRule.c : field.alpha(idleRule.c, 0) }
           }
         }
         // active rule, grows from the centre
@@ -559,16 +582,18 @@ FocusScope {
         }
 
         Text {
-          anchors.centerIn: parent
+          x: field.leftText ? -inner.anchors.leftMargin : Math.round((parent.width - width) / 2)
+          y: Math.round((parent.height - height) / 2)
           visible: opacity > 0
           opacity: field.empty && !field.checking && !field.failed && !field.ok && text !== "" ? 1 : 0
           Behavior on opacity { NumberAnimation { duration: field.empty ? 240 : 70 } }
           text: field.cfg.placeholder_text ?? "Password"
-          color: Qt.rgba(field.fontColor.r, field.fontColor.g, field.fontColor.b, 0.55)
+          color: Qt.rgba(field.fontColor.r, field.fontColor.g, field.fontColor.b, field.cfg.placeholder_opacity ?? 0.55)
           font.family: field.cfg.font_family ?? "Inter Display"
           font.weight: surface.weight(field.cfg.font_weight)
           font.pixelSize: Math.round(field.height * 0.3)
-          font.letterSpacing: 0.5
+          font.letterSpacing: (field.cfg.placeholder_spacing ?? 0.5) * surface.s
+          font.capitalization: field.cfg.uppercase === true ? Font.AllUppercase : Font.MixedCase
           renderType: Text.NativeRendering
         }
 
@@ -604,7 +629,8 @@ FocusScope {
       // status line under the field: wrong password / caps lock
       Text {
         id: hint
-        anchors { top: parent.bottom; topMargin: field.height * 0.3; horizontalCenter: parent.horizontalCenter }
+        anchors { top: parent.bottom; topMargin: field.height * 0.3 }
+        x: field.leftText ? 0 : Math.round((parent.width - width) / 2)
         readonly property bool caps: shell.capsLock && !field.ok
         text: field.failed ? (field.cfg.fail_text ?? "wrong password") : caps ? "caps lock is on" : ""
         color: field.failed ? (field.cfg.fail_color ?? surface.cRed) : (field.cfg.caps_color ?? surface.cPeach)
@@ -613,7 +639,8 @@ FocusScope {
         font.family: field.cfg.font_family ?? "Inter Display"
         font.weight: 500
         font.pixelSize: Math.round(field.height * 0.26)
-        font.letterSpacing: 0.6
+        font.letterSpacing: (field.cfg.placeholder_spacing ?? 0.6) * surface.s
+        font.capitalization: field.cfg.uppercase === true ? Font.AllUppercase : Font.MixedCase
         renderType: Text.NativeRendering
       }
     }

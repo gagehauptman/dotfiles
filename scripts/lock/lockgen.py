@@ -42,7 +42,8 @@ POSTERS = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "lockscreen/
 ELEMENTS = ("clock", "date", "greeting", "input")
 TEXT_ELEMENTS = ("clock", "date", "greeting")
 COLOR_KEYS = {"color", "font_color", "outer_color", "inner_color", "check_color", "fail_color",
-              "capslock_color", "shadow_color", "accent_color", "success_color", "caps_color"}
+              "capslock_color", "shadow_color", "accent_color", "success_color", "caps_color",
+              "ghost_color", "rule_color"}
 STILL_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".jxl"}
 
 

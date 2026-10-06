@@ -51,6 +51,13 @@ flat `[background] color`. Non-live wallpapers: the image, cover-cropped.
   `rounding`, `inner_color` (fill), `outer_color` (idle border), `highlight_color`
   (top sheen), `font_color`, `accent_color`. Bright scenes use dark colours with a
   light shadow (clouds, city, pluton, by_on_ramp).
+  Print-style extras (2026-10-06, the Sputnik poster): any label takes `ghost_color`
+  (+ `ghost_offset = [x, y]` px, right/down) for a second plate printed off register,
+  and `rule_color` (+ `rule_size = [w, h]`, `rule_gap` px) for a solid bar over it.
+  The field takes `text_align = "left"` (placeholder and status line on its left
+  edge), `rule_fade = false` (a solid rule, square ends), `uppercase`,
+  `placeholder_spacing`, `placeholder_opacity`, and its state colours
+  `check_color`, `fail_color`, `success_color`, `caps_color`.
   Fonts installed: Inter / Inter Display, Adwaita Sans / Mono, Noto Sans (+ Condensed,
   Mono), Noto Serif, Liberation Serif, Carlito.
 - Preview any wallpaper's look without switching: `LOCK_WALLPAPER=~/.config/wallpapers/clouds/clouds.png lock.sh --test 8`

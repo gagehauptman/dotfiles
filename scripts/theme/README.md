@@ -37,8 +37,31 @@ Deviate from Catppuccin only when it clearly clashes with the image.
             background panel panelDeep inset border textPrimary textSecondary
             textMuted accent error success warning onAccent
     extra   {accent2}            second accent (window-border gradient)
+    globe   {...}                optional: the dashboard globe's inks (see below)
 
 Each wallpaper's theme.json keeps only what differs from its Catppuccin flavour (accent, accent2, display font).
+
+## The globe
+
+The dashboard globe (bevy/apps/globe) takes its inks from the palette, so every
+theme gets one without a `globe` block: ocean = panelDeep tinted towards blue,
+land = inset tinted towards accent, coast and glow = accent, borders/regions/grid
+from the text roles, home = accent2, names in textPrimary/textSecondary (pushed
+to readable contrast), aircraft, clouds, cold tops and city lights from the hues;
+names in the mono font. A theme (or the preset it inherits) may override any of it:
+
+    "globe": { "ocean": "#16236a", "land": "#f4e8d0", "land_strength": 0.24,
+               "coast": "red", "font": "display" }
+
+Colours are a palette role or #rrggbb[aa]: ocean, land, coast, borders, regions,
+grid, glow, home, countries, region_names, cities, capitals, airports,
+aircraft_low|mid|high|cruise, drives, terminator, dusk_warm, dusk_cool, clouds,
+weather [4 cold-top colours], lights [8 zone colours]. Numbers: land_strength
+(0 = no land fill), glow_strength (0.1), night (night-side darkening, 0.3; 0.15
+on light themes). `font`: ui, mono, display or a family. The full list is in
+bevy/apps/globe/src/theme.rs. A wallpaper change re-colours the running globe in
+place (BevyWidget.qml sends the theme as a `theme` event once the fade settles);
+the widget is never recreated for it.
 
 ## How it switches
 
@@ -97,4 +120,4 @@ then JetBrains Mono, for mono) and logs `theme: font "X" ... is not installed`.
 
 The lock screen reads `<stem>/lock.toml` from the same folder (falls back to
 `scripts/lock/meta/<stem>.toml`, then `meta/default.toml` and `meta/layouts/`,
-which stay shared). Not yet themed: Bevy widgets.
+which stay shared). Of the Bevy widgets, the globe is themed (see The globe); the rest not yet.

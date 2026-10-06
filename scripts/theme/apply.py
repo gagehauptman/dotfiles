@@ -70,7 +70,7 @@ def load(stem, seen=()):
             if parent and parent not in seen:
                 base = load(parent, seen + (stem,))
                 if base:
-                    for k in ("fonts", "style", "palette", "extra"):
+                    for k in ("fonts", "style", "palette", "extra", "globe"):
                         merged = dict(base.get(k, {})); merged.update(t.get(k) or {})
                         t[k] = merged
                     for k in ("dark", "name"):

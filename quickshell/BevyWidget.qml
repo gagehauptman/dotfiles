@@ -21,14 +21,52 @@ Item {
   property string app: ""            // set by a registry entry's props; else from the preset options
   readonly property string appName: app !== "" ? app : (bevyWidget.options.app ?? "planet")
   readonly property string library: root.home + "/.config/quickshell/modules/Bevy/apps/" + appName + "/lib" + appName + ".so"
-  // Options for the app: the preset entry's object plus the shell's colours
-  readonly property string optionsJson: {
+  // The shell's theme for the app: colours by role (`theme`), `dark`, the
+  // font families, and `look`, the wallpaper theme.json's block named after
+  // the app (e.g. "globe"). In the options at create time, and pushed to the
+  // running app as a `theme` event when it changes (see themePush).
+  readonly property var themePart: {
     let c = Theme.colors, hex = v => "#" + [v.r, v.g, v.b].map(x => Math.round(x * 255).toString(16).padStart(2, "0")).join("")
     let theme = { background: hex(c.background), panel: hex(c.panel), panelDeep: hex(c.panelDeep), inset: hex(c.inset), border: hex(c.border),
                   textPrimary: hex(c.textPrimary), textSecondary: hex(c.textSecondary), textMuted: hex(c.textMuted),
                   red: hex(c.red), orange: hex(c.orange), yellow: hex(c.yellow), green: hex(c.green), teal: hex(c.teal), cyan: hex(c.cyan),
-                  blue: hex(c.blue), indigo: hex(c.indigo), violet: hex(c.violet), lavender: hex(c.lavender), pink: hex(c.pink) }
-    return JSON.stringify(Object.assign({}, bevyWidget.options, { theme: theme, scale: Screen.devicePixelRatio, settings: bevyWidget.saved }))
+                  blue: hex(c.blue), indigo: hex(c.indigo), violet: hex(c.violet), lavender: hex(c.lavender), pink: hex(c.pink),
+                  accent: hex(c.accent), onAccent: hex(c.onAccent) }
+    let r = Theme.resolved || {}
+    if (r.extra && typeof r.extra.accent2 === "string") theme.accent2 = r.extra.accent2
+    let look = r[bevyWidget.appName]
+    return { theme: theme, dark: Theme.isDark, fonts: { ui: Theme.fonts.ui, mono: Theme.fonts.mono, display: Theme.fonts.display },
+             look: look && typeof look === "object" ? look : {} }
+  }
+  readonly property string themeJson: JSON.stringify(themePart)
+  // Options for the app: the preset entry's object plus the shell's theme
+  readonly property string optionsJson: JSON.stringify(Object.assign({}, bevyWidget.options, themePart, { scale: Screen.devicePixelRatio, settings: bevyWidget.saved }))
+  // A theme change reaches the running app as one event once the colours have
+  // settled (the fade animates every role; a wallpaper flip re-themes after
+  // its own pause), never by recreating it; an app without a theme handler
+  // ignores the event. A fresh app gets the theme in its options and once
+  // more when it is up, in case it changed while it was starting.
+  property string themeSent: ""
+  function pushTheme() {
+    if (!view.item || !view.item.ready || bevyWidget.themeJson === bevyWidget.themeSent) return
+    bevyWidget.themeSent = bevyWidget.themeJson
+    view.item.send("theme", bevyWidget.themeJson)
+    console.log("bevy " + bevyWidget.appName + ": theme " + Theme.stem + " pushed")
+  }
+  onThemeJsonChanged: themePush.restart()
+  Timer {
+    id: themePush
+    interval: 250
+    onTriggered: Theme.fading ? restart() : bevyWidget.pushTheme()
+  }
+  Connections {
+    target: view.item
+    ignoreUnknownSignals: true
+    function onReadyChanged() {
+      console.log("bevy " + bevyWidget.appName + ": app " + (view.item.ready ? "up" : "down"))
+      bevyWidget.themeSent = ""
+      themePush.restart()
+    }
   }
   readonly property var ui: view.item && view.item.ui ? view.item.ui : ({})
   readonly property var controls: (bevyWidget.options.controls ?? true) && Array.isArray(ui.controls) ? ui.controls : []

@@ -7,6 +7,7 @@ Item {
   property string library: ""
   property string options: "{}"
   readonly property string error: view.error
+  readonly property bool ready: view.ready
   // What the app declared through WidgetUi: { controls: [{type, id, label, on}], info: [{id, label, value}] }
   readonly property var ui: {
     try { return JSON.parse(view.ui || "{}") } catch (e) { return ({}) }

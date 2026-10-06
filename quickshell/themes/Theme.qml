@@ -16,6 +16,9 @@ Singleton {
     property string name: "Catppuccin Mocha"
     property string stem: ""
     property bool isDark: true
+    // The whole resolved theme.json (current.json), for keys the roles below
+    // don't carry: extra.accent2, an app's own block such as "globe"
+    property var resolved: ({})
 
     readonly property DynamicTheme colors: DynamicTheme {}
 
@@ -83,6 +86,7 @@ Singleton {
         isDark = colors.isDark;
         name = t.name || "";
         stem = t.stem || "";
+        resolved = t;
         let f = t.fonts || {};
         // A role the theme leaves out goes back to the stock font, not the previous wallpaper's.
         fonts.ui = pickFont("ui", f.ui);

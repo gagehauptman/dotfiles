@@ -34,7 +34,7 @@ Each wallpaper lives in `wallpapers/<stem>/` (image or `<stem>.live`, plus `them
 
 ## Lock screen
 Script `~/.config/scripts/lock/lock.sh` (header and `README.md` beside it explain everything). It is an **ext-session-lock client built in Quickshell** (`qs/shell.qml`, `WlSessionLock`) that draws the current wallpaper's live scene. A resident hidden instance is started at login (`lock.sh --warm`); Super+L only shows it. `lockgen.py` reads `wallpapers/<stem>/lock.toml`.
-**Why "hyprlock" appears:** (1) the PAM service is named `hyprlock` (`/etc/pam.d/hyprlock` = `auth include login`, left over from the old package), the Quickshell lock just uses that name to check the login password; (2) `lock.sh` falls back to the real `hyprlock` binary (static `~/.config/hypr/hyprlock.conf`) only if the Quickshell lock dies at startup. The `hyprlock` program is NOT installed (`which hyprlock` fails), so that fallback cannot run today.
+**Why "hyprlock" appears:** (1) the PAM service is named `hyprlock` (`/etc/pam.d/hyprlock` = `auth include login`, left over from the old package), the Quickshell lock just uses that name to check the login password; (2) `lock.sh` falls back to the real `hyprlock` binary (static `~/.config/hypr/hyprlock.conf`) only if the Quickshell lock dies at startup. The `hyprlock` program is NOT installed (`which hyprlock` fails) and `hypr/hyprlock.conf` does not exist, so that fallback cannot run today: if the Quickshell lock dies, there is no backup lock.
 State: `$XDG_RUNTIME_DIR/lockscreen/` (`lock.log`, `lock.json`, `resident.pid`).
 
 | Command | Safe? |

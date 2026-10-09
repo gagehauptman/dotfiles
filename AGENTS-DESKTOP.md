@@ -68,3 +68,15 @@ Offline from vic-server on 2026-10-09 (Tailscale: offline, last seen 1d; ssh tim
 - Don't edit lock scripts, hyprland.lua or Quickshell QML unless asked; the repo has Vic's uncommitted work (no `git reset/checkout/clean/stash`, no push).
 - Don't install or reference `hyprlock` as if it were the lock.
 - `*.bak-*` files are Vic's/agents' snapshots; leave them.
+
+## Recipe: lock + monitors off from a remote agent (worked 2026-10-09, Vic confirmed)
+Only when Vic explicitly asks to lock / turn monitors off.
+1. Set the env from "Remote-agent rules" above (XDG_RUNTIME_DIR, HYPRLAND_INSTANCE_SIGNATURE).
+2. Truncate the log, then lock THROUGH Hyprland (same path as the Super+L keybind), never by running lock.sh from the ssh shell:
+   `: > $XDG_RUNTIME_DIR/lockscreen/lock.log; hyprctl dispatch "hl.dsp.exec_cmd(\"/home/v1k/.config/scripts/lock/lock.sh\")"`
+3. Read `$XDG_RUNTIME_DIR/lockscreen/lock.log`. Two outcomes both ended up locked:
+   - "resident lock secure N ms after the key": the resident lock took it.
+   - "the resident lock (PID) did not lock; starting a fresh one": the fresh lock client (`quickshell -p /storage/git/dotfiles/scripts/lock/qs`, new PID) then took over; "secure" was NOT logged, so a missing "secure" line is not proof of failure. Check that the fresh `quickshell -p .../lock/qs` process is alive, and ask Vic if still unsure.
+   A genuine failure is a wl_display protocol error with no lock client afterwards (that was the bare-over-ssh run).
+4. Only after the lock is confirmed: `hyprctl dispatch "hl.dsp.dpms({ action = \"off\" })"`; verify with `hyprctl monitors | grep dpmsStatus` (0 = off; monitors: DP-4 and HDMI-A-3). Waking: any key/mouse input (or `hl.dsp.dpms({ action = "on" })`).
+5. The old syntax `hyprctl dispatch dpms off` only prints a Lua-shorthand note and does nothing.

@@ -37,7 +37,11 @@ ShellRoot {
   readonly property bool resident: Quickshell.env("LOCK_RESIDENT") === "1"
   property real t0: Number(Quickshell.env("LOCK_T0") || 0)   // when asked to show (epoch ms), for timing logs
   property bool testShown: !root.resident
-  readonly property bool shown: root.mode === "test" ? root.testShown : lock.locked
+  // Our own flag: WlSessionLock never emits lockStateChanged on unlock (Quickshell
+  // 0.3.1), so a binding on lock.locked stays true after the first unlock and the
+  // resident next engage became a no-op ("shown"), forcing the slow fresh lock.
+  property bool lockEngaged: false
+  readonly property bool shown: root.mode === "test" ? root.testShown : root.lockEngaged
 
   // ---- settings (lockgen.py's JSON)
   property var config: ({ screens: [] })
@@ -132,7 +136,7 @@ ShellRoot {
     id: releaseTimer
     interval: 320
     onTriggered: {
-      if (root.mode === "lock") lock.locked = false
+      if (root.mode === "lock") { lock.locked = false; root.lockEngaged = false }
       else root.testShown = false
       // Give the compositor its unlock request before the process goes away:
       // exiting while locked would leave it on the "lock died" screen.
@@ -159,7 +163,7 @@ ShellRoot {
     root.reset()
     root.reloadConfig()
     root.t0 = Date.now()
-    if (root.mode === "lock") lock.locked = true
+    if (root.mode === "lock") { root.lockEngaged = true; lock.locked = true }
     else root.testShown = true
     return "ok"
   }
@@ -251,7 +255,11 @@ ShellRoot {
     onLockedChanged: {
       if (!locked && !root.unlocking) { console.error("lock: compositor refused or ended the lock"); Qt.exit(3) }
     }
-    onSecureChanged: if (!secure && root.unlocking && !root.resident) Qt.quit()
+    onSecureChanged: {
+      if (secure) return
+      if (root.unlocking) { if (!root.resident) Qt.quit() }
+      else root.lockEngaged = lock.locked   // the compositor ended the lock; lockStateChanged does not fire for that
+    }
   }
 
   // Test mode: overlay layer surfaces, not a lock.
@@ -271,6 +279,6 @@ ShellRoot {
   }
 
   Component.onCompleted: {
-    if (root.mode === "lock" && !root.resident) lock.locked = true
+    if (root.mode === "lock" && !root.resident) { root.lockEngaged = true; lock.locked = true }
   }
 }

@@ -117,13 +117,17 @@ rpid=$(resident_pid)
 if [[ $mode == lock && $secs == 0 && -n $rpid ]]; then
   lockgen
   xray_bridge
-  case $(timeout 2 quickshell ipc --pid "$rpid" call lock engage 2>/dev/null) in
+  reply=$(timeout 2 quickshell ipc --pid "$rpid" call lock engage 2>/dev/null)
+  echo "lock.sh: resident engage reply: ${reply:-<none>}" >>"$state/lock.log"
+  case $reply in
     ok|shown)
-      for _ in {1..40}; do
-        if [[ $(timeout 1 quickshell ipc --pid "$rpid" call lock state 2>/dev/null) == secure ]]; then
+      for i in {1..40}; do
+        st=$(timeout 1 quickshell ipc --pid "$rpid" call lock state 2>/dev/null)
+        if [[ $st == secure ]]; then
           echo "lock.sh: resident lock secure $(( ${EPOCHREALTIME/./} / 1000 - LOCK_T0 )) ms after the key" >>"$state/lock.log"
           exit 0
         fi
+        [[ $st == hidden && $i -ge 4 ]] && break   # engage was a no-op: do not wait 3 s for nothing
         kill -0 "$rpid" 2>/dev/null || break
         sleep 0.05
       done ;;

@@ -2,6 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "themes"
+import "NovaLatex.js" as Latex
+import "NovaQuiz.js" as QuizFmt
 
 // Nova chat panel (SUPER+A): type or talk to Nova from the bar, voice and text in one log.
 // Backend: nova_client.py from the nova repo (NOVA_CLIENT), talking to the same voice server as nova_voice.py.
@@ -92,6 +94,10 @@ Item {
   property bool typedPending: false
   readonly property bool busy: typedPending || voiceBusy
   readonly property string mode: typedPending ? "text" : voiceBusy ? "voice" : ""
+  // barge-in (2026-10-07): while Nova is thinking or speaking, a typed message cuts that turn off and the bridge hands
+  // the cut-off message to the new turn with it (nothing is lost). Not while the mic is listening/transcribing.
+  readonly property bool canBargeIn: typedPending || root.voiceState === "thinking" || root.voiceState === "speaking"
+  readonly property string staleNote: "\n\n*(cut off: you sent a newer message)*"
   readonly property string typedPid: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nova-voice/typed.pid"
 
   readonly property color statusColor: {
@@ -105,10 +111,43 @@ Item {
     }
   }
 
+  // ---- Nova's lynx (NovaAvatar in the header): the voice engine's status when there is one; a typed turn is
+  // thinking until its reply streams in. Idle for a few minutes with the panel open, she dozes off.
+  property bool streaming: false        // a reply is arriving (delta events) in the current turn
+  property int liveSpoken: -1           // chars of the streaming reply read aloud so far: -1 = all (so far), 0 = chat-only; set by "quiet" events
+  property bool drowsy: false
+  readonly property string lynxMood: {
+    switch (status) {
+    case "listening":    return "listening";
+    case "transcribing":
+    case "thinking":     return "thinking";
+    case "speaking":     return "speaking";
+    }
+    if (busy) return streaming ? "speaking" : "thinking";
+    return drowsy ? "sleepy" : "idle";
+  }
+  readonly property color lynxTint: {
+    if (status === "error") return Theme.colors.red;
+    switch (lynxMood) {
+    case "listening": return Theme.colors.teal;
+    case "thinking":  return Theme.colors.violet;
+    case "speaking":  return Theme.colors.blue;
+    case "sleepy":    return Theme.colors.textMuted;
+    default:          return Theme.colors.lavender;
+    }
+  }
+  readonly property string lynxLabel: status === "error" ? "something went wrong"
+    : ({ listening: "listening", thinking: status === "transcribing" ? "transcribing" : "thinking",
+         speaking: "speaking", sleepy: "dozing", idle: "here" })[lynxMood]
+  Timer { interval: 5 * 60 * 1000; running: chat.isOpen && !chat.busy && chat.status === "" && !chat.drowsy; onTriggered: chat.drowsy = true }
+  onBusyChanged: if (busy) drowsy = false
+  onStatusChanged: if (status !== "") drowsy = false
+
   ListModel { id: messages }   // role: user | nova | error; text; speaker; pending
 
   onIsOpenChanged: {
     if (isOpen) {
+      drowsy = false
       if (!busy) loadHistory()
       input.forceActiveFocus()
     }
@@ -130,8 +169,9 @@ Item {
     for (let l of lines) {
       try {
         let e = JSON.parse(l)
-        messages.append({ role: e.role, text: e.text, speaker: e.speaker || "", pending: false, hl: -1,
-                          spoken: (typeof e.spoken === "number") ? e.spoken : -1, imgs: (e.images || []).join("\n") })
+        messages.append({ role: e.role, text: e.text + (e.stale ? staleNote : ""), speaker: e.speaker || "", pending: false, hl: -1,
+                          spoken: e.stale ? 0 : (typeof e.spoken === "number") ? e.spoken : -1, imgs: (e.images || []).join("\n") })
+        if (e.role === "user") quizSent(e.text)
       } catch (err) {}
     }
     scrollDown(true)
@@ -161,13 +201,16 @@ Item {
   // Voice markers ([quiet] [listen] [end]) and bracketed stage directions ("[laughs]") never show; markdown links
   // "[text](url)" and task boxes "[x]" are kept. MEDIA:<path> lines become inline images (the path lives on the
   // gateway host, so the file is scp'd once into mediaDir; a path that exists locally is used as is).
+  // LaTeX ($..$, \(..\), $$..$$, \[..\]) is pulled out first so the bracket cleanup can't eat it, then put back
+  // as rich-text math (NovaLatex.js); a lone "$5" stays prose.
   readonly property string mediaDir: (Quickshell.env("XDG_CACHE_HOME") || (root.home + "/.cache")) + "/nova-chat-media"
   readonly property string mediaHost: Quickshell.env("NOVA_GATEWAY_SSH") || "vic-server"
   function cleanText(s) {
-    return s.replace(/^[ \t]*MEDIA:.*$/gm, "")
-            .replace(/\[(?:quiet|listen|end)\]/gi, "")
+    let ex = Latex.extract(s)
+    return Latex.restore(ex.text.replace(/^[ \t]*MEDIA:.*$/gm, "")
+            .replace(/\[(?:quiet|listen|end)\]|\[\s*lang(?:uage)?\s*[:=][^\]\n]{0,16}\]/gi, "")
             .replace(/\[[^\[\]\n`]*\](?![(\[:])/g, m => /^\[[ xX]\]$/.test(m) ? m : "")
-            .replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim()
+            .replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim(), ex.math)
   }
   function mediaPaths(s) {
     let out = []
@@ -190,10 +233,13 @@ Item {
     mediaCurrent = mediaQueue[0]; mediaQueue = mediaQueue.slice(1)
     mediaProc.running = true
   }
+  // One chat panel per monitor, each fetching the same file at once: a per-process temp name keeps them from
+  // clobbering each other, and the file being there afterwards counts as success, whoever finished first.
   Process {
     id: mediaProc
     command: ["bash", "-c", "p=\"$1\"; d=\"$2\"; f=\"$3\"; mkdir -p \"$d\"; [ -s \"$f\" ] && exit 0; " +
-              "if [ -s \"$p\" ]; then cp \"$p\" \"$f\"; else scp -q -o BatchMode=yes -o ConnectTimeout=8 \"$4:$p\" \"$f.part\" && mv \"$f.part\" \"$f\"; fi",
+              "t=\"$f.part.$$\"; if [ -s \"$p\" ]; then cp \"$p\" \"$t\"; else scp -q -o BatchMode=yes -o ConnectTimeout=8 \"$4:$p\" \"$t\"; fi " +
+              "&& mv -f \"$t\" \"$f\"; rm -f \"$t\"; [ -s \"$f\" ]",
               "bash", chat.mediaCurrent, chat.mediaDir, chat.mediaLocal(chat.mediaCurrent), chat.mediaHost]
     onExited: (code, st) => {
       chat.mediaState[chat.mediaCurrent] = code === 0 ? "ok" : "fail"
@@ -230,19 +276,78 @@ Item {
 
   function send() {
     let t = input.text.trim()
-    if ((t === "" && attachments.length === 0) || busy) return
+    if ((t === "" && attachments.length === 0) || (busy && !canBargeIn)) return
     lastTyped = t
     input.text = ""
+    sendTurn(t, true)
+  }
+  function sendTurn(t, withImages) {
     follow = true
     let cmd = [python, client, "turn", "--json", "--text", t]   // Nova decides whether to say it out loud
-    for (let a of attachments) cmd.push("--image", a)
-    attachments = []
+    if (withImages) { for (let a of attachments) cmd.push("--image", a); attachments = [] }
     typedPending = true
     Quickshell.execDetached(cmd)
   }
 
-  // same as SUPER+T: starts listening, or while a voice turn runs: send now / interrupt and listen again
-  function micPressed() { if (!typedPending) Quickshell.execDetached([voiceSh, "toggle"]) }
+  // ---- quizzes: ```quiz blocks in Nova's replies (NovaQuiz.js / NovaQuiz.qml). Submit sends the answers as a
+  // normal typed turn; a sent answers message (live or in the history) locks its quiz, matched by the block's key.
+  property var quizDrafts: ({})         // quiz key -> {question id: answer} while being filled in
+  property var quizDone: ({})           // quiz key -> the answers message that was sent
+  function quizSent(text) {
+    let k = QuizFmt.keyOf(text || "")
+    if (k && quizDone[k] !== text) { let d = Object.assign({}, quizDone); d[k] = text; quizDone = d }
+  }
+  function submitQuiz(key, message) {
+    if (busy) return
+    quizSent(message)
+    sendTurn(message, false)
+  }
+
+  // same as SUPER+T: starts listening, or while a voice turn runs: send now / interrupt and listen again.
+  // A typed turn or an agent report that is talking gets cut off too (nova_voice.sh hush_others).
+  function micPressed() { Quickshell.execDetached([voiceSh, "toggle"]) }
+
+  // ---- speech recognition language: "auto" or an ISO 639-1 code, sent with every turn (nova_client.py `lang`,
+  // ~/.local/state/nova-voice/stt_lang.json). The chip beside the mic sets it; Nova switches it with a [lang:xx]
+  // reply marker (the client writes the same file, the "lang" event updates the chip at once). A set language
+  // goes back to auto after idle_s (NOVA_STT_LANG_IDLE_MIN, default 30 min) without a turn.
+  readonly property string langPath: (Quickshell.env("XDG_STATE_HOME") || (root.home + "/.local/state")) + "/nova-voice/stt_lang.json"
+  property var langState: ({ lang: "auto", by: "", ts: 0, used: 0, idle_s: 1800 })
+  property bool langOpen: false
+  readonly property string sttLang: {
+    let s = langState, l = (s.lang || "auto").toLowerCase()
+    if (l !== "auto" && now - Math.max(s.ts || 0, s.used || 0) * 1000 > (s.idle_s || 1800) * 1000) return "auto"
+    return l
+  }
+  readonly property var langChoices: [
+    { code: "en", label: "English" },    { code: "de", label: "Deutsch" },
+    { code: "ru", label: "Русский" },    { code: "uk", label: "Українська" },
+    { code: "es", label: "Español" },    { code: "fr", label: "Français" },
+    { code: "it", label: "Italiano" },   { code: "pt", label: "Português" },
+    { code: "pl", label: "Polski" },     { code: "cs", label: "Čeština" },
+    { code: "nl", label: "Nederlands" }, { code: "sv", label: "Svenska" },
+    { code: "ja", label: "日本語" },      { code: "zh", label: "中文" },
+    { code: "ko", label: "한국어" },      { code: "tr", label: "Türkçe" }
+  ]
+  FileView {
+    id: langFile
+    path: chat.langPath
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { chat.langState = JSON.parse(text()) } catch (e) {} }
+  }
+  function applyLang(code, by) {
+    let t = Date.now() / 1000
+    langState = { lang: code, by: by, ts: t, used: t, idle_s: langState.idle_s || 1800 }
+    now = Date.now()
+    if (by === "nova") langFlash.restart()
+  }
+  function setLang(code) {
+    langOpen = false
+    applyLang(code, "vic")
+    Quickshell.execDetached([python, client, "lang", code])
+  }
 
   function stop() {
     if (typedPending) Quickshell.execDetached(["bash", "-c", "kill -TERM $(cat '" + typedPid + "') 2>/dev/null"])
@@ -259,6 +364,8 @@ Item {
 
   function settle() {
     status = ""
+    streaming = false
+    liveSpoken = -1
     dropLiveUser()
     for (let i = 0; i < messages.count; i++) if (messages.get(i).pending) messages.setProperty(i, "pending", false)
     historyFile.reload()
@@ -290,6 +397,7 @@ Item {
         messages.append({ role: "user", text: ev.text, speaker: ev.speaker || "", pending: false, hl: -1, spoken: -1,
                           imgs: (ev.images || []).join("\n") })
       }
+      quizSent(ev.text)
       break
     }
     case "word": {                       // nova_client: the word being spoken right now (-1 = done reading)
@@ -310,11 +418,19 @@ Item {
     }
     case "delta": {
       let i = lastNova()
-      if (i < 0) { messages.append({ role: "nova", text: ev.text, speaker: "", pending: true, hl: -1, spoken: -1, imgs: "" }); wordPtr = -1 }
+      if (i < 0) { messages.append({ role: "nova", text: ev.text, speaker: "", pending: true, hl: -1, spoken: liveSpoken, imgs: "" }); wordPtr = -1 }
       else messages.setProperty(i, "text", messages.get(i).text + ev.text)
       break
     }
+    case "quiet":                        // the rest of the reply is chat-only: dim it from `at` on while it still streams
+      if (typeof ev.at === "number") {
+        liveSpoken = ev.at
+        let i = lastNova()
+        if (i >= 0) messages.setProperty(i, "spoken", ev.at)
+      }
+      break
     case "done": {
+      liveSpoken = -1
       let i = lastNova()
       if (i >= 0 && !ev.reply && /^NO_REPLY\.?$/.test(messages.get(i).text.trim())) {
         messages.remove(i)                 // gateway's silent-turn token streamed in: nothing to show
@@ -333,15 +449,35 @@ Item {
       messages.append({ role: "nova", text: ev.text, speaker: "", pending: false, hl: -1,
                         spoken: (typeof ev.spoken === "number") ? ev.spoken : -1, imgs: "" })
       break
+    case "lang":                         // Nova's [lang:xx] marker, or the server dropping a refused language
+      applyLang((ev.lang || "auto").toLowerCase(), ev.by || "nova")
+      if (ev.error)
+        messages.append({ role: "error", text: "Speech language back to auto: " + ev.error, speaker: "", pending: false, hl: -1, spoken: -1, imgs: "" })
+      break
     case "error":
+      liveSpoken = -1
       dropLiveUser()
       messages.append({ role: "error", text: ev.message || "error", speaker: "", pending: false, hl: -1, spoken: -1, imgs: "" })
       break
+    case "interrupted": {                // a newer message cut this reply off: grey it out and say so
+      for (let k = messages.count - 1; k >= 0 && k >= messages.count - 4; k--) {
+        let m = messages.get(k)
+        if (m.role === "nova" && m.pending) {
+          messages.setProperty(k, "pending", false)
+          if (ev.stale) { messages.setProperty(k, "text", m.text + staleNote); messages.setProperty(k, "spoken", 0) }
+          break
+        }
+      }
+      break
+    }
     case "exit":
+      if (ev.superseded) break           // the turn that cut it off is still running
+      liveSpoken = -1
       typedPending = false
       if (!voiceBusy) dropLiveUser()
       break
     }
+    streaming = lastNova() >= 0
     scrollDown()
   }
 
@@ -352,79 +488,146 @@ Item {
     radius: metrics.radiusLarge
   }
 
-  // header: title, status, speak toggle
+  // header: Nova's lynx on the left; beside it her name, what she's doing (with the live voice level while
+  // listening / speaking) and the background-agents toggle, whose list drops open under the whole header
   Item {
     id: header
     x: metrics.marginBar
     y: metrics.marginBar
     width: parent.width - metrics.marginBar * 2
-    height: metrics.s(28)
+    height: Math.max(avatar.height, side.height) + metrics.spacingSmall
 
-    Rectangle {
-      id: dot
-      width: metrics.s(10); height: width; radius: width / 2
+    NovaAvatar {
+      id: avatar
+      x: metrics.s(4)
       anchors.verticalCenter: parent.verticalCenter
-      color: chat.statusColor
-      SequentialAnimation on opacity {
-        running: chat.status === "listening" || chat.status === "speaking"
-        loops: Animation.Infinite
-        NumberAnimation { to: 0.35; duration: 600 }
-        NumberAnimation { to: 1.0; duration: 600 }
-        onRunningChanged: if (!running) dot.opacity = 1
-      }
+      disc: metrics.s(104)
+      mood: chat.lynxMood
+      tint: chat.lynxTint
+      level: root.voiceLevel
+      active: chat.isOpen
     }
-    Text {
-      id: title
-      x: dot.width + metrics.spacingNormal
+    Column {
+      id: side
+      x: avatar.x + avatar.width + metrics.spacingLarge + metrics.s(4)
+      width: parent.width - x
       anchors.verticalCenter: parent.verticalCenter
-      text: "Nova"
-      color: Theme.colors.textPrimary
-      font.pixelSize: metrics.fontLarge
-      font.family: Theme.fonts.mono
+      spacing: metrics.spacingNormal
+      Column {
+        leftPadding: metrics.s(12)
+        spacing: metrics.s(3)
+        Text {
+          id: title
+          text: "Nova"
+          color: Theme.colors.textPrimary
+          font.pixelSize: metrics.fontLarge
+          font.family: Theme.fonts.mono
+          font.weight: Font.DemiBold
+        }
+        Row {
+          spacing: metrics.spacingSmall
+          height: statusText.implicitHeight
+          Text {
+            id: statusText
+            text: chat.lynxLabel
+            color: chat.lynxTint
+            font.pixelSize: metrics.fontSmall
+            font.family: Theme.fonts.mono
+            Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: Motion.slow; easing.type: Motion.easeIn } }
+          }
+          // live level: the shared voice meter history, newest on the right
+          Row {
+            id: wave
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: metrics.s(2)
+            opacity: avatar.live ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: Motion.enter; easing.type: Motion.easeIn } }
+            Repeater {
+              model: root.voiceLevels.length
+              Rectangle {
+                required property int index
+                anchors.verticalCenter: parent.verticalCenter
+                width: metrics.s(3)
+                height: metrics.s(3) + Math.min(1, root.voiceLevels[index] || 0) * metrics.s(11)
+                radius: width / 2
+                color: chat.lynxTint
+                opacity: 0.45 + 0.55 * index / Math.max(1, root.voiceLevels.length - 1)
+                Behavior on height { NumberAnimation { duration: 80 } }
+              }
+            }
+          }
+          // thinking: three dots taking turns
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: metrics.s(3)
+            visible: chat.lynxMood === "thinking"
+            Repeater {
+              model: 3
+              Rectangle {
+                id: tdot
+                required property int index
+                width: metrics.s(4); height: width; radius: width / 2
+                color: chat.lynxTint
+                opacity: 0.3
+                SequentialAnimation on opacity {
+                  running: chat.isOpen && chat.lynxMood === "thinking"
+                  loops: Animation.Infinite
+                  PauseAnimation { duration: tdot.index * 180 }
+                  NumberAnimation { to: 1; duration: 320; easing.type: Motion.easeAmbient }
+                  NumberAnimation { to: 0.3; duration: 320; easing.type: Motion.easeAmbient }
+                  PauseAnimation { duration: (2 - tdot.index) * 180 }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // background agents toggle (agents from the last day; "none" when empty)
+      Rectangle {
+        width: parent.width
+        height: metrics.s(30)
+        radius: metrics.radiusNormal
+        color: Theme.colors.inset
+        Text {
+          x: metrics.s(12)
+          width: parent.width - x - metrics.s(36)
+          anchors.verticalCenter: parent.verticalCenter
+          elide: Text.ElideRight
+          text: "󰚩  Agents" + (chat.shownAgents.length === 0 ? "  ·  none" : "")
+                + (chat.agentsRunning ? "  ·  " + chat.agentsRunning + " running" : "")
+                + (chat.agentsQueued ? "  ·  " + chat.agentsQueued + " queued" : "")
+                + ((chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) ? "  ·  " + (chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) + " done" : "")
+                + (chat.agentsFailed ? "  ·  " + chat.agentsFailed + " failed" : "")
+          color: chat.agentsRunning ? Theme.colors.teal : chat.agentsQueued ? Theme.colors.yellow
+                 : chat.shownAgents.length ? Theme.colors.textSecondary : Theme.colors.textMuted
+          font.pixelSize: metrics.fontSmall
+          font.family: Theme.fonts.mono
+        }
+        Text {
+          anchors.right: parent.right
+          anchors.rightMargin: metrics.s(12)
+          anchors.verticalCenter: parent.verticalCenter
+          text: chat.agentsOpen ? "󰅀" : "󰅂"
+          color: Theme.colors.textMuted
+          font.pixelSize: metrics.fontSmall
+          font.family: Theme.fonts.mono
+        }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.agentsOpen = !chat.agentsOpen }
+      }
     }
   }
 
-  // background agents: collapsible strip under the header (agents from the last day; "none" when empty)
+  // background agents: the list the header's toggle opens, full width under the header
   Column {
     id: agentsBox
-    visible: true
+    visible: chat.agentsOpen
     x: metrics.marginBar
     y: header.y + header.height + metrics.spacingSmall
     width: parent.width - metrics.marginBar * 2
-    spacing: metrics.spacingSmall
-
-    Rectangle {
-      width: parent.width
-      height: metrics.s(30)
-      radius: metrics.radiusNormal
-      color: Theme.colors.inset
-      Text {
-        x: metrics.s(12)
-        anchors.verticalCenter: parent.verticalCenter
-        text: "󰚩  Agents" + (chat.shownAgents.length === 0 ? "  ·  none" : "")
-              + (chat.agentsRunning ? "  ·  " + chat.agentsRunning + " running" : "")
-              + (chat.agentsQueued ? "  ·  " + chat.agentsQueued + " queued" : "")
-              + ((chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) ? "  ·  " + (chat.shownAgents.length - chat.agentsRunning - chat.agentsQueued - chat.agentsFailed) + " done" : "")
-              + (chat.agentsFailed ? "  ·  " + chat.agentsFailed + " failed" : "")
-        color: chat.agentsRunning ? Theme.colors.teal : chat.agentsQueued ? Theme.colors.yellow
-               : chat.shownAgents.length ? Theme.colors.textSecondary : Theme.colors.textMuted
-        font.pixelSize: metrics.fontSmall
-        font.family: Theme.fonts.mono
-      }
-      Text {
-        anchors.right: parent.right
-        anchors.rightMargin: metrics.s(12)
-        anchors.verticalCenter: parent.verticalCenter
-        text: chat.agentsOpen ? "󰅀" : "󰅂"
-        color: Theme.colors.textMuted
-        font.pixelSize: metrics.fontSmall
-        font.family: Theme.fonts.mono
-      }
-      MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.agentsOpen = !chat.agentsOpen }
-    }
 
     Flickable {
-      visible: chat.agentsOpen
       width: parent.width
       height: Math.min(agentList.implicitHeight, chat.height * 0.4)
       contentHeight: agentList.implicitHeight
@@ -550,7 +753,7 @@ Item {
                 visible: arow.open && arow.modelData.task !== ""
                 width: parent.width
                 text: "Task: " + arow.modelData.task
-                readOnly: true; selectByMouse: true
+                readOnly: true; selectByMouse: true; textFormat: TextEdit.PlainText
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontTiny
@@ -560,7 +763,7 @@ Item {
                 visible: arow.open && !!arow.modelData.followup
                 width: parent.width
                 text: "Follow-up (run " + arow.run + "): " + (arow.modelData.followup || "")
-                readOnly: true; selectByMouse: true
+                readOnly: true; selectByMouse: true; textFormat: TextEdit.PlainText
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textMuted
                 font.pixelSize: metrics.fontTiny
@@ -573,7 +776,7 @@ Item {
                       : arow.modelData.status === "running" ? (arow.run > 1 ? "Run " + arow.run + " still working…" : "Still working…")
                       : arow.modelData.status === "queued" ? "Follow-up accepted, run " + arow.run + " hasn't started yet."
                       : "(no result text)"
-                readOnly: true; selectByMouse: true
+                readOnly: true; selectByMouse: true; textFormat: TextEdit.PlainText
                 wrapMode: TextEdit.Wrap
                 color: Theme.colors.textSecondary
                 font.pixelSize: metrics.fontSmall
@@ -602,7 +805,7 @@ Item {
                         + (modelData.endedAt ? " · " + chat.fmtDur(chat.now - modelData.endedAt) + " ago" : "")
                         + (modelData.task ? "\nFollow-up: " + modelData.task : "")
                         + "\n" + (modelData.result || "(no result text)")
-                  readOnly: true; selectByMouse: true
+                  readOnly: true; selectByMouse: true; textFormat: TextEdit.PlainText
                   wrapMode: TextEdit.Wrap
                   color: Theme.colors.textMuted
                   font.pixelSize: metrics.fontTiny
@@ -644,9 +847,11 @@ Item {
       // Spoken turns: whatever wasn't read aloud (after [quiet], a late answer, a long pause) is shown dimmed behind a
       // muted-speaker glyph, so it's clear what you heard vs what only landed here. (The word-by-word highlight of
       // the reply being read aloud is gone: it can't be done inside markdown.)
-      readonly property int cut: (row.md && row.spoken >= 0 && row.spoken < row.text.length) ? row.spoken : -1
-      readonly property string mainText: row.md ? chat.cleanText(row.cut >= 0 ? row.text.slice(0, row.cut) : row.text) : row.text
-      readonly property string dimText: row.cut >= 0 ? chat.cleanText(row.text.slice(row.cut)) : ""
+      // ```quiz blocks render as NovaQuiz below the text (wherever they sit, usually after [quiet]); never as text
+      readonly property var quizzes: row.md && row.text.indexOf("quiz") >= 0 ? QuizFmt.find(row.text) : []
+      readonly property int cut: (row.md && row.spoken >= 0 && row.spoken < row.text.length) ? QuizFmt.safeCut(row.text, row.spoken) : -1
+      readonly property string mainText: row.md ? chat.cleanText(QuizFmt.strip(row.cut >= 0 ? row.text.slice(0, row.cut) : row.text)) : row.text
+      readonly property string dimText: row.cut >= 0 ? chat.cleanText(QuizFmt.strip(row.text.slice(row.cut))) : ""
       function plainRich() {
         let e = row.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
         return e + (row.pending ? " ▍" : "")
@@ -726,14 +931,15 @@ Item {
         font.pixelSize: metrics.fontTiny
         font.family: Theme.fonts.mono
       }
-      TextMetrics { id: tm; font: body.font; text: row.md ? row.mainText + row.dimText : row.text }
+      // math is inline HTML: measure its visible text, not the tags
+      TextMetrics { id: tm; font: body.font; text: row.md ? (row.mainText + row.dimText).replace(/<\/?(?:sup|sub|i|b|br)>/g, "").replace(/&#[0-9]+;/g, "x") : row.text }
       Rectangle {
         id: bubble
-        visible: row.md ? (row.mainText !== "" || row.dimText !== "" || row.pending) : row.text !== ""
+        visible: row.md ? (row.mainText !== "" || row.dimText !== "" || row.pending || row.quizzes.length > 0) : row.text !== ""
         y: (who.visible ? who.height : 0) + (picRow.visible && !row.md ? picRow.height + row.gap : 0)
         anchors.right: row.mine ? parent.right : undefined
         anchors.left: row.mine ? undefined : parent.left
-        width: row.md && row.mainText.indexOf("\n") >= 0 ? row.maxW : Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
+        width: row.md && (row.mainText.indexOf("\n") >= 0 || row.quizzes.length > 0) ? row.maxW : Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
         height: bodyCol.implicitHeight + metrics.s(14)
         radius: metrics.radiusNormal
         color: row.role === "error" ? Qt.rgba(Theme.colors.red.r, Theme.colors.red.g, Theme.colors.red.b, 0.15)
@@ -748,7 +954,7 @@ Item {
           spacing: metrics.s(4)
           TextEdit {
             id: body
-            visible: row.md ? (row.mainText !== "" || row.pending) : true
+            visible: row.md ? (row.mainText !== "" || (row.pending && row.dimText === "")) : true
             width: parent.width
             text: row.md ? row.mdText() : row.plainRich()
             readOnly: true
@@ -777,6 +983,44 @@ Item {
             font.pixelSize: metrics.fontNormal
             font.family: Theme.fonts.mono
             onLinkActivated: link => Qt.openUrlExternally(link)
+          }
+          Repeater {
+            model: row.quizzes
+            Loader {
+              id: qload
+              required property var modelData
+              width: bodyCol.width
+              sourceComponent: modelData.quiz ? quizComp : modelData.pending ? quizWait : quizBad
+              Component {
+                id: quizComp
+                NovaQuiz {
+                  width: qload.width
+                  entry: qload.modelData
+                  submitted: !!chat.quizDone[qload.modelData.key]
+                  canSubmit: !chat.busy
+                  draft: chat.quizDone[qload.modelData.key] ? QuizFmt.parseAnswers(qload.modelData, chat.quizDone[qload.modelData.key])
+                         : (chat.quizDrafts[qload.modelData.key] || {})
+                  onEdited: d => { chat.quizDrafts[qload.modelData.key] = d }
+                  onSubmit: message => chat.submitQuiz(qload.modelData.key, message)
+                }
+              }
+              Component {
+                id: quizWait
+                Text { text: "󰠗  quiz loading…"; color: Theme.colors.textMuted; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono }
+              }
+              Component {
+                id: quizBad
+                TextEdit {
+                  width: qload.width
+                  text: "󰠗  couldn't read this quiz (" + (qload.modelData.error || "?") + "):\n" + (qload.modelData.raw || "")
+                  readOnly: true; selectByMouse: true
+                  wrapMode: TextEdit.Wrap
+                  color: Theme.colors.red
+                  font.pixelSize: metrics.fontSmall
+                  font.family: Theme.fonts.mono
+                }
+              }
+            }
           }
         }
       }
@@ -889,7 +1133,7 @@ Item {
     Rectangle {
       id: box
       anchors.left: parent.left
-      anchors.right: micBtn.left
+      anchors.right: langBtn.left
       anchors.rightMargin: metrics.spacingSmall
       height: parent.height
       radius: metrics.radiusNormal
@@ -898,7 +1142,7 @@ Item {
       Text {
         x: metrics.s(12)
         anchors.verticalCenter: parent.verticalCenter
-        text: chat.busy && chat.mode === "text" ? "Nova is answering…" : "Message Nova…"
+        text: chat.busy ? (chat.canBargeIn ? "Nova is answering… (Enter cuts in)" : "Nova is listening…") : "Message Nova…"
         color: Theme.colors.textMuted
         font.pixelSize: metrics.fontNormal
         font.family: Theme.fonts.mono
@@ -917,8 +1161,11 @@ Item {
         Keys.onPressed: event => {
           if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             chat.send(); event.accepted = true
+          } else if (event.key === Qt.Key_L && (event.modifiers & Qt.ControlModifier)) {
+            chat.langOpen = !chat.langOpen; event.accepted = true
           } else if (event.key === Qt.Key_Escape) {
-            if (chat.busy) chat.stop(); else bar.state = "normal"
+            if (chat.langOpen) chat.langOpen = false
+            else if (chat.busy) chat.stop(); else bar.state = "normal"
             event.accepted = true
           } else if (event.key === Qt.Key_V && (event.modifiers & Qt.ControlModifier)) {
             chat.pasteImage(); event.accepted = true      // image if the clipboard has one, else plain text
@@ -928,6 +1175,42 @@ Item {
             chat.micPressed(); event.accepted = true
           }
         }
+      }
+    }
+
+    // speech language chip: AUTO / RU / DE ...; click (or Ctrl+L) opens the list above it
+    Rectangle {
+      id: langBtn
+      anchors.right: micBtn.left
+      anchors.rightMargin: metrics.spacingSmall
+      width: Math.max(parent.height, langText.implicitWidth + metrics.s(16)); height: parent.height
+      radius: metrics.radiusNormal
+      color: chat.langOpen || langMouse.containsMouse ? Theme.colors.panelDeep : Theme.colors.inset
+      border.width: chat.sttLang !== "auto" ? Theme.bw(1) : 0
+      border.color: Theme.colors.teal
+      Rectangle {                        // flash when Nova switches it
+        id: langGlow
+        anchors.fill: parent
+        radius: parent.radius
+        color: Theme.colors.teal
+        opacity: 0
+        NumberAnimation on opacity { id: langFlash; running: false; from: 0.55; to: 0; duration: 900; easing.type: Easing.OutCubic }
+      }
+      Text {
+        id: langText
+        anchors.centerIn: parent
+        text: chat.sttLang.toUpperCase()
+        color: chat.sttLang !== "auto" ? Theme.colors.teal : Theme.colors.textMuted
+        font.pixelSize: metrics.fontSmall
+        font.family: Theme.fonts.mono
+        font.weight: Font.DemiBold
+      }
+      MouseArea {
+        id: langMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: chat.langOpen = !chat.langOpen
       }
     }
 
@@ -963,6 +1246,89 @@ Item {
         font.family: Theme.fonts.mono
       }
       MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: chat.busy ? chat.stop() : chat.send() }
+    }
+  }
+
+  // speech language list (the chip's popup): Auto on top, then two columns of languages; a click anywhere else closes it
+  MouseArea {
+    anchors.fill: parent
+    visible: chat.langOpen
+    onClicked: chat.langOpen = false
+  }
+  Rectangle {
+    id: langPop
+    visible: chat.langOpen
+    width: Math.min(metrics.s(340), inputBar.width)
+    height: langCol.implicitHeight + metrics.s(16)
+    x: Math.max(metrics.marginBar, inputBar.x + langBtn.x + langBtn.width - width)
+    y: inputBar.y - height - metrics.spacingSmall
+    radius: metrics.radiusNormal
+    color: Theme.colors.panelDeep
+    border.width: Theme.bw(1)
+    border.color: Theme.colors.border
+    MouseArea { anchors.fill: parent }  // clicks between rows don't fall through and close it
+    Column {
+      id: langCol
+      x: metrics.s(8); y: metrics.s(8)
+      width: parent.width - metrics.s(16)
+      spacing: metrics.s(4)
+      Text {
+        leftPadding: metrics.s(4)
+        text: "speech language"
+        color: Theme.colors.textMuted
+        font.pixelSize: metrics.fontTiny
+        font.family: Theme.fonts.mono
+      }
+      Flow {
+        width: parent.width
+        spacing: metrics.s(3)
+        Repeater {
+          model: [{ code: "auto", label: "automatic detection" }].concat(chat.langChoices)
+          Rectangle {
+            id: lrow
+            required property var modelData
+            readonly property bool current: chat.sttLang === modelData.code
+            width: modelData.code === "auto" ? langCol.width : (langCol.width - metrics.s(3)) / 2
+            height: metrics.s(26)
+            radius: metrics.radiusNormal
+            color: current ? Theme.colors.inset : lmouse.containsMouse ? Qt.rgba(Theme.colors.inset.r, Theme.colors.inset.g, Theme.colors.inset.b, 0.6) : "transparent"
+            border.width: current ? Theme.bw(1) : 0
+            border.color: Theme.colors.teal
+            Text {
+              id: lcode
+              x: metrics.s(8)
+              width: metrics.s(48)
+              anchors.verticalCenter: parent.verticalCenter
+              text: lrow.modelData.code.toUpperCase()
+              color: lrow.current ? Theme.colors.teal : Theme.colors.textSecondary
+              font.pixelSize: metrics.fontSmall
+              font.family: Theme.fonts.mono
+              font.weight: Font.DemiBold
+            }
+            Text {
+              anchors.left: lcode.right
+              anchors.right: parent.right
+              anchors.rightMargin: metrics.s(6)
+              anchors.verticalCenter: parent.verticalCenter
+              text: lrow.modelData.label
+              elide: Text.ElideRight
+              color: lrow.current ? Theme.colors.textPrimary : Theme.colors.textSecondary
+              font.pixelSize: metrics.fontSmall
+              font.family: Theme.fonts.mono
+            }
+            MouseArea { id: lmouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: chat.setLang(lrow.modelData.code) }
+          }
+        }
+      }
+      Text {
+        leftPadding: metrics.s(4)
+        width: parent.width
+        wrapMode: Text.WordWrap
+        text: "Nova can switch it too · back to auto after " + Math.round((chat.langState.idle_s || 1800) / 60) + " min idle"
+        color: Theme.colors.textMuted
+        font.pixelSize: metrics.fontTiny
+        font.family: Theme.fonts.mono
+      }
     }
   }
 }

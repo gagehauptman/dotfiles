@@ -12,7 +12,7 @@ Item {
 
   property bool isVertical: false
   // shown during a voice turn, and always while the chat panel is open (the panel keeps its status here)
-  property bool showWidget: root.voiceEnabled && ((root.voiceActive && (bar.state === "normal" || bar.state === "dashboard"))
+  property bool showWidget: root.voiceEnabled && ((root.voiceActive && (bar.state === "normal" || bar.state === "dashboard" || bar.state === "control_center"))
                                                 || bar.state === "nova_chat")
   visible: showWidget
   implicitWidth: isVertical ? parent.width : metrics.s(400)

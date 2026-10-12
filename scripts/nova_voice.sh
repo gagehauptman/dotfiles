@@ -7,6 +7,7 @@
 #                              #   idle      -> start listening (VAD ends your turn automatically)
 #                              #   listening -> send now
 #                              #   thinking / speaking -> interrupt and listen again
+#                              #   (also cuts off a speaking typed turn or agent report, see hush_others)
 #   nova_voice.sh cancel       # (SUPER+SHIFT+T) stop everything, go idle
 #   nova_voice.sh ask "text"   # skip the mic: send text, speak the reply
 #   nova_voice.sh say "text"   # TTS only
@@ -48,6 +49,13 @@ need_conf() {
   return 1
 }
 engine_pid() { local p; p=$(cat "$PIDF" 2>/dev/null) || return 1; kill -0 "$p" 2>/dev/null && echo "$p"; }
+# Barge-in: other processes that can be talking (a typed turn from the chat panel, a background-agent report from
+# nova-inbox.service) get SIGUSR1 = stop speaking now (a typed turn is interrupted like a voice one).
+hush_others() {
+  local t; t=$(cat "$RUN/typed.pid" 2>/dev/null) && kill -USR1 "$t" 2>/dev/null
+  systemctl --user kill --kill-whom=main -s USR1 nova-inbox.service 2>/dev/null
+  return 0
+}
 
 start_engine() {  # background conversational turn
   local flags=(turn --listen); [ "$NOVA_CONVERSE" = 1 ] && flags+=(--converse)
@@ -93,9 +101,11 @@ status() {
 
 case "${1:-toggle}" in
   toggle)
-    if p=$(engine_pid); then kill -USR1 "$p"; else need_conf && start_engine; fi ;;
+    # engine first: its pid file tells the hushed ones not to reset state.json to idle (it opens the mic ~0.3 s later)
+    if p=$(engine_pid); then kill -USR1 "$p"; else need_conf && start_engine && hush_others; fi ;;
   cancel)
     if p=$(engine_pid); then kill -TERM "$p"; fi
+    hush_others
     rm -f "$PIDF"
     notify-send -r 4242 -a "$NOVA_NAME" -t 1500 "Cancelled" 2>/dev/null || true ;;
   ask)  shift; [ -n "${*:-}" ] || { echo "usage: $0 ask <text>"; exit 2; }

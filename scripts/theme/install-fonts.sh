@@ -12,7 +12,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 dest=${XDG_DATA_HOME:-$HOME/.local/share}/fonts/wallpaper-themes
 mkdir -p "$dest"; cd "$dest"
 for d in cormorantgaramond ebgaramond playfairdisplay lora orbitron rajdhani spacegrotesk oxanium \
-         sharetechmono ibmplexmono jetbrainsmono spacemono quicksand nunito dmsans outfit josefinsans; do
+         sharetechmono ibmplexmono jetbrainsmono spacemono quicksand nunito dmsans outfit josefinsans oswald; do
   curl -fsS "https://api.github.com/repos/google/fonts/contents/ofl/$d" | python3 -c "
 import sys, json
 for f in json.load(sys.stdin):

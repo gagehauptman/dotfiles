@@ -1,0 +1,20 @@
+#!/bin/sh
+# Switch the desktop theme (Quickshell, kitty, Hyprland borders, Firefox,
+# Zed; Neovim on its next start) without changing the wallpaper:
+#
+#   theme soviet       the Soviet-poster palette (wallpapers/_presets/soviet.json)
+#   theme catppuccin   Catppuccin Mocha (also: mocha, macchiato, frappe, latte)
+#   theme wallpaper    back to the saved wallpaper's own theme
+#   theme <stem>       any wallpaper's or preset's theme
+#
+# It lasts until the wallpaper is changed (picking the Sputnik wallpaper
+# brings the Soviet theme with it).
+apply=$(dirname "$(realpath "$0")")/apply.py
+case ${1:-} in
+  soviet) exec "$apply" soviet ;;
+  catppuccin|mocha) exec "$apply" catppuccin_mocha ;;
+  macchiato|frappe|latte) exec "$apply" "catppuccin_$1" ;;
+  wallpaper|"") exec "$apply" ;;
+  -h|--help) sed -n "2,11p" "$0" | sed "s/^# \{0,1\}//" ;;
+  *) exec "$apply" "$1" ;;
+esac

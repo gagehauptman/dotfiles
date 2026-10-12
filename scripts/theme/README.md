@@ -121,3 +121,12 @@ then JetBrains Mono, for mono) and logs `theme: font "X" ... is not installed`.
 The lock screen reads `<stem>/lock.toml` from the same folder (falls back to
 `scripts/lock/meta/<stem>.toml`, then `meta/default.toml` and `meta/layouts/`,
 which stay shared). Of the Bevy widgets, the globe is themed (see The globe); the rest not yet.
+
+## Switching by hand: `theme`
+
+`scripts/theme/theme` (linked as `~/.local/bin/theme`) applies a theme without changing the wallpaper:
+`theme soviet` (the Soviet-poster preset, `_presets/soviet.json`, which the Sputnik wallpaper
+inherits), `theme catppuccin` (Mocha; also `macchiato`, `frappe`, `latte`), `theme wallpaper` (back to
+the saved wallpaper's own), or any stem. It lasts until the next wallpaper change.
+A theme may carry Catppuccin colour overrides for Neovim in `extra.nvim` (as `soviet.json` does);
+`nvim/lua/plugins/init.lua` reads them from `current.json` when Neovim starts.

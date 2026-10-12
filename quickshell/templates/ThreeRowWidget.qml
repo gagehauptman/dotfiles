@@ -19,6 +19,8 @@ Item {
   property var options: ({})
   property Component middleContent: null
   property Component footerContent: null
+  // false drops the footer row and the separator above it
+  property bool showFooter: true
 
   // Size the content was designed for (unscaled px; one dashboard row).
   property real refWidth: 360
@@ -88,6 +90,7 @@ Item {
 
       // Separator
       Rectangle {
+        visible: root.showFooter
         Layout.fillWidth: true
         height: bar.dividerThickness
         color: Theme.colors.border
@@ -95,6 +98,8 @@ Item {
 
       // Footer content slot
       Loader {
+        visible: root.showFooter
+        active: root.showFooter
         Layout.fillWidth: true
         sourceComponent: root.footerContent
       }

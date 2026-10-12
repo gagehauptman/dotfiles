@@ -46,6 +46,18 @@ ThreeRowWidget {
 
   readonly property string tessieCmdScript: root.home + "/.config/scripts/polls/tessiecmd.sh"
 
+  // The car row (Tessie) only exists on a machine with an API key in
+  // ~/.config/tessie.key; without one the card is Tailscale only, with no
+  // footer and no CAR entry on the mission strip.
+  readonly property bool carEnabled: tessieKey.loaded
+  FileView {
+    id: tessieKey
+    path: root.home + "/.config/tessie.key"
+    blockLoading: true
+    printErrors: false
+  }
+  showFooter: carEnabled
+
   // Tailscale state
   property var devices: []
 
@@ -102,7 +114,7 @@ ThreeRowWidget {
     dashState.report("link", "LINK", "services", worst, detail, 35000)
   }
   function reportCar() {
-    if (typeof dashState === "undefined") return
+    if (typeof dashState === "undefined" || !carEnabled) return
     let l = !carOk ? Status.advisory : carBattery <= 10 ? Status.warning : carBattery <= 20 ? Status.caution : Status.nominal
     dashState.report("car", "CAR", "services", l, !carOk ? "CAR " + carError.toUpperCase().slice(0, 24) : "CAR " + carBattery + "%", 35000)
   }
@@ -129,6 +141,7 @@ ThreeRowWidget {
     id: tessieProc
     command: ["bash", root.home + "/.config/scripts/polls/tessiepoll.sh"]
     interval: 10000
+    poll: servicesWidget.carEnabled   // the first run still happens; without a key it exits at once
     onOutput: text => {
       let parts = text.split('|')
 

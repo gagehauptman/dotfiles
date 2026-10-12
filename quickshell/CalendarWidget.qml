@@ -14,6 +14,12 @@ ThreeRowWidget {
   id: calendarWidget
 
   title: "󰃭  Calendar"
+  refWidth: 742    // two columns x two rows in the calendar preset
+  refHeight: 330
+  // The agenda list scrolls inside the whole middle slot; the next-event view is centred in it.
+  middleFills: showAgenda
+  // Bigger next-event text when the card has the height for it
+  readonly property bool roomy: middleHeight >= metrics.s(140)
 
   readonly property string fixture: options.fixture === true ? "default" : (typeof options.fixture === "string" ? options.fixture : "")
 
@@ -87,7 +93,7 @@ ThreeRowWidget {
               : calendarWidget.state_ === "loading" ? "…"
               : calendarWidget.nextEvent ? calendarWidget.nextEvent.summary : "Nothing coming up"
           color: calendarWidget.nextEvent && calendarWidget.state_ === "ok" ? Theme.colors.textPrimary : Theme.colors.textMuted
-          font.pixelSize: metrics.fontLarge
+          font.pixelSize: calendarWidget.fs(calendarWidget.roomy ? metrics.fontXL : metrics.fontLarge)
           font.bold: calendarWidget.nextEvent !== null
           font.family: Theme.fonts.ui
           elide: Text.ElideRight
@@ -97,17 +103,18 @@ ThreeRowWidget {
           visible: text !== ""
           text: calendarWidget.state_ === "ok" ? calendarWidget.when(calendarWidget.nextEvent) : ""
           color: calendarWidget.whenColor(calendarWidget.nextEvent)
-          font.pixelSize: metrics.fontSmall
+          font.pixelSize: calendarWidget.fs(calendarWidget.roomy ? metrics.fontNormal : metrics.fontSmall)
           font.family: Theme.fonts.mono
           elide: Text.ElideRight
         }
         Text {
           Layout.fillWidth: true
-          visible: text !== ""
+          // Location/calendar line is dropped first when the card is short
+          visible: text !== "" && calendarWidget.middleHeight >= (calendarWidget.fs(metrics.fontLarge) + calendarWidget.fs(metrics.fontSmall) + calendarWidget.fs(metrics.fontTiny)) * 1.45 + 2 * metrics.spacingTiny
           text: calendarWidget.nextEvent && calendarWidget.state_ === "ok"
                 ? [calendarWidget.nextEvent.location, calendarWidget.nextEvent.calendar].filter(x => x).join(" · ") : ""
           color: Theme.colors.textSecondary
-          font.pixelSize: metrics.fontTiny
+          font.pixelSize: calendarWidget.fs(metrics.fontTiny)
           font.family: Theme.fonts.ui
           elide: Text.ElideRight
         }
@@ -129,9 +136,9 @@ ThreeRowWidget {
             text: modelData.all_day ? "all day" : calendarWidget.hhmm(modelData.s)
             color: Theme.colors.blue
             opacity: parent.past ? 0.5 : 1
-            font.pixelSize: metrics.fontTiny
+            font.pixelSize: calendarWidget.fs(metrics.fontTiny)
             font.family: Theme.fonts.mono
-            Layout.preferredWidth: metrics.s(44)
+            Layout.preferredWidth: Math.max(implicitWidth, calendarWidget.fs(metrics.s(44)))
           }
           Text {
             Layout.fillWidth: true
@@ -139,7 +146,7 @@ ThreeRowWidget {
             color: modelData.skip ? Theme.colors.textMuted : Theme.colors.textPrimary
             opacity: parent.past ? 0.5 : 1
             font.strikeout: modelData.skip
-            font.pixelSize: metrics.fontSmall
+            font.pixelSize: calendarWidget.fs(metrics.fontSmall)
             font.family: Theme.fonts.ui
             elide: Text.ElideRight
           }
@@ -148,7 +155,7 @@ ThreeRowWidget {
           visible: agenda.count === 0
           text: calendarWidget.state_ === "ok" ? "Nothing today" : "calendar offline"
           color: Theme.colors.textMuted
-          font.pixelSize: metrics.fontSmall
+          font.pixelSize: calendarWidget.fs(metrics.fontSmall)
           font.family: Theme.fonts.ui
         }
       }
@@ -161,10 +168,10 @@ ThreeRowWidget {
       Text {
         Layout.fillWidth: true
         text: calendarWidget.state_ === "offline" ? (calendarWidget.reason || "calro not running")
-            : calendarWidget.showAgenda ? "today · click for next"
-            : calendarWidget.today.length + " today · click for agenda"
+            : calendarWidget.showAgenda ? (calendarWidget.compact ? "today" : "today · click for next")
+            : calendarWidget.today.length + (calendarWidget.compact ? " today" : " today · click for agenda")
         color: Theme.colors.textSecondary
-        font.pixelSize: metrics.fontTiny
+        font.pixelSize: calendarWidget.fs(metrics.fontTiny)
         font.family: Theme.fonts.ui
         elide: Text.ElideRight
       }
@@ -172,7 +179,7 @@ ThreeRowWidget {
         visible: calendarWidget.stale || calendarWidget.fixture !== ""
         text: calendarWidget.fixture !== "" ? "sample" : "stale"
         color: Theme.colors.warning
-        font.pixelSize: metrics.fontTiny
+        font.pixelSize: calendarWidget.fs(metrics.fontTiny)
         font.family: Theme.fonts.ui
       }
     }

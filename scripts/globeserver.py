@@ -41,10 +41,17 @@ plus JSON. Endpoints (127.0.0.1:38471):
                                      groups (also starlink, science), single
                                      objects by NORAD number and name searches;
                                      12 h cache
+  GET /drives.json?range=day|week|month|year|all&known=
+                                     the car's drives (Tessie) that ended within the
+                                     range: {"key", "state", "miles", "points", "drives":
+                                     [[start, end, [lat, lon, ...]]...]}; no "drives" when
+                                     `known` is the current key
 
 Caches live in ~/.cache/quickshell/globe. An OpenSky client id/secret in
 ~/.config/quickshell/secrets.env (OPENSKY_CLIENT_ID / OPENSKY_CLIENT_SECRET)
-raises the global refresh from every 15 minutes to every minute.
+raises the global refresh from every 15 minutes to every minute. Drives use
+the Tessie key in ~/.config/tessie.key (as the Tesla poll scripts do) and
+stay in drives.json in the cache, readable by this user only.
 Prints "ready" on stdout once it accepts requests (DashboardConfig waits for
 that); exits when the shell that started it is gone.
 """
@@ -1592,6 +1599,186 @@ def frame_json():
     return {"rows": rows, "total": len(rows), "ts": fr["ts"], "global_age": round(fr["ts"] - gts) if gts else None}
 
 
+# ---------------------------------------------------------------- drives (Tessie)
+# The car's driving history, with the key the Tesla poll scripts use
+# (polls/_tessie.sh). Only Tessie's stored history is read (/vehicles,
+# /{vin}/drives, /{vin}/path), never live state, so the car is not woken.
+# Paths are cached by calendar month (UTC) in drives.json, fetched newest
+# first; a month is final, and never fetched again, two days after it ends
+# (Tessie adds drives with a delay), so a refresh is a call or two. Nothing
+# is fetched until the widget first asks for /drives.json.
+TESSIE = "https://api.tessie.com"
+TESSIE_KEY = os.path.expanduser("~/.config/tessie.key")
+DRIVES_FILE = os.path.join(CACHE, "drives.json")
+DRIVES_VERSION = 1
+DRIVES_REFRESH = 900
+DRIVES_SETTLE = 2 * 86400
+DRIVES_RANGES = {"day": 86400, "week": 7 * 86400, "month": 30 * 86400, "year": 365 * 86400, "all": None}
+DRIVES_TOL = {"day": 0.0, "week": 0.0, "month": 0.00003, "year": 0.0001, "all": 0.0001}  # Douglas-Peucker, degrees
+_drives = {"vin": None, "since": None, "months": {}, "version": 0, "state": "idle"}
+_drives_lock = threading.Lock()
+_drives_out = {}
+_drives_started = [False]
+
+
+def tessie_get(path, timeout=60):
+    """JSON from the Tessie API. The key is read per call and never logged
+    (errors carry the status only, not the URL with the VIN)."""
+    with open(TESSIE_KEY) as f:
+        key = f.read().strip()
+    req = urllib.request.Request(TESSIE + path, headers={"Authorization": f"Bearer {key}", "User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def month_start(t):
+    g = time.gmtime(t)
+    return calendar.timegm((g.tm_year, g.tm_mon, 1, 0, 0, 0))
+
+
+def month_next(t):
+    g = time.gmtime(t)
+    return calendar.timegm((g.tm_year + g.tm_mon // 12, g.tm_mon % 12 + 1, 1, 0, 0, 0))
+
+
+def path_miles(coords):
+    """Length of a flat [lat, lon, lat, lon...] path in miles (haversine)."""
+    la, lo = np.radians(coords[0::2]), np.radians(coords[1::2])
+    if len(la) < 2:
+        return 0.0
+    h = np.sin(np.diff(la) / 2) ** 2 + np.cos(la[:-1]) * np.cos(la[1:]) * np.sin(np.diff(lo) / 2) ** 2
+    return float(2 * 3958.8 * np.arcsin(np.sqrt(np.minimum(h, 1.0))).sum())
+
+
+def drives_load():
+    try:
+        with open(DRIVES_FILE) as f:
+            d = json.load(f)
+        if d.get("v") == DRIVES_VERSION:
+            with _drives_lock:
+                _drives.update(vin=d["vin"], since=d["since"], months=d["months"], version=_drives["version"] + 1)
+            log(f"drives: {sum(len(m['drives']) for m in d['months'].values())} cached")
+    except (OSError, ValueError, KeyError):
+        pass
+
+
+def drives_save():
+    with _drives_lock:
+        snap = json.dumps({"v": DRIVES_VERSION, "vin": _drives["vin"], "since": _drives["since"], "months": _drives["months"]})
+    write_atomic(DRIVES_FILE, snap.encode())
+    os.chmod(DRIVES_FILE, 0o600)   # where the car has been: for this user only
+
+
+def drives_month(vin, t0, t1):
+    """One window's drives as [[start, end, miles, [lat, lon, ...]], ...]:
+    Tessie's simplified path (a point every 30 s or so), split by drive."""
+    d = tessie_get(f"/{vin}/path?from={t0}&to={t1}&separate=true&details=true")
+    out = []
+    for seg in d.get("results") or []:
+        pts = [p for p in seg if isinstance(p, dict) and p.get("latitude") is not None and p.get("longitude") is not None]
+        if len(pts) < 2:
+            continue
+        coords = []
+        for p in pts:
+            coords += [round(p["latitude"], 5), round(p["longitude"], 5)]
+        out.append([int(pts[0].get("timestamp") or t0), int(pts[-1].get("timestamp") or t0), round(path_miles(coords), 2), coords])
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def drives_sync():
+    """Bring the cache up to date: every month not yet final, newest first."""
+    if not os.path.exists(TESSIE_KEY):
+        _drives["state"] = "no key"
+        return
+    with _drives_lock:
+        vin, since = _drives["vin"], _drives["since"]
+    if not vin:
+        vin = tessie_get("/vehicles")["results"][0]["vin"]
+    if not since:
+        # the oldest drive Tessie has (newest first; the whole list, once)
+        rows = tessie_get(f"/{vin}/drives", timeout=180).get("results") or []
+        since = month_start(min((r["started_at"] for r in rows), default=time.time()))
+    with _drives_lock:
+        _drives.update(vin=vin, since=since)
+    now = int(time.time())
+    starts, t = [], since
+    while t <= now:
+        starts.append(t)
+        t = month_next(t)
+    for t0 in reversed(starts):
+        key = time.strftime("%Y-%m", time.gmtime(t0))
+        with _drives_lock:
+            m = _drives["months"].get(key)
+        if m and m["final"]:
+            continue
+        t1 = month_next(t0)
+        rows = drives_month(vin, t0, min(t1, now))
+        with _drives_lock:
+            _drives["months"][key] = {"final": now > t1 + DRIVES_SETTLE, "fetched": now, "drives": rows}
+            _drives["version"] += 1
+        drives_save()
+
+
+def drives_worker():
+    drives_load()
+    while True:
+        _drives["state"] = "loading" if not _drives["months"] else "updating"
+        try:
+            drives_sync()
+            if _drives["state"] != "no key":
+                _drives["state"] = "ok"
+            log(f"drives: {sum(len(m['drives']) for m in _drives['months'].values())} drives in {len(_drives['months'])} months")
+            wait = DRIVES_REFRESH
+        except urllib.error.HTTPError as e:
+            _drives["state"] = f"tessie HTTP {e.code}"
+            log(f"drives: HTTP {e.code}")
+            wait = 300
+        except Exception as e:  # noqa: BLE001
+            _drives["state"] = "error"
+            log(f"drives: {type(e).__name__}: {e}")
+            wait = 120
+        time.sleep(wait)
+
+
+def drives_json(rng):
+    """The drives that ended within the range (a day, week, month, year or
+    all), simplified for the range: {"key", "state", "now", "from", "miles",
+    "points", "drives": [[start, end, [lat, lon, ...]], ...]} oldest first.
+    `key` changes whenever the set does, so the widget redraws only then."""
+    if rng not in DRIVES_RANGES:
+        rng = "week"
+    with _drives_lock:
+        if not _drives_started[0]:
+            _drives_started[0] = True
+            _drives["state"] = "loading"
+            threading.Thread(target=drives_worker, daemon=True).start()
+        version, months = _drives["version"], list(_drives["months"].values())
+    now = int(time.time())
+    span = DRIVES_RANGES[rng]
+    since = now - span if span else 0
+    hit = _drives_out.get(rng)
+    if hit and hit["version"] == version and now - hit["now"] < 60:
+        return dict(hit, state=_drives["state"])
+    tol = DRIVES_TOL[rng]
+    rows, miles, points = [], 0.0, 0
+    for m in months:
+        for t0, t1, mi, coords in m["drives"]:
+            if t1 < since:
+                continue
+            if tol > 0 and len(coords) > 4:
+                arr = simplify(np.asarray(coords, dtype=np.float64).reshape(-1, 2), tol)
+                coords = [round(float(x), 5) for x in arr.ravel()]
+            rows.append([t0, t1, coords])
+            miles += mi
+            points += len(coords) // 2
+    rows.sort(key=lambda r: r[0])
+    out = {"key": f"{version}:{rng}:{len(rows)}", "version": version, "now": now, "from": since or (rows[0][0] if rows else now),
+           "miles": round(miles, 1), "points": points, "drives": rows}
+    _drives_out[rng] = out
+    return dict(out, state=_drives["state"])
+
+
 # ---------------------------------------------------------------- http
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -1655,6 +1842,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 catnrs = [c for c in q.get("catnr", "").split(",") if c.isdigit()][:50]
                 names = [n.strip() for n in q.get("names", "").split(",") if n.strip()][:20]
                 return self.send_json(tle_json(groups, catnrs, names))
+            if u.path == "/drives.json":
+                out = drives_json(q.get("range", "week"))
+                if q.get("known") == out["key"]:
+                    out = {k: v for k, v in out.items() if k != "drives"}   # unchanged: the widget keeps its copy
+                return self.send_json(out)
             return self.send(404, "text/plain", b"not found")
         except Exception as e:  # noqa: BLE001
             log(f"{self.path}: {e}")

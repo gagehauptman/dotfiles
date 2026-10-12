@@ -6,7 +6,8 @@ import "themes"
 
 Item {
   id: workspacesWidget
-  implicitWidth: isVertical ? parent.width : 300
+  // Scaled with the monitor, and never narrower than the dots themselves
+  implicitWidth: isVertical ? parent.width : Math.max(metrics.s(300), dotsLayout.implicitWidth)
   implicitHeight: isVertical ? dotsLayout.implicitHeight : parent.height
 
   // Monitor ID this widget is bound to (set by parent bar instance)
@@ -80,28 +81,28 @@ Item {
 
         Behavior on implicitWidth {
           NumberAnimation {
-            duration: 150
-            easing.type: Easing.OutQuad
+            duration: Motion.std
+            easing.type: Motion.easeIn
           }
         }
 
         Behavior on implicitHeight {
           NumberAnimation {
-            duration: 150
-            easing.type: Easing.OutQuad
+            duration: Motion.std
+            easing.type: Motion.easeIn
           }
         }
 
         Behavior on color {
           enabled: !Theme.fading
           ColorAnimation {
-            duration: 150
+            duration: Motion.std
           }
         }
 
         Behavior on opacity {
           NumberAnimation {
-            duration: 150
+            duration: Motion.std
           }
         }
 

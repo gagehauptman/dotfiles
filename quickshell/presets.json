@@ -64,6 +64,54 @@
       ]
     },
     "globe": {
+      "$comment": "Tabbed dashboard: Globe (ambient, the globe is the hero), System (telemetry + Tailscale services) and Music (visualizer, track, synced lyrics). The strip above the tabs keeps the clock and the now-playing line in view. Switch by clicking a tab, the mouse wheel over the strip, SUPER+TAB / SUPER+SHIFT+TAB, or qs ipc call dashboard nextTab|prevTab|setTab <name>. The single-page layout is kept as globe-mission.",
+      "widthPercent": 64,
+      "tabs": [
+        {
+          "name": "globe", "label": "Globe", "icon": "󰇧",
+          "columns": 4,
+          "widgets": [
+            { "type": "globe",   "col": 0, "row": 0,   "colSpan": 3, "rowSpan": 3.8, "options": { "title": "Globe", "focal": true, "brackets": false } },
+            { "type": "weather", "col": 3, "row": 0,   "rowSpan": 2.1 },
+            { "type": "quote",   "col": 3, "row": 2.1, "rowSpan": 1.7 }
+          ]
+        },
+        {
+          "name": "system", "label": "System", "icon": "󰍛",
+          "columns": 4,
+          "widgets": [
+            { "type": "services",    "col": 0, "row": 0,   "colSpan": 2, "rowSpan": 1.6 },
+            { "type": "network",     "col": 2, "row": 0,   "colSpan": 2, "rowSpan": 1.6 },
+            { "type": "systemstats", "col": 0, "row": 1.6, "colSpan": 2, "rowSpan": 2.2, "options": { "focal": true, "brackets": false } },
+            { "type": "miscstats",   "col": 2, "row": 1.6, "rowSpan": 2.2 },
+            { "type": "profile",     "col": 3, "row": 1.6, "rowSpan": 2.2 }
+          ]
+        },
+        {
+          "name": "music", "label": "Music", "icon": "󰎆",
+          "columns": 4,
+          "widgets": [
+            { "type": "musicstage", "col": 0, "row": 0, "colSpan": 2, "rowSpan": 3.8, "options": { "focal": true } },
+            { "type": "lyrics",     "col": 2, "row": 0, "colSpan": 2, "rowSpan": 3.8 }
+          ]
+        }
+      ]
+    },
+    "globe-mission": {
+      "$comment": "Mission layout: the globe is the centrepiece (focal: the open ripple starts there), system telemetry on the left, environment on the right. Single-page version of the globe dashboard before it got tabs; the older layout is globe-classic.",
+      "columns": 4,
+      "widthPercent": 64,
+      "widgets": [
+        { "type": "globe",       "col": 1, "row": 0,   "colSpan": 2, "rowSpan": 2.4, "options": { "title": "Globe", "focal": true, "brackets": false } },
+        { "type": "services",    "col": 1, "row": 2.4, "colSpan": 2, "rowSpan": 1.4 },
+        { "type": "systemstats", "col": 0, "row": 0,   "rowSpan": 1.9 },
+        { "type": "network",     "col": 0, "row": 1.9, "rowSpan": 1.9 },
+        { "type": "weather",     "col": 3, "row": 0,   "rowSpan": 1.2 },
+        { "type": "miscstats",   "col": 3, "row": 1.2, "rowSpan": 1.5 },
+        { "type": "quote",       "col": 3, "row": 2.7, "rowSpan": 1.1 }
+      ]
+    },
+    "globe-classic": {
       "columns": 3,
       "widthPercent": 55,
       "widgets": [

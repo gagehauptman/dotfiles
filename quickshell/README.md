@@ -57,6 +57,60 @@ qs ipc call dashboard toggleOn DP-2             # open or close on a named monit
 qs ipc call dashboard toggleFullscreenOn DP-2   # the same for fullscreen
 ```
 
+### Tabs
+
+A preset can hold several pages under `"tabs"` instead of one `"widgets"`
+list. The committed `globe` preset is tabbed: **Globe** (the globe as the
+hero, weather, quote), **System** (Tailscale services, network, resources,
+system info, profile) and **Music** (art, track, transport and a wide
+spectrum, plus synced lyrics). A slim strip above the pages always shows the
+tabs, the now-playing line (click it to jump to Music), the health word and a
+clock. Switch with a click on a tab, the mouse wheel over the strip,
+`Super+Tab` / `Super+Shift+Tab` (`quickshell:dashboardNextTab` /
+`dashboardPrevTab`; on a closed dashboard they open it), or:
+
+```sh
+qs ipc call dashboard nextTab             # focused monitor
+qs ipc call dashboard prevTab
+qs ipc call dashboard setTab music        # name or 1-based number; opens the dashboard
+qs ipc call dashboard setTabOn DP-4 system
+qs ipc call dashboard getTab
+qs ipc call dashboard listTabs
+```
+
+Each monitor keeps its own tab while the shell runs (it starts on the first
+tab). Every page gets the same pocket: the tallest tab's rows set its height
+and the others stretch their rows to it.
+
+```jsonc
+"globe": {
+  "widthPercent": 64,
+  "tabs": [
+    { "name": "globe", "label": "Globe", "icon": "󰇧", "columns": 4,
+      "widgets": [ { "type": "globe", "colSpan": 3, "rowSpan": 3.8 } ] },
+    { "name": "music", "label": "Music", "columns": 4,
+      "widgets": [ { "type": "musicstage", "colSpan": 2, "rowSpan": 3.8 },
+                   { "type": "lyrics",     "colSpan": 2, "rowSpan": 3.8 } ] }
+  ]
+}
+```
+
+A tab takes the same keys as a plain preset (`columns`, `portraitColumns`,
+`widgets`, `portrait`) plus `name` (for IPC), `label` and `icon`.
+
+Lyrics (`scripts/listeners/lyrics.py`) are Apple Music's own time-synced lyrics
+when Cider is playing the track (read through Cider's local API, which proxies
+the Apple Music API with Cider's own login), else [LRCLIB](https://lrclib.net)
+(exact match, then a search, then a search with the title cleaned up). Fetched
+once per track, cached in `~/.cache/quickshell/lyrics/`, and followed with the
+playback position from `scripts/polls/nowplaying.sh` (Cider's API or MPRIS).
+Synced lyrics keep the current line centred, large and in the accent sampled
+from the cover (the same colour as the turntable), with the other lines gliding
+in a short cascade and fading towards the edges; instrumental breaks show three
+dots that fill across the break (`"options": { "lead": 0.25 }` on the `lyrics`
+card shifts the timing, in seconds). Unsynced lyrics drift along with the song
+(hover or scroll to take over); no lyrics or an instrumental get a centred note.
+
 ### Fullscreen
 
 `Super+Shift+N` (`quickshell:toggleDashboardFullscreen`) opens the dashboard
@@ -235,6 +289,52 @@ works anonymously with a small request budget; put `OPENSKY_CLIENT_ID` and
 authenticated rate. The globe app polls the service in a background thread,
 so a slow first weather frame never blocks the shell.
 
+## Control center
+
+A second pocket that opens at the far end of the bar, under the clock (top
+right; bottom left on a vertical bar), with one page per class:
+
+- **Notifications**: the shell is the notification daemon (Quickshell's
+  `NotificationServer` owns `org.freedesktop.Notifications`; no mako or dunst
+  needed). Newest first, with the app icon or image, actions, and markup in the
+  body. Click a notification for its default action, right click or × to dismiss,
+  **Clear all**, and **Do not disturb** (remembered in
+  `~/.local/state/quickshell/notifications.json`). Notifications survive a shell
+  reload. There are no pop-ups: notifications only show here and as the bell's
+  badge, and stay until dismissed (do not disturb just greys out the badge).
+  The voice assistant's status chatter (`quietApps` / `quietSummaries` in
+  `ControlCenterService.qml`, which the bar already shows) is dropped.
+- **Quick settings**: Wi-Fi, Bluetooth, do not disturb and microphone toggles;
+  output and input volume with a device picker; paired Bluetooth devices
+  (click to connect or disconnect, battery when reported); nearby Wi-Fi networks
+  (`scripts/polls/wifipoll.sh`, polled only while the page shows; saved and
+  open networks connect on click). Turning Wi-Fi off takes a second click.
+
+The bell before the clock shows a badge with the unread count (grey under do not
+disturb, hidden at 0); click it or the clock to open the panel, right click the bell to toggle
+do not disturb. Escape closes the panel and Tab switches pages once it has
+keyboard focus (click into it); the mouse wheel over the page strip switches too.
+
+Shortcuts are global shortcuts, bound in `hypr/hyprland.lua` like the others,
+for example:
+
+```lua
+hl.bind(mainMod .. " + C",         hl.dsp.global("quickshell:toggleControlCenter"))
+hl.bind(mainMod .. " + SHIFT + C", hl.dsp.global("quickshell:toggleNotifications"))
+```
+
+```sh
+qs ipc call controlcenter toggle              # focused monitor
+qs ipc call controlcenter open settings       # or notifications, or 1 / 2
+qs ipc call controlcenter close
+qs ipc call controlcenter toggleDnd           # prints on / off
+qs ipc call controlcenter clear               # dismiss every notification
+qs ipc call controlcenter count
+```
+
+A new class is an entry in `classes` in `ControlCenterService.qml` plus a
+`Page` in `ControlCenterWidget.qml`.
+
 ## Making a widget
 
 ### In QML
@@ -251,6 +351,15 @@ so a slow first weather frame never blocks the shell.
    initial properties and `service: [...]` for a helper process.
 3. Reference it by type in a preset, or in `presets.local.json` for one
    machine.
+
+Polling: `templates/PollProcess.qml` runs a command on an interval and hands
+the trimmed output to `onOutput`. Every PollProcess with the same command is
+served by one process and one timer (`templates/PollHub.qml`), whichever
+screen's widget it sits in, so a second monitor doesn't double the polls;
+each subscriber still gets every output, `running = true` reruns it now, and
+`shared: false` gives a widget a private process (the quote card, so each
+screen draws its own). The CPU figures in `cpupoll.sh` / `systempoll.sh` are
+read from `/proc/stat` (usage since the previous poll) instead of `top`.
 
 ### As a Rust (Bevy) app
 

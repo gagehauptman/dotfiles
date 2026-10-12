@@ -5,3 +5,6 @@ CatppuccinLatte CatppuccinLatte.qml
 CatppuccinFrappe CatppuccinFrappe.qml
 CatppuccinMacchiato CatppuccinMacchiato.qml
 DynamicTheme DynamicTheme.qml
+singleton Motion Motion.qml
+singleton Dash Dash.qml
+singleton Status Status.qml

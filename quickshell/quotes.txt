@@ -2,11 +2,9 @@ The saddest aspect of life right now is that science gathers knowledge faster th
 Violence is the last refuge of the incompetent.|Isaac Asimov
 Self-education is, I firmly believe, the only kind of education there is.|Isaac Asimov
 Life is pleasant. Death is peaceful. It's the transition that's troublesome.|Isaac Asimov
-The most exciting phrase to hear in science, the one that heralds new discoveries, is not 'Eureka!' but 'That's funny...'|Isaac Asimov
 If my doctor told me I had only six minutes to live, I wouldn't brood. I'd type a little faster.|Isaac Asimov
 Your assumptions are your windows on the world. Scrub them off every once in a while, or the light won't come in.|Isaac Asimov
 The true delight is in the finding out rather than in the knowing.|Isaac Asimov
-The universe is a pretty big place. If it's just us, seems like an awful waste of space.|Isaac Asimov
 To succeed, planning alone is insufficient. One must improvise as well.|Isaac Asimov
 It is change, continuing change, inevitable change, that is the dominant factor in society today.|Isaac Asimov
 Never let your sense of morals prevent you from doing what is right.|Isaac Asimov
@@ -20,45 +18,40 @@ Two possibilities exist: either we are alone in the Universe or we are not. Both
 I don't pretend we have all the answers. But the questions are certainly worth thinking about.|Arthur C. Clarke
 The goal of the future is full unemployment, so we can play.|Arthur C. Clarke
 New ideas pass through three periods: It can't be done. It probably can be done, but it's not worth doing. I knew it was a good idea all along!|Arthur C. Clarke
-The only way to deal with an unfree world is to become so absolutely free that your very existence is an act of rebellion.|Albert Camus
 In the depth of winter, I finally learned that within me there lay an invincible summer.|Albert Camus
-Should I kill myself, or have a cup of coffee?|Albert Camus
-I rebel; therefore I exist.|Albert Camus
+I rebel—therefore we exist.|Albert Camus
 You will never be happy if you continue to search for what happiness consists of.|Albert Camus
 The struggle itself toward the heights is enough to fill a man's heart. One must imagine Sisyphus happy.|Albert Camus
-Don't walk behind me; I may not lead. Don't walk in front of me; I may not follow. Just walk beside me and be my friend.|Albert Camus
 Real generosity towards the future lies in giving all to the present.|Albert Camus
 Man is the only creature who refuses to be what he is.|Albert Camus
-In the midst of hate, I found there was, within me, an invincible love.|Albert Camus
 But in the end one needs more courage to live than to kill himself.|Albert Camus
 Live to the point of tears.|Albert Camus
 Always go too far, because that's where you'll find the truth.|Albert Camus
 Nobody realizes that some people expend tremendous energy merely to be normal.|Albert Camus
-A man without ethics is a wild beast loosed upon this world.|Albert Camus
 Autumn is a second spring when every leaf is a flower.|Albert Camus
 The absurd does not liberate; it binds.|Albert Camus
-Without work, all life goes rotten.|Albert Camus
-Between stimulus and response there is a space. In that space is our power to choose our response.|Viktor Frankl
 When we are no longer able to change a situation, we are challenged to change ourselves.|Viktor Frankl
-Those who have a 'why' to live, can bear with almost any 'how'.|Viktor Frankl
 Everything can be taken from a man but one thing: the last of human freedoms - to choose one's attitude in any given set of circumstances.|Viktor Frankl
-The meaning of life is to give life meaning.|Viktor Frankl
 An abnormal reaction to an abnormal situation is normal behavior.|Viktor Frankl
 We must never forget that we may also find meaning in life even when confronted with a hopeless situation.|Viktor Frankl
 A ship is safe in harbor, but that's not what ships are for.|John A. Shedd
-The best time to plant a tree was 20 years ago. The second best time is now.|Chinese Proverb
-We are what we repeatedly do. Excellence, then, is not an act, but a habit.|Will Durant
-The only true wisdom is in knowing you know nothing.|Socrates
-I cannot teach anybody anything. I can only make them think.|Socrates
 The unexamined life is not worth living.|Socrates
-Do not go where the path may lead, go instead where there is no path and leave a trail.|Ralph Waldo Emerson
-To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.|Ralph Waldo Emerson
-It is not the strongest of the species that survives, nor the most intelligent, but the one most responsive to change.|Charles Darwin
-The cosmos is within us. We are made of star-stuff. We are a way for the universe to know itself.|Carl Sagan
-Somewhere, something incredible is waiting to be known.|Carl Sagan
-For small creatures such as we, the vastness is bearable only through love.|Carl Sagan
-Science is not only compatible with spirituality; it is a profound source of spirituality.|Carl Sagan
-We are like butterflies who flutter for a day and think it is forever.|Carl Sagan
-Look again at that dot. That's here. That's home. That's us.|Carl Sagan
-Imagination will often carry us to worlds that never were. But without it we go nowhere.|Carl Sagan
 The eye is always caught by light, but shadows have more to say.|Gregory Maguire
+Life would be so much easier if we could just look at the source code.|Dave Olson
+Programs must be written for people to read, and only incidentally for machines to execute.|Abelson & Sussman
+Beware of bugs in the above code; I have only proved it correct, not tried it.|Donald Knuth
+Talk is cheap. Show me the code.|Linus Torvalds
+One of my most productive days was throwing away 1000 lines of code.|Ken Thompson
+Program testing can be used to show the presence of bugs, but never to show their absence!|Edsger W. Dijkstra
+There are only two hard things in Computer Science: cache invalidation and naming things.|Phil Karlton
+It always takes longer than you expect, even when you take into account Hofstadter's Law.|Douglas Hofstadter
+Some people, when confronted with a problem, think 'I know, I'll use regular expressions.' Now they have two problems.|Jamie Zawinski
+Linux is only free if your time has no value.|Jamie Zawinski
+Real stupidity beats artificial intelligence every time.|Terry Pratchett
+I'm sorry, Dave. I'm afraid I can't do that.|HAL 9000
+For a successful technology, reality must take precedence over public relations, for nature cannot be fooled.|Richard Feynman
+Houston, Tranquility Base here. The Eagle has landed.|Neil Armstrong
+Space is big. Really big. You just won't believe how vastly, hugely, mind-bogglingly big it is.|Douglas Adams
+The ships hung in the sky in much the same way that bricks don't.|Douglas Adams
+I love deadlines. I love the whooshing noise they make as they go by.|Douglas Adams
+We are here on Earth to fart around, and don't let anybody tell you different.|Kurt Vonnegut

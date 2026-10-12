@@ -10,6 +10,7 @@ DataWidget {
 
   title: "󰻠  System Resources"
   implicitHeight: metrics.systemWidgetHeight
+  refHeight: 250   // 1.5 rows in the default preset
 
   // Preset options: { "show": ["cpu", "ram", "disk", "bluetooth", "upgrade"] } — rows to display.
   readonly property var showRows: Array.isArray(options.show) ? options.show : ["cpu", "ram", "disk", "bluetooth", "upgrade"]
@@ -22,6 +23,26 @@ DataWidget {
   property string diskUsed: "0G"
   property string diskTotal: "0G"
   property real diskPercent: 0
+  // Readouts roll to each new sample instead of snapping (Motion.std).
+  Behavior on cpuUsage { NumberAnimation { duration: Motion.std; easing.type: Motion.easeIn } }
+  Behavior on ramUsed { NumberAnimation { duration: Motion.std; easing.type: Motion.easeIn } }
+  Behavior on ramPercent { NumberAnimation { duration: Motion.std; easing.type: Motion.easeIn } }
+  Behavior on diskPercent { NumberAnimation { duration: Motion.std; easing.type: Motion.easeIn } }
+
+  // Trend traces behind the CPU/RAM gauges (Dash.traceSamples x 3 s)
+  property var cpuHistory: []
+  property var ramHistory: []
+
+  // Subsystem state for the mission strip: worst of CPU / RAM / disk (Status thresholds)
+  function reportStatus(cpu, ram, disk) {
+    if (typeof dashState === "undefined") return
+    let worst = { l: 0, d: "" }
+    for (let m of [["cpu", cpu, "CPU"], ["ram", ram, "RAM"], ["disk", disk, "DISK"]]) {
+      let l = Status.level(m[0], m[1])
+      if (l > worst.l) worst = { l: l, d: m[2] + " " + Math.round(m[1]) + "%" }
+    }
+    dashState.report("sys", "SYS", "systemstats", worst.l, worst.d, 12000)
+  }
 
   // Bluetooth summary (one connected device, else first paired, else state)
   property string btPower: "off"
@@ -47,6 +68,10 @@ DataWidget {
         systemWidget.diskUsed = parts[4]
         systemWidget.diskTotal = parts[5]
         systemWidget.diskPercent = parseFloat(parts[6])
+        let n = Dash.traceSamples
+        systemWidget.cpuHistory = systemWidget.cpuHistory.concat([parseFloat(parts[0]) || 0]).slice(-n)
+        systemWidget.ramHistory = systemWidget.ramHistory.concat([parseFloat(parts[3]) || 0]).slice(-n)
+        systemWidget.reportStatus(parseFloat(parts[0]), parseFloat(parts[3]), parseFloat(parts[6]))
       }
     }
   }
@@ -106,39 +131,57 @@ DataWidget {
     onOutput: text => systemWidget.daysSinceUpgrade = text || "NA"
   }
 
+  // Fit: the bars always show; the Bluetooth and upgrade rows only when the
+  // card has room for them (Bluetooth first), labels shrink to icons and the
+  // RAM/disk readouts to percentages when narrow.
+  readonly property bool narrow: width < metrics.s(300)
+  readonly property real gap: fs(metrics.spacingSmall)
+  readonly property real lineH: Math.ceil(fs(metrics.fontSmall) * 1.35)
+  readonly property int barsShown: ["cpu", "ram", "disk"].filter(r => shows(r)).length
+  readonly property real roomForRows: dataHeight - barsShown * (lineH + gap + Math.round(metrics.s(8) * k) + gap) - (1 + gap)
+  readonly property bool showBt: shows("bluetooth") && roomForRows >= lineH
+  readonly property bool showUpgrade: shows("upgrade") && roomForRows >= (showBt ? 2 * lineH + gap : lineH)
+
   dataContent: [
     ColumnLayout {
       anchors.left: parent.left
       anchors.right: parent.right
-      spacing: metrics.spacingSmall
+      spacing: systemWidget.gap
 
       StatBar {
         visible: systemWidget.shows("cpu")
         label: "󰘚 CPU"
+        k: systemWidget.k
         valueText: systemWidget.cpuUsage.toFixed(1) + "%"
         percent: systemWidget.cpuUsage
+        history: systemWidget.cpuHistory
         accentColor: Theme.colors.blue
       }
 
       StatBar {
         visible: systemWidget.shows("ram")
         label: "󰍛 RAM"
-        valueText: systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
+        k: systemWidget.k
+        valueText: systemWidget.narrow ? systemWidget.ramUsed.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
+                 : systemWidget.ramUsed.toFixed(1) + " / " + systemWidget.ramTotal.toFixed(1) + " GB (" + systemWidget.ramPercent.toFixed(0) + "%)"
         percent: systemWidget.ramPercent
+        history: systemWidget.ramHistory
         accentColor: Theme.colors.green
       }
 
       StatBar {
         visible: systemWidget.shows("disk")
         label: "󰋊 Disk"
-        valueText: systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
+        k: systemWidget.k
+        valueText: systemWidget.narrow ? systemWidget.diskUsed + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
+                 : systemWidget.diskUsed + " / " + systemWidget.diskTotal + " (" + systemWidget.diskPercent.toFixed(0) + "%)"
         percent: systemWidget.diskPercent
         accentColor: Theme.colors.pink
       }
 
       // Separator
       Rectangle {
-        visible: systemWidget.shows("bluetooth") || systemWidget.shows("upgrade")
+        visible: systemWidget.showBt || systemWidget.showUpgrade
         Layout.fillWidth: true
         height: 1
         color: Theme.colors.inset
@@ -146,7 +189,7 @@ DataWidget {
 
       // Bluetooth status row
       Rectangle {
-        visible: systemWidget.shows("bluetooth")
+        visible: systemWidget.showBt
         Layout.fillWidth: true
         implicitHeight: btRow.implicitHeight
         color: "transparent"
@@ -168,12 +211,11 @@ DataWidget {
           }
 
           Text {
-            text: "󰂯 Bluetooth"
+            text: systemWidget.narrow ? "󰂯" : "󰂯 Bluetooth"
             color: Theme.colors.textPrimary
-            font.pixelSize: metrics.fontSmall
+            font.pixelSize: systemWidget.fs(metrics.fontSmall)
             font.bold: true
             font.family: Theme.fonts.mono
-            Layout.fillWidth: true
           }
 
           Text {
@@ -191,13 +233,16 @@ DataWidget {
               }
               return s
             }
+            // Dark cockpit: nominal text stays quiet; the dot carries the state.
             color: systemWidget.btPower === "unavailable" ? Theme.colors.red
-                 : systemWidget.btDeviceConnected ? Theme.colors.green
-                 : systemWidget.btPower === "on" ? Theme.colors.blue
+                 : systemWidget.btDeviceConnected || systemWidget.btPower === "on" ? Theme.colors.textSecondary
                  : Theme.colors.textMuted
-            font.pixelSize: metrics.fontSmall
+            font.pixelSize: systemWidget.fs(metrics.fontSmall)
             font.italic: true
             font.family: Theme.fonts.mono
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignRight
+            elide: Text.ElideRight
 
             Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
           }
@@ -219,7 +264,7 @@ DataWidget {
 
       // Last upgrade row (days since `pacman -Syu`)
       RowLayout {
-        visible: systemWidget.shows("upgrade")
+        visible: systemWidget.showUpgrade
         Layout.fillWidth: true
         spacing: metrics.spacingNormal
 
@@ -236,12 +281,11 @@ DataWidget {
         }
 
         Text {
-          text: "󰚰 Last Upgrade"
+          text: systemWidget.narrow ? "󰚰" : "󰚰 Last Upgrade"
           color: Theme.colors.textPrimary
-          font.pixelSize: metrics.fontSmall
+          font.pixelSize: systemWidget.fs(metrics.fontSmall)
           font.bold: true
           font.family: Theme.fonts.mono
-          Layout.fillWidth: true
         }
 
         Text {
@@ -255,13 +299,16 @@ DataWidget {
           color: {
             let d = parseInt(systemWidget.daysSinceUpgrade)
             if (isNaN(d)) return Theme.colors.textMuted
-            if (d <= 7) return Theme.colors.green
+            if (d <= 7) return Theme.colors.textSecondary
             if (d <= 30) return Theme.colors.yellow
             return Theme.colors.red
           }
-          font.pixelSize: metrics.fontSmall
+          font.pixelSize: systemWidget.fs(metrics.fontSmall)
           font.italic: true
           font.family: Theme.fonts.mono
+          Layout.fillWidth: true
+          horizontalAlignment: Text.AlignRight
+          elide: Text.ElideRight
 
           Behavior on color { enabled: !Theme.fading; ColorAnimation { duration: 200 } }
         }

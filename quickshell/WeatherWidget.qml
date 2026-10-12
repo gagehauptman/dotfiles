@@ -76,39 +76,52 @@ ThreeRowWidget {
         weatherWidget.temperature = parseFloat(parts[2])
         weatherWidget.humidity = parseInt(parts[3])
         weatherWidget.windSpeed = parseFloat(parts[4])
+        if (typeof dashState !== "undefined") {
+          let c = weatherWidget.weatherCode
+          let l = c >= 95 ? Status.caution : (c === 65 || c === 67 || c === 75 || c === 82 || c === 86) ? Status.advisory : Status.nominal
+          dashState.report("wx", "WX", "weather", l, l > 0 ? weatherWidget.weatherDesc(c).toUpperCase() : "", 1000000)
+        }
       }
     }
   }
 
   middleContent: Component {
     RowLayout {
-      spacing: metrics.spacingNormal
+      spacing: weatherWidget.fs(metrics.spacingNormal)
 
       Text {
         text: weatherWidget.weatherIcon(weatherWidget.weatherCode)
         color: weatherWidget.weatherColor(weatherWidget.weatherCode)
-        font.pixelSize: metrics.fontHuge
+        font.pixelSize: weatherWidget.fs(weatherWidget.compact ? metrics.fontXL : metrics.fontHuge)
         font.family: Theme.fonts.mono
         Layout.alignment: Qt.AlignVCenter
       }
 
       ColumnLayout {
         Layout.alignment: Qt.AlignVCenter
+        Layout.fillWidth: true
         spacing: metrics.spacingTiny
 
         Text {
-          text: weatherWidget.temperature.toFixed(1) + "°C"
+          Layout.fillWidth: true
+          // Whole degrees when squished; the decimal is the first thing to go
+          text: weatherWidget.temperature.toFixed(weatherWidget.compact ? 0 : 1) + "°C"
           color: Theme.colors.textPrimary
-          font.pixelSize: metrics.fontXL
+          font.pixelSize: weatherWidget.fs(weatherWidget.compact ? metrics.fontLarge * 1.25 : metrics.fontXL)
           font.bold: true
           font.family: Theme.fonts.ui
+          font.features: { "tnum": 1, "lnum": 1 }
+          elide: Text.ElideRight
         }
 
         Text {
+          Layout.fillWidth: true
+          visible: weatherWidget.middleHeight >= weatherWidget.fs(metrics.fontXL + metrics.fontSmall)
           text: weatherWidget.weatherDesc(weatherWidget.weatherCode)
           color: weatherWidget.weatherColor(weatherWidget.weatherCode)
-          font.pixelSize: metrics.fontSmall
+          font.pixelSize: weatherWidget.fs(metrics.fontSmall)
           font.family: Theme.fonts.ui
+          elide: Text.ElideRight
         }
       }
     }
@@ -116,18 +129,19 @@ ThreeRowWidget {
 
   footerContent: Component {
     RowLayout {
-      spacing: metrics.spacingLarge
+      spacing: weatherWidget.fs(weatherWidget.compact ? metrics.spacingNormal : metrics.spacingLarge)
 
       RowLayout {
         spacing: metrics.spacingTiny
-        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono; font.bold: true }
-        Text { font.family: Theme.fonts.ui; text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
+        Text { text: "󰖎"; color: Theme.colors.teal; font.pixelSize: weatherWidget.fs(metrics.fontSmall); font.family: Theme.fonts.mono; font.bold: true }
+        Text { font.family: Theme.fonts.ui; font.features: { "tnum": 1, "lnum": 1 }; text: weatherWidget.humidity + "%"; color: Theme.colors.textSecondary; font.pixelSize: weatherWidget.fs(metrics.fontTiny) }
       }
 
       RowLayout {
         spacing: metrics.spacingTiny
-        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: metrics.fontSmall; font.family: Theme.fonts.mono; font.bold: true }
-        Text { font.family: Theme.fonts.ui; text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: metrics.fontTiny }
+        Layout.fillWidth: true
+        Text { text: "󰖝"; color: Theme.colors.blue; font.pixelSize: weatherWidget.fs(metrics.fontSmall); font.family: Theme.fonts.mono; font.bold: true }
+        Text { font.family: Theme.fonts.ui; font.features: { "tnum": 1, "lnum": 1 }; text: weatherWidget.windSpeed.toFixed(0) + " km/h"; color: Theme.colors.textSecondary; font.pixelSize: weatherWidget.fs(metrics.fontTiny); Layout.fillWidth: true; elide: Text.ElideRight }
       }
     }
   }

@@ -64,6 +64,11 @@ Singleton {
     property real radiusScale: 1
     property real borderScale: 1
     function rs(n) { return n <= 0 ? 0 : Math.max(0, Math.round(n * radiusScale)); }
+    // Dashboard cards: 1 px hairline frame (border colour at this opacity; 0 = no
+    // frame, and borderScale 0 themes stay borderless) and tracked uppercase titles.
+    property real cardFrameOpacity: 0.5
+    readonly property color cardFrame: Qt.rgba(colors.border.r, colors.border.g, colors.border.b, cardFrameOpacity)
+    property real titleTracking: 1.5      // px of letter-spacing on card titles (0 under compact)
     function bw(n) { return n <= 0 ? 0 : (borderScale <= 0 ? 0 : Math.max(1, Math.round(n * borderScale))); }
 
     function apply(text) {

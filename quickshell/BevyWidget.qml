@@ -127,15 +127,18 @@ Item {
     anchors.fill: parent
     color: Theme.colors.panel
     radius: metrics.radiusLarge
+    border.width: Theme.cardFrameOpacity > 0 ? Theme.bw(1) : 0
+    border.color: Theme.cardFrame
 
     Text {
       id: title
       anchors { top: parent.top; left: parent.left; margins: metrics.spacingLarge }
       text: "󰊗  " + (bevyWidget.options.title ?? bevyWidget.appName)
-      color: Theme.colors.textPrimary
-      font.pixelSize: metrics.fontLarge
-      font.bold: true
+      color: Theme.colors.textSecondary
+      font.pixelSize: metrics.fontNormal
       font.family: Theme.fonts.mono
+      font.capitalization: Font.AllUppercase
+      font.letterSpacing: Theme.titleTracking
     }
 
     // Readouts: "label value" pairs from the app, right of the title
@@ -158,6 +161,7 @@ Item {
             color: Theme.colors.textSecondary
             font.pixelSize: metrics.fontSmall
             font.family: Theme.fonts.mono
+            font.features: { "tnum": 1, "lnum": 1 }
           }
         }
       }

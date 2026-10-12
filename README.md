@@ -7,7 +7,7 @@ wallpaper, and the scripts that hold it together.
 
 | Path | What it is |
 |---|---|
-| `hypr/` | Hyprland config (Lua), hyprlock fallback, per-device template |
+| `hypr/` | Hyprland config (Lua), per-device template, optional modules (`hypr/modules/`) |
 | `quickshell/` | Bar, dashboard, launchers, power menu (QML). See [quickshell/README.md](quickshell/README.md) |
 | `bevy/` | Rust/Bevy widgets (globe, planet, wallpaper scenes) rendered inside Quickshell |
 | `wallpapers/` | One folder per wallpaper with its theme, lock screen layout and kitty overrides |
@@ -82,16 +82,51 @@ git checkout release/0.56.x   # match your Hyprland release; stay on main for hy
 
 Pull it again (and switch release branch) after Hyprland updates.
 
-## Per-device settings
+### Without the plugin
 
-Anything specific to one machine stays out of the repo:
+If `hypr/plugins/split-monitor-workspaces` is missing, `hyprland.lua` logs it
+and falls back to plain workspaces 1-10 shared by all monitors (same keys).
 
-- `hypr/perdevice.lua` (copy from `hypr/perdevice.example.lua`): monitors,
-  `DEVICE.monitor_priority` on multi-monitor setups, extra startup commands,
-  optional voice-assistant binds.
-- `quickshell/presets.local.json`: dashboard preset overrides.
-- `~/.config/nova-voice/env`: voice assistant settings (see
-  `scripts/nova_voice.env.example`).
+## Generic, per-device and personal
+
+A fresh clone with no local files is the generic setup: bar, dashboard,
+launchers, wallpapers and themes, lock screen, screenshots. Machine-specific
+and personal parts live in local files that are gitignored, or switch on
+when their config file exists. Without those files the features are absent.
+No errors, empty widgets or dead keybinds.
+
+### Per-device (local files, gitignored)
+
+| File | What it holds |
+|---|---|
+| `hypr/perdevice.lua` (from `hypr/perdevice.example.lua`) | Monitors, `DEVICE.monitor_priority`, extra startup commands (`DEVICE.startup`, e.g. Sunshine), optional modules (`DEVICE.module("nova")`), `DEVICE.amd_env` |
+| `quickshell/presets.local.json` | Dashboard preset overrides |
+| `wallpapers/local.conf` (from `local.conf.example`) | Extra/disabled wallpapers, the one picked at login |
+| `quickshell/secrets.env` | Optional OpenSky client id/secret for the globe's aircraft layer |
+
+The AMD driver env (`radeonsi`) is set only when the `amdgpu` kernel module is
+loaded (override with `DEVICE.amd_env`).
+
+### Personal modules (off unless configured)
+
+| Module | Turned on by | Pieces |
+|---|---|---|
+| Nova voice assistant + chat panel | `~/.config/nova-voice/env` (`scripts/nova_voice.env.example`, `nova_voice.sh setup`); keybinds via `DEVICE.module("nova")` in `perdevice.lua` (`hypr/modules/nova.lua`: Super+T, Super+Shift+T, Super+A) | `quickshell/Nova*.qml`, `NovaQuiz.js`, `NovaLatex.js`, `VoiceBarWidget.qml`, `assets/nova-lynx/`, `scripts/nova_voice.{sh,py}`, `scripts/polls/agentpoll.sh`; speaker names in `~/.config/nova-voice/speakers.json`. Needs an [openclaw](https://openclaw.ai) gateway and the nova client (`NOVA_CLIENT`); details in [quickshell/README.md](quickshell/README.md) |
+| Tesla (Tessie) | an API key in `~/.config/tessie.key` | Car row on the Services card (`scripts/polls/tessie*.sh`), drives on the globe (`scripts/globeserver.py`) |
+
+Without `nova-voice/env`, the chat panel's toggle and the voice indicator do
+nothing. Without `tessie.key`, the Services card shows Tailscale only. Other
+optional pieces just stay idle when their app is missing: Tailscale, Cider
+(lyrics, the music card's Cider source), Sunshine.
+
+### What a machine needs
+
+- **A friend's machine:** nothing beyond the install steps. Optionally
+  `hypr/perdevice.lua` for monitors.
+- **Vic's machines:** `hypr/perdevice.lua` (monitors, Sunshine on the
+  desktop, the Nova binds), `~/.config/nova-voice/env` and `speakers.json`,
+  `~/.config/tessie.key`, plus `wallpapers/local.conf` /
+  `presets.local.json` where used. None of these are in the repo.
 
 ## Keybinds
 
@@ -112,3 +147,6 @@ Anything specific to one machine stays out of the repo:
 | `1`-`0` | Workspace on the current monitor (`Shift` moves the window) |
 | `Print` | Screenshot (`Super` for a region, `Shift` to record) |
 | `Shift+Q` | Reload Hyprland |
+| `C` | Control center (notifications, quick settings) |
+| `Tab` / `Shift+Tab` | Next / previous dashboard tab |
+| `T` / `Shift+T`, `A` | Nova voice / cancel, Nova chat (only with `DEVICE.module("nova")`) |

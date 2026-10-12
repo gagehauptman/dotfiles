@@ -14,8 +14,8 @@ Repo `/storage/git/dotfiles` (origin `git@github.com:gagehauptman/dotfiles.git`,
 Not in repo: `~/.config/nova-voice/env`, `hypr/perdevice.lua` (per-device, gitignored), `wallpapers/local.conf`, `quickshell/presets.local.json`.
 
 ## Hyprland
-Config: `~/.config/hypr/hyprland.lua` (Lua). Per-device: `hypr/perdevice.lua` (template `perdevice.example.lua`). Plugin: split-monitor-workspaces (`hypr/plugins/`, loaded via hyprpm). Monitors on desktop: **DP-4** Samsung S34CG50 3440x1440@100 left (workspaces 1-10), **HDMI-A-3** Samsung LS27R75 2560x1440@144 right (11-20; also the Sunshine/Moonlight stream).
-Binds (mainMod=Super): Return kitty, B firefox, D discord, L lock, Z power menu, W wallpaper selector, Q bar toggle, Shift+Q `hyprctl reload`, T/Shift+T nova voice, A Nova chat, Print screenshots, Space/media keys playerctl.
+Config: `~/.config/hypr/hyprland.lua` (Lua). Per-device: `hypr/perdevice.lua` (template `perdevice.example.lua`); optional modules in `hypr/modules/` (`DEVICE.module("nova")`). Generic/per-device/personal split: repo README. Plugin: split-monitor-workspaces (`hypr/plugins/`, loaded via hyprpm). Monitors on desktop: **DP-4** Samsung S34CG50 3440x1440@100 left (workspaces 1-10), **HDMI-A-3** Samsung LS27R75 2560x1440@144 right (11-20; also the Sunshine/Moonlight stream).
+Binds (mainMod=Super): Return kitty, B firefox, D discord, L lock, Z power menu, W wallpaper selector, Shift+Q `hyprctl reload`, T/Shift+T nova voice, A Nova chat, Print screenshots, Space/media keys playerctl.
 hyprctl syntax is Lua now:
 - `hyprctl dispatch "hl.dsp.exec_cmd(\"/path/cmd\")"`
 - `hyprctl dispatch "hl.dsp.dpms({ action = \"off\" })"`

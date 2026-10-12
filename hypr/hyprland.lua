@@ -32,12 +32,17 @@ hl.config({
         force_zero_scaling = true,
     },
 
-    debug = {
-        damage_tracking = 0,
+    render = {
+        cm_enabled     = false,
+        direct_scanout = 2, -- fullscreen games/video only
     },
 
-    render = {
-        cm_enabled = false,
+    misc = {
+        vrr = 2, -- adaptive sync for fullscreen only
+    },
+
+    cursor = {
+        no_hardware_cursors = 0, -- hardware cursor planes on
     },
 })
 
@@ -84,7 +89,6 @@ hl.env("MOZ_ENABLE_WAYLAND",       "1")
 hl.env("LIBVA_DRIVER_NAME",        "radeonsi")
 hl.env("XDG_SESSION_TYPE",         "wayland")
 hl.env("__GLX_VENDOR_LIBRARY_NAME","radeonsi")
-hl.env("WLR_NO_HARDWARE_CURSORS",  "1")
 hl.env("GDK_BACKEND",              "wayland,x11")
 hl.env("QT_QPA_PLATFORM",          "wayland;xcb")
 
@@ -140,8 +144,11 @@ hl.bind(mainMod .. " + F4",           hl.dsp.exec_cmd("pactl set-source-mute @DE
 
 hl.bind(mainMod .. " + N",            hl.dsp.global("quickshell:toggleDashboard"))
 hl.bind(mainMod .. " + SHIFT + N",    hl.dsp.global("quickshell:toggleDashboardFullscreen"))
+hl.bind(mainMod .. " + TAB",          hl.dsp.global("quickshell:dashboardNextTab"))
+hl.bind(mainMod .. " + SHIFT + TAB",  hl.dsp.global("quickshell:dashboardPrevTab"))
 hl.bind(mainMod .. " + W",            hl.dsp.global("quickshell:toggleWallpaperSelector"))
 hl.bind(mainMod .. " + R",            hl.dsp.global("quickshell:toggleAppSelector"))
+hl.bind(mainMod .. " + C",            hl.dsp.global("quickshell:toggleControlCenter"))
 
 hl.bind(mainMod .. " + mouse:272",    hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273",    hl.dsp.window.resize(), { mouse = true })

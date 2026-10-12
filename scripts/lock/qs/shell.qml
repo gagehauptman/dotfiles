@@ -43,6 +43,20 @@ ShellRoot {
   property bool lockEngaged: false
   readonly property bool shown: root.mode === "test" ? root.testShown : root.lockEngaged
 
+  // ---- Nova voice agent state for the small indicator on every lock surface
+  // (same file the bar reads). Only the state word is used; never any transcript text.
+  property string voiceState: "idle"
+  FileView {
+    id: voiceStateFile
+    path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nova-voice/state.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { root.voiceState = JSON.parse(text()).state || "idle" } catch (e) { root.voiceState = "idle" } }
+    onLoadFailed: root.voiceState = "idle"
+  }
+  Timer { interval: 1500; repeat: true; running: true; onTriggered: voiceStateFile.reload() }
+
   // ---- settings (lockgen.py's JSON)
   property var config: ({ screens: [] })
   FileView {

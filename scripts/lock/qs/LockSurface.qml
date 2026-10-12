@@ -645,4 +645,36 @@ FocusScope {
       }
     }
   }
+
+  // Nova voice agent indicator: a small dot + word, bottom-left. State only, no text.
+  Row {
+    id: voiceInd
+    readonly property string st: shell.voiceState === "transcribing" ? "thinking" : (shell.voiceState || "idle")
+    readonly property color col: st === "listening" ? "#94e2d5" : st === "thinking" ? "#b4befe"
+                               : st === "speaking" ? "#89b4fa" : st === "error" ? surface.cRed : surface.cSubtext
+    anchors { left: parent.left; bottom: parent.bottom; leftMargin: surface.s * 28; bottomMargin: surface.s * 24 }
+    spacing: surface.s * 8
+    opacity: st === "idle" ? 0.35 : 0.85
+    Behavior on opacity { NumberAnimation { duration: 250 } }
+    Rectangle {
+      width: surface.s * 9; height: width; radius: width / 2
+      anchors.verticalCenter: parent.verticalCenter
+      color: voiceInd.col
+      SequentialAnimation on scale {
+        running: voiceInd.st !== "idle" && voiceInd.st !== "error"
+        loops: Animation.Infinite
+        NumberAnimation { to: 1.45; duration: voiceInd.st === "listening" ? 450 : 750; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 1.0; duration: voiceInd.st === "listening" ? 450 : 750; easing.type: Easing.InOutSine }
+      }
+    }
+    Text {
+      anchors.verticalCenter: parent.verticalCenter
+      text: "nova · " + voiceInd.st
+      color: voiceInd.col
+      font.family: "Adwaita Sans"
+      font.pixelSize: Math.round(surface.s * 13)
+      font.letterSpacing: surface.s * 1.5
+      renderType: Text.NativeRendering
+    }
+  }
 }

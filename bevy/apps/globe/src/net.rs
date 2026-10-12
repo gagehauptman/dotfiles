@@ -1,5 +1,5 @@
 //! Background polling of the globe service. Three threads (textures,
-//! vectors, aircraft) push messages into a channel the app drains every
+//! vectors, aircraft; the last also does satellites and drives) push messages into a channel the app drains every
 //! frame; all stop when the `Feed` resource is dropped with the widget.
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -71,12 +71,27 @@ pub struct Detail {
     pub trail: Vec<(f32, f32, f32)>,
 }
 
+/// The car's drives in the chosen range (`/drives.json`), oldest first.
+#[derive(Clone, Debug, Default)]
+pub struct Drives {
+    /// unix seconds the service built this at, and where the range starts
+    pub now: f64,
+    pub from: f64,
+    pub miles: f32,
+    /// the service's state: loading, ok, no key, an error
+    pub state: String,
+    /// (start, end, [(lat, lon) degrees])
+    pub drives: Vec<(f64, f64, Vec<(f32, f32)>)>,
+}
+
 /// What the app asks the network threads for.
 pub enum Cmd {
     /// Follow this aircraft (details now and every 10 s), or none
     Select(Option<String>),
     /// Fetch the elements for this /tle.json query (empty: none)
     Sats(String),
+    /// Keep the drives in this range coming (day, week, month, year, all), or none
+    Drives(Option<String>),
 }
 
 /// One line layer of the vector bundle, ready for a LineList mesh.
@@ -112,6 +127,8 @@ pub enum Msg {
     Vectors(Box<Vectors>),
     Detail(Box<Detail>),
     Sats(Vec<Sat>),
+    /// None: the layer went off, drop what is drawn
+    Drives(Option<Box<Drives>>),
 }
 
 #[derive(Clone)]
@@ -121,10 +138,12 @@ pub struct Config {
     pub lp_query: String,
     /// query string for /geo.json (a home override), or empty
     pub geo_query: String,
-    /// radius the line layers are placed at
-    pub line_radius: f32,
+    /// grid of the globe mesh, whose facets the line layers are laid on
+    pub ground_grid: u32,
     /// query string for /tle.json (empty: no satellites)
     pub sat_query: String,
+    /// range for /drives.json (None: the layer is off)
+    pub drives: Option<String>,
 }
 
 struct Cur<'a> {
@@ -156,8 +175,8 @@ impl<'a> Cur<'a> {
 }
 
 /// Parse the service's bundle (format in globeserver.py, vectors_build) into
-/// meshes-to-be on a sphere of radius `r`.
-pub fn parse_vectors(b: &[u8], r: f32) -> Result<Vectors, String> {
+/// meshes-to-be on the facets of the globe mesh (`sphere::mesh(grid)`).
+pub fn parse_vectors(b: &[u8], grid: u32) -> Result<Vectors, String> {
     let mut c = Cur { b, i: 0 };
     if c.take(4)? != b"GLV3" {
         return Err("vectors: not a GLV3 bundle".into());
@@ -176,7 +195,7 @@ pub fn parse_vectors(b: &[u8], r: f32) -> Result<Vectors, String> {
                 let lon = c.f32()?;
                 line.push((lat, lon));
             }
-            sphere::surface_polyline(line.iter().copied(), r, &mut positions, &mut indices);
+            sphere::ground_polyline(grid, line.iter().copied(), &mut positions, &mut indices);
         }
         layers.push(LineLayer { name, positions, indices });
     }
@@ -380,7 +399,7 @@ fn vectors(cfg: Config, tx: Sender<Msg>, stop: Arc<AtomicBool>) {
     }
     let slow = agent(900);
     loop {
-        match get(&slow, &format!("{}/vectors.bin", cfg.base)).and_then(|b| parse_vectors(&b, cfg.line_radius)) {
+        match get(&slow, &format!("{}/vectors.bin", cfg.base)).and_then(|b| parse_vectors(&b, cfg.ground_grid)) {
             Ok(v) => {
                 let _ = tx.send(Msg::Vectors(Box::new(v)));
                 break;
@@ -427,9 +446,33 @@ fn parse_detail(hex: &str, b: &[u8]) -> Detail {
     }
 }
 
+fn parse_drives(v: &serde_json::Value) -> Drives {
+    let drives = v["drives"]
+        .as_array()
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|r| {
+                    let c = r.get(2)?.as_array()?;
+                    let pts = c.chunks_exact(2).filter_map(|p| Some((p[0].as_f64()? as f32, p[1].as_f64()? as f32))).collect::<Vec<_>>();
+                    Some((r.get(0)?.as_f64()?, r.get(1)?.as_f64()?, pts))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Drives {
+        now: v["now"].as_f64().unwrap_or(0.0),
+        from: v["from"].as_f64().unwrap_or(0.0),
+        miles: v["miles"].as_f64().unwrap_or(0.0) as f32,
+        state: v["state"].as_str().unwrap_or("").to_string(),
+        drives,
+    }
+}
+
 /// The aircraft frame every 20 s, the details of a selected aircraft
-/// straight away and every 10 s while it stays selected, and the satellites'
-/// elements (on start, whenever the set changes, and every six hours).
+/// straight away and every 10 s while it stays selected, the satellites'
+/// elements (on start, whenever the set changes, and every six hours), and
+/// while the layer is on the drives every minute (sent on when they change;
+/// the service fills its cache from Tessie in the background).
 fn aircraft(cfg: Config, tx: Sender<Msg>, cmds: Receiver<Cmd>, stop: Arc<AtomicBool>) {
     if !wait_ready(&cfg, &stop) {
         return;
@@ -438,6 +481,9 @@ fn aircraft(cfg: Config, tx: Sender<Msg>, cmds: Receiver<Cmd>, stop: Arc<AtomicB
     let slow = agent(300);
     let mut selected: Option<String> = None;
     let mut sat_query = cfg.sat_query.clone();
+    let mut drives = cfg.drives.clone();
+    let mut drives_key = String::new();
+    let mut next_drives = Instant::now();
     let mut next_frame = Instant::now();
     let mut next_detail = Instant::now();
     let mut next_sats = Instant::now();
@@ -451,6 +497,14 @@ fn aircraft(cfg: Config, tx: Sender<Msg>, cmds: Receiver<Cmd>, stop: Arc<AtomicB
                 Cmd::Sats(q) => {
                     sat_query = q;
                     next_sats = Instant::now();
+                }
+                Cmd::Drives(r) => {
+                    if r.is_none() && drives.is_some() {
+                        let _ = tx.send(Msg::Drives(None));
+                    }
+                    drives = r;
+                    drives_key.clear();
+                    next_drives = Instant::now();
                 }
             }
         }
@@ -493,6 +547,25 @@ fn aircraft(cfg: Config, tx: Sender<Msg>, cmds: Receiver<Cmd>, stop: Arc<AtomicB
                         })
                         .unwrap_or_default();
                     let _ = tx.send(Msg::Air { rows, ts: v["ts"].as_f64().unwrap_or(0.0) });
+                }
+            }
+        }
+        if let Some(range) = &drives {
+            if now >= next_drives {
+                // every 5 s until the cache has been filled once, then every minute
+                next_drives = now + Duration::from_secs(60);
+                match get(&slow, &format!("{}/drives.json?range={range}&known={drives_key}", cfg.base)).and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).map_err(|e| e.to_string())) {
+                    Ok(v) => {
+                        let state = v["state"].as_str().unwrap_or("");
+                        if matches!(state, "idle" | "loading") {
+                            next_drives = now + Duration::from_secs(5);
+                        }
+                        if v.get("drives").is_some() {
+                            drives_key = v["key"].as_str().unwrap_or("").to_string();
+                            let _ = tx.send(Msg::Drives(Some(Box::new(parse_drives(&v)))));
+                        }
+                    }
+                    Err(e) => eprintln!("globe: drives: {e}"),
                 }
             }
         }

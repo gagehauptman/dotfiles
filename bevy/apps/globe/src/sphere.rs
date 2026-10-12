@@ -75,6 +75,36 @@ pub fn mesh(n: u32) -> Mesh {
         .with_inserted_indices(Indices::U32(indices))
 }
 
+/// Distance from the centre to the faceted surface of `mesh(n)` along `dir`:
+/// the flat triangle the ray crosses, so slightly under 1 away from the
+/// vertices. Overlays that must sit on the ground (the drives) use it, as a
+/// line at radius 1 floats over the facets when seen from street level.
+pub fn surface_radius(n: u32, dir: Vec3) -> f32 {
+    let d = dir.normalize();
+    let a = d.abs();
+    // the cube face the ray leaves through, and its (u, v) there, as in `cube_to_sphere`
+    let (face, u, v) = if a.x >= a.y && a.x >= a.z {
+        (if d.x > 0.0 { CubeFace::PosX } else { CubeFace::NegX }, d.y / a.x, d.z / a.x)
+    } else if a.y >= a.z {
+        (if d.y > 0.0 { CubeFace::PosY } else { CubeFace::NegY }, d.x / a.y, d.z / a.y)
+    } else {
+        (if d.z > 0.0 { CubeFace::PosZ } else { CubeFace::NegZ }, d.x / a.z, d.y / a.z)
+    };
+    let g = |x: f32| ((x + 1.0) * 0.5 * n as f32).clamp(0.0, n as f32);
+    let (gu, gv) = (g(u), g(v));
+    let (i, j) = ((gu.floor() as u32).min(n - 1), (gv.floor() as u32).min(n - 1));
+    let (fu, fv) = (gu - i as f32, gv - j as f32);
+    let at = |i: u32, j: u32| cube_to_sphere(face, -1.0 + 2.0 * i as f32 / n as f32, -1.0 + 2.0 * j as f32 / n as f32);
+    // the cell is split along its (i, j+1)-(i+1, j) diagonal, as in `mesh`
+    let tri = if fu + fv <= 1.0 { [at(i, j), at(i + 1, j), at(i, j + 1)] } else { [at(i, j + 1), at(i + 1, j), at(i + 1, j + 1)] };
+    let normal = (tri[1] - tri[0]).cross(tri[2] - tri[0]);
+    let den = normal.dot(d);
+    if den.abs() < 1e-12 {
+        return 1.0;
+    }
+    (normal.dot(tri[0]) / den).clamp(0.9, 1.0)
+}
+
 /// Unit vector for a latitude and longitude in radians.
 pub fn latlon(lat: f32, lon: f32) -> Vec3 {
     Vec3::new(lat.cos() * lon.cos(), lat.sin(), -lat.cos() * lon.sin())
@@ -119,6 +149,56 @@ pub fn surface_polyline(points: impl IntoIterator<Item = (f32, f32)>, r: f32, po
     }
 }
 
+/// How far a draped chord may stray from the facets (about 6 m): well under
+/// the least lift of the overlays laid on the ground, so none dips under a crease.
+const DRAPE_TOL: f32 = 1e-6;
+
+/// `dir` (any length) put on the faceted surface of `mesh(n)`.
+pub fn ground(n: u32, dir: Vec3) -> Vec3 {
+    let d = dir.normalize();
+    d * surface_radius(n, d)
+}
+
+/// The points strictly between `a` and `b` (both on the ground of `mesh(n)`)
+/// that keep the chords through them on the facets: a piece is halved while
+/// its middle is more than `DRAPE_TOL` off the ground, which only happens
+/// where it crosses a crease (within one facet a chord lies on it).
+fn drape(n: u32, a: Vec3, b: Vec3, depth: u32, out: &mut Vec<Vec3>) {
+    let m = ground(n, a + b);
+    if depth == 0 || (m.length() - ((a + b) * 0.5).length()).abs() <= DRAPE_TOL {
+        return;
+    }
+    drape(n, a, m, depth - 1, out);
+    out.push(m);
+    drape(n, m, b, depth - 1, out);
+}
+
+/// `surface_polyline` on the faceted surface of `mesh(n)` rather than a
+/// sphere: every point on the facets and every piece draped over the
+/// creases, so the line lies on the ground the globe is drawn with, seen
+/// from any height. The overlays built so are lifted off it by their
+/// transform (the globe's `Grounded`).
+pub fn ground_polyline(n: u32, points: impl IntoIterator<Item = (f32, f32)>, positions: &mut Vec<[f32; 3]>, indices: &mut Vec<u32>) {
+    let (mut pos, mut idx) = (Vec::new(), Vec::new());
+    surface_polyline(points, 1.0, &mut pos, &mut idx);
+    let base = positions.len() as u32;
+    positions.extend(pos.iter().map(|p| ground(n, Vec3::from_array(*p)).to_array()));
+    let mut mid = Vec::new();
+    for pair in idx.chunks_exact(2) {
+        let (i, j) = (base + pair[0], base + pair[1]);
+        mid.clear();
+        drape(n, Vec3::from_array(positions[i as usize]), Vec3::from_array(positions[j as usize]), 20, &mut mid);
+        let mut last = i;
+        for p in &mid {
+            positions.push(p.to_array());
+            let k = positions.len() as u32 - 1;
+            indices.extend([last, k]);
+            last = k;
+        }
+        indices.extend([last, j]);
+    }
+}
+
 /// Local east and north unit vectors at a point on the sphere.
 pub fn frame(p: Vec3) -> (Vec3, Vec3) {
     let east = Vec3::Y.cross(p).try_normalize().unwrap_or(Vec3::NEG_Z);
@@ -152,6 +232,26 @@ impl Lines {
         }
     }
 
+    /// Polyline through `points` (directions) laid on the faceted surface of
+    /// `mesh(n)`, draped over its creases like `ground_polyline`.
+    pub fn ground_path(&mut self, n: u32, points: impl IntoIterator<Item = Vec3>, color: [f32; 4]) {
+        let mut prev: Option<Vec3> = None;
+        let mut mid = Vec::new();
+        for p in points {
+            let p = ground(n, p);
+            if let Some(q) = prev {
+                mid.clear();
+                drape(n, q, p, 20, &mut mid);
+                let mut last = q;
+                for m in mid.iter().copied().chain(std::iter::once(p)) {
+                    self.seg(last, m, color);
+                    last = m;
+                }
+            }
+            prev = Some(p);
+        }
+    }
+
     /// A lat/lon polyline (degrees) on the surface, densified like
     /// `surface_polyline`, in one colour.
     pub fn surface_path(&mut self, points: impl IntoIterator<Item = (f32, f32)>, r: f32, color: [f32; 4]) {
@@ -160,6 +260,11 @@ impl Lines {
         for pair in idx.chunks_exact(2) {
             self.seg(Vec3::from_array(pos[pair[0] as usize]), Vec3::from_array(pos[pair[1] as usize]), color);
         }
+    }
+
+    /// The segments' ends so far, two per segment.
+    pub fn positions(&self) -> &[[f32; 3]] {
+        &self.positions
     }
 
     pub fn mesh(mut self) -> Mesh {

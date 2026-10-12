@@ -35,7 +35,12 @@ gets a widget type of its own in `DashboardConfig.qml` (`globe` does, with
   and scaled by zoom, so an airliner or an airport stays readable at any
   distance; a click on an aircraft shows its flight and draws its path. Satellites come from CelesTrak
   elements propagated with SGP4 (`sats.rs`); the camera rigs it uses for
-  Home and Follow are the harness's `rig` module.
+  Home and Follow are the harness's `rig` module. The Drives layer draws the Tesla's
+  paths from Tessie (the service caches them by month in
+  `~/.cache/quickshell/globe/drives.json`) over a day, week, month, year or
+  all time, picked in the card's settings. The Day/Night layer (on by default) adds a faint terminator line, a
+  twilight tint along it and brighter city lights on the night side, drawn in the
+  globe shader from the sun direction.
 
 Minimal app (`apps/<name>/src/lib.rs`):
 

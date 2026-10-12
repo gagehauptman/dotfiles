@@ -10,13 +10,16 @@ use serde::Deserialize;
 pub struct Options {
     /// the shell's colours, added by the widget
     pub theme: HashMap<String, String>,
-    /// layers to start on, out of weather, lp, air, sats (default weather and sats)
+    /// layers to start on, out of weather, lp, air, sats, drives, daynight (default weather, sats and daynight)
     pub layers: Option<Vec<String>>,
     pub satellites: SatConfig,
     pub view: Option<ViewOption>,
     pub server: Option<String>,
     /// device pixel ratio of the screen, added by the widget
     pub scale: Option<f32>,
+    /// wheel zoom multiplier: at 1 a notch takes about a fifth off the
+    /// height above the ground (default 1)
+    pub zoom_speed: Option<f32>,
     /// home instead of geolocating: [lat, lon], a place name, or {location, label}
     pub home: Option<HomeConfig>,
     pub weather: WeatherOptions,
@@ -24,9 +27,10 @@ pub struct Options {
     pub aircraft: AircraftOptions,
     pub labels: LabelOptions,
     pub graticule: GridOptions,
+    pub drives: DriveOptions,
     /// palette overrides: coast, borders, regions, grid, rim, home, fill,
     /// countries, region_names, cities, capitals, aircraft_low, aircraft_mid,
-    /// aircraft_high, aircraft_cruise; values are theme names or hex
+    /// aircraft_high, aircraft_cruise, drives; values are theme names or hex
     pub colors: HashMap<String, String>,
     /// what the user changed in the card's settings panel last time (the
     /// widget adds it; the same ids as the panel's controls)
@@ -44,6 +48,10 @@ pub enum Change {
     SatelliteSet,
     Labels,
     Aircraft,
+    /// the drives' range (fetch again) or look (redraw)
+    Drives,
+    /// read as it's used (the wheel's zoom speed): nothing to refresh
+    View,
 }
 
 fn list(v: &str) -> Vec<String> {
@@ -60,8 +68,8 @@ impl Options {
     pub fn apply(&mut self, id: &str, value: &str) -> Option<Change> {
         let on = || matches!(value.trim(), "true" | "1" | "on");
         Some(match id {
-            "weather" | "lp" | "air" | "sats" => {
-                let mut layers = self.layers.clone().unwrap_or_else(|| ["weather", "sats"].map(String::from).to_vec());
+            "weather" | "lp" | "air" | "sats" | "drives" | "daynight" => {
+                let mut layers = self.layers.clone().unwrap_or_else(|| ["weather", "sats", "daynight"].map(String::from).to_vec());
                 layers.retain(|l| l != id);
                 if on() {
                     layers.push(id.to_string());
@@ -93,6 +101,10 @@ impl Options {
                 self.graticule.step = num(value)?.clamp(1.0, 90.0);
                 Change::Grid
             }
+            "zoom_speed" => {
+                self.zoom_speed = Some(num(value)?.clamp(0.1, 5.0));
+                Change::View
+            }
             "aircraft.min_altitude" => {
                 self.aircraft.min_altitude = num(value)?.max(0.0);
                 Change::Aircraft
@@ -116,6 +128,18 @@ impl Options {
             "aircraft.labels" => {
                 self.aircraft.labels = on();
                 Change::Aircraft
+            }
+            "drives.range" => {
+                let r = value.trim();
+                if !DRIVE_RANGES.contains(&r) {
+                    return None;
+                }
+                self.drives.range = r.to_string();
+                Change::Drives
+            }
+            "drives.fade" => {
+                self.drives.fade = on();
+                Change::Drives
             }
             "labels.countries" => {
                 self.labels.countries = on();
@@ -207,6 +231,17 @@ impl Options {
 
     pub fn layer_on(&self, name: &str, default: bool) -> bool {
         self.layers.as_ref().map(|l| l.iter().any(|x| x == name)).unwrap_or(default)
+    }
+
+    /// The drives' range for /drives.json (a week unless it is a known one).
+    pub fn drive_range(&self) -> String {
+        let r = self.drives.range.as_str();
+        if DRIVE_RANGES.contains(&r) { r } else { "week" }.to_string()
+    }
+
+    /// The same, None while the layer is off.
+    pub fn drive_query(&self) -> Option<String> {
+        self.layer_on("drives", false).then(|| self.drive_range())
     }
 
     pub fn sats(&self) -> SatOptions {
@@ -520,6 +555,24 @@ pub struct LabelOptions {
 impl Default for LabelOptions {
     fn default() -> Self {
         LabelOptions { countries: true, regions: true, cities: true, airports: true, min_population: 0.0, size: 1.0 }
+    }
+}
+
+/// What `drives.range` can be: how far back the drawn drives go.
+pub const DRIVE_RANGES: [&str; 5] = ["day", "week", "month", "year", "all"];
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(default)]
+pub struct DriveOptions {
+    /// day, week, month, year or all
+    pub range: String,
+    /// older drives fainter
+    pub fade: bool,
+}
+
+impl Default for DriveOptions {
+    fn default() -> Self {
+        DriveOptions { range: "week".into(), fade: true }
     }
 }
 

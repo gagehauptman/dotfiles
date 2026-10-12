@@ -3232,6 +3232,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "sputnik"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "quickshell-bevy",
+ "serde_json",
+ "sputnik_scene",
+ "wgpu",
+]
+
+[[package]]
+name = "sputnik_scene"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "bytemuck",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

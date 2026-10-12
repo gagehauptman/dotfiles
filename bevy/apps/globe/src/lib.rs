@@ -1,17 +1,23 @@
-//! Globe: live weather, light pollution and aircraft on a vector-style
+//! Globe: live weather, light pollution, aircraft and the car's drives on a vector-style
 //! cube-sphere, in the dashboard's colours. Data comes from
 //! scripts/globeserver.py on 127.0.0.1:38471 (the registry starts it).
 //!
 //! Preset options for the card (the initial state; the card's toggles change
 //! it while the widget lives):
 //!
-//!   "options": { "layers": ["weather", "lp", "air", "sats"],
+//!   "options": { "layers": ["weather", "lp", "air", "sats", "drives", "daynight"],
 //!                "satellites": ["stations", "visual", "weather", "gnss"],
+//!                "drives": { "range": "week", "fade": true },
 //!                "view": { "type": "focus", "lat": 48.9, "lon": 2.3, "dist": 1.8 } }
 //!   "view": { "type": "chase", "satellite": "ISS", "target": [29.3, -81.1], "standoff": 0.45 }
 //!
-//! Weather and orbits are on by default, lights (light pollution) and
-//! aircraft off. Drag to orbit, wheel to zoom, Home flies to home, click an
+//! Weather, orbits and the Day/Night layer (a faint terminator line, a twilight
+//! tint along it and brighter city lights on the night side, over the base
+//! night shading) are on by default, lights (light pollution), aircraft and
+//! drives off. Drives are the Tesla's paths from Tessie (via
+//! the service's cache) over the last day, week, month, year or all of
+//! them (`drives.range`, in the settings), older ones fainter; with them on
+//! the wheel zooms in to street level. Drag to orbit, wheel to zoom, Home flies to home, click an
 //! aircraft for its flight, type, route and path, click a satellite for its
 //! orbit and a Follow pill that chases it towards home. The camera rigs are
 //! the harness's `rig` module; a `view` control event drives them too:
@@ -24,13 +30,15 @@
 //! borders with region names and more cities the further in. Names are
 //! painted on the surface along great circles (text.rs); cities get rings
 //! sized by population. Readouts: moving aircraft drawn, weather frame time
-//! (UTC) and home.
+//! (UTC), home, and drives and miles in the range.
 mod config;
+mod land;
 mod material;
 mod net;
 mod sats;
 mod sphere;
 mod text;
+mod theme;
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,15 +74,19 @@ impl Plugin for Globe {
         for (id, value) in options.settings.clone() {
             options.apply(&id, &value);
         }
-        let palette = Palette::from_theme(&options.theme, &options.colors);
+        let theme_in = theme::ThemeIn::parse(&json);
+        let palette = theme::palette(&theme_in, &options.colors);
+        // the land mask is built off this thread; the globe shows plain ocean until it is in
+        std::thread::spawn(land::mask);
         let layers = Layers::from_options(&options);
         let sat_options = options.sats();
         let feed = net::start(net::Config {
             base: options.server.clone().unwrap_or_else(|| "http://127.0.0.1:38471".into()),
-            lp_query: format!("pal={}&tint={}", palette.lp_pal.join(","), palette.lp_tint),
+            lp_query: String::new(), // the palettes are made here (theme.rs)
             geo_query: options.geo_query(),
-            line_radius: R_OUTLINE,
+            ground_grid: GLOBE_GRID,
             sat_query: if layers.sats { sat_options.query() } else { String::new() },
+            drives: options.drive_query(),
         });
         let (mode, pending) = match &options.view {
             Some(ViewOption::Focus { lat, lon, dist }) => (View::Focus { dir: sphere::latlon(lat.to_radians(), lon.to_radians()), dist: dist.unwrap_or(2.2) }, None),
@@ -92,19 +104,21 @@ impl Plugin for Globe {
             .insert_resource(Display { scale: options.scale.unwrap_or(1.0).clamp(0.5, 4.0) })
             .insert_resource(sat_options)
             .insert_resource(options)
+            .insert_resource(ThemeState { json: String::new(), current: theme_in })
             .insert_resource(PresetOptions(json))
             .init_resource::<Orbit>()
             .init_resource::<Air>()
             .init_resource::<Labels>()
             .init_resource::<Selection>()
             .init_resource::<Sats>()
+            .init_resource::<DriveData>()
             .insert_resource(CameraRig { mode, pending_chase: pending })
             // Nothing here moves on its own clock except what the systems
             // rebuild (aircraft a few times a second, satellites every frame
             // while shown), so a still globe needn't be redrawn 30 times a second.
             .insert_resource(FramePacing { on_change: true, ..default() })
             .add_systems(Startup, setup)
-            .add_systems(Update, (receive, controls, settings, camera, select, line_visibility, labels, sun, aircraft, selection_view, satellites).chain());
+            .add_systems(Update, (receive, retheme, land_mask, controls, settings, camera, select, line_visibility, labels, sun, aircraft, selection_view, satellites, drives, ground_lift).chain());
     }
 }
 
@@ -141,6 +155,8 @@ struct Layers {
     lp: bool,
     air: bool,
     sats: bool,
+    drives: bool,
+    daynight: bool,
     outlines: bool,
     labels: bool,
     graticule: bool,
@@ -153,6 +169,8 @@ impl Layers {
             lp: o.layer_on("lp", false),
             air: o.layer_on("air", false),
             sats: o.layer_on("sats", true),
+            drives: o.layer_on("drives", false),
+            daynight: o.layer_on("daynight", true),
             outlines: true, // coastlines, borders and names are the globe; no toggles
             labels: true,
             graticule: o.graticule.show,
@@ -165,77 +183,74 @@ struct Display {
     scale: f32,
 }
 
-/// Colours picked from the shell theme (Catppuccin Mocha when a key is
-/// missing), with the preset's `colors` overrides applied.
+/// The globe's inks, derived from the shell theme (theme.rs; Catppuccin
+/// Mocha when a key is missing), with the wallpaper's `globe` block and the
+/// preset's `colors` overrides applied. Replaced whole on a theme change.
 #[derive(Resource, Clone)]
 struct Palette {
+    /// the ocean
     fill: Color,
+    land: Color,
+    /// how much of the land ink is laid over the ocean (0 = none, the old look)
+    land_strength: f32,
     coast: Color,
     border: Color,
     region: Color,
     grid: Color,
     rim: Color,
+    glow_strength: f32,
+    /// how far the night side is darkened (0..1)
+    night: f32,
     home: Color,
     /// by altitude band: below 10 000 ft, 25 000 ft, 36 000 ft, above
     air: [Color; 4],
     /// label colours by kind: country, region, place, capital
     text: [Color; 4],
     airport: Color,
-    /// eight light pollution zone colours and the tint they fade towards, as rrggbb
-    lp_pal: Vec<String>,
-    lp_tint: String,
+    drives: Color,
+    /// the terminator line, the twilight tints on the day and night side of it
+    terminator: Color,
+    dusk_warm: Color,
+    dusk_cool: Color,
+    /// 256 x 1 RGBA palettes for the weather (coldness index) and light pollution (zone)
+    weather_lut: Vec<u8>,
+    lp_lut: Vec<u8>,
+    /// the font family of the names
+    font: String,
 }
 
-impl Palette {
-    fn from_theme(theme: &HashMap<String, String>, overrides: &HashMap<String, String>) -> Self {
-        let pick = |key: &str, fallback: &str| -> (Color, String) {
-            let s = theme.get(key).map(String::as_str).unwrap_or(fallback);
-            let hex = s.trim_start_matches('#');
-            let hex = if hex.len() == 8 { &hex[2..] } else { hex }; // QML prints #aarrggbb for translucent colours
-            let v = u32::from_str_radix(hex, 16).ok().filter(|_| hex.len() == 6);
-            let v = v.unwrap_or_else(|| u32::from_str_radix(fallback.trim_start_matches('#'), 16).unwrap_or(0));
-            (Color::srgb_u8((v >> 16) as u8, (v >> 8) as u8, v as u8), format!("{:06x}", v))
-        };
-        let (fill, _tint) = pick("panelDeep", "#181825");
-        let lp_pal = ["blue", "teal", "green", "yellow", "orange", "red", "pink", "textPrimary"]
-            .iter()
-            .zip(["#89b4fa", "#94e2d5", "#a6e3a1", "#f9e2af", "#fab387", "#f38ba8", "#f5c2e7", "#cdd6f4"])
-            .map(|(k, f)| pick(k, f).1)
-            .collect();
-        let over = |key: &str, base: Color| overrides.get(key).and_then(|c| config::parse_color(c, theme)).unwrap_or(base);
-        let fill = over("fill", fill);
-        Palette {
-            fill,
-            coast: over("coast", pick("teal", "#94e2d5").0.with_alpha(0.75)),
-            border: over("borders", pick("lavender", "#b4befe").0.with_alpha(0.5)),
-            region: over("regions", pick("textMuted", "#6c7086").0.with_alpha(0.6)),
-            grid: over("grid", pick("textMuted", "#6c7086").0.with_alpha(0.28)),
-            rim: over("rim", pick("teal", "#94e2d5").0),
-            home: over("home", pick("pink", "#f5c2e7").0),
-            air: [
-                over("aircraft_low", pick("green", "#a6e3a1").0),
-                over("aircraft_mid", pick("yellow", "#f9e2af").0),
-                over("aircraft_high", pick("orange", "#fab387").0),
-                over("aircraft_cruise", pick("blue", "#89b4fa").0),
-            ],
-            text: [
-                over("countries", pick("textPrimary", "#cdd6f4").0),
-                over("region_names", pick("textPrimary", "#cdd6f4").0),
-                over("cities", pick("textSecondary", "#a6adc8").0),
-                over("capitals", pick("textPrimary", "#cdd6f4").0),
-            ],
-            airport: over("airports", pick("blue", "#89b4fa").0),
-            lp_pal,
-            lp_tint: format!("{:06x}", {
-                let l = fill.to_srgba();
-                ((l.red * 255.0) as u32) << 16 | ((l.green * 255.0) as u32) << 8 | (l.blue * 255.0) as u32
-            }),
-        }
-    }
+/// The theme last applied, so an unchanged one (every card re-sends on any
+/// change) is a no-op and a settings reset keeps the current theme.
+#[derive(Resource)]
+struct ThemeState {
+    json: String,
+    current: theme::ThemeIn,
 }
 
 fn lin(c: Color) -> [f32; 4] {
     c.to_linear().to_f32_array()
+}
+
+/// The material's colours from the palette.
+fn inks(p: &mut GlobeParams, palette: &Palette) {
+    p.fill = Vec4::from_array(lin(palette.fill));
+    p.land = tint(palette.land, palette.land_strength);
+    p.rim = tint(palette.rim, palette.glow_strength);
+    p.sun.w = palette.night;
+    p.line = tint(palette.terminator, 0.15);
+    p.warm = tint(palette.dusk_warm, 0.05);
+    p.cool = tint(palette.dusk_cool, 0.03);
+}
+
+/// A 256 x 1 palette image (theme.rs) for the material.
+fn lut_image(data: Vec<u8>) -> Image {
+    texture(256, 1, data, TextureFormat::Rgba8UnormSrgb, false, false)
+}
+
+/// A colour with an explicit strength in alpha, for the shader's day/night extras.
+fn tint(c: Color, strength: f32) -> Vec4 {
+    let c = lin(c);
+    Vec4::new(c[0], c[1], c[2], strength)
 }
 
 // ---------------------------------------------------------------- scene
@@ -287,6 +302,16 @@ struct SatIcon;
 struct OrbitMesh;
 #[derive(Component)]
 struct SatText;
+/// The car's drive paths
+#[derive(Component)]
+struct DriveMesh;
+
+/// The drives last received, and whether the mesh must be rebuilt from them.
+#[derive(Resource, Default)]
+struct DriveData {
+    data: Option<net::Drives>,
+    dirty: bool,
+}
 
 /// The satellites and what was last drawn for them.
 #[derive(Resource, Default)]
@@ -340,6 +365,7 @@ enum Layer {
     Air,
     Graticule,
     Sats,
+    Drives,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -369,12 +395,50 @@ struct Labels {
 }
 
 const SURFACE: f32 = 1.0;
+/// The grid, the coastlines and borders, the home ring, the place markers
+/// and names are laid on the ground (`Grounded`); these are the most each is
+/// lifted off it (far out), in the order they stack.
 const R_GRID: f32 = 1.0015;
 const R_OUTLINE: f32 = 1.003;
+/// The most the drives are lifted off the ground (far out); close in the
+/// lift shrinks with the camera's height (`DRIVE_LIFT`), see `drives`.
+const R_DRIVE: f32 = 1.0035;
+/// Lift of the drives over the ground as a share of the camera's height:
+/// enough to clear the facets and win the depth test, too little to show any
+/// parallax against the ground at street level.
+const DRIVE_LIFT: f32 = 0.003;
+/// Grid per cube face of the globe mesh; the drives are put on its facets.
+const GLOBE_GRID: u32 = 48;
+/// Lift of everything laid on the ground over it as a share of the camera's
+/// height: the same as the drives', so they all stay on the ground together.
+const GROUND_LIFT: f32 = DRIVE_LIFT;
 const R_HOME: f32 = 1.005;
 const R_AIR: f32 = 1.004;
 const R_MARKER: f32 = 1.0045;
 const R_TEXT: f32 = 1.006;
+
+/// An overlay built on the globe's facets (`sphere::ground`), which
+/// `ground_lift` scales out by a share of the camera's height, at most to
+/// `max`, as the drives are: close in it lies on the ground (no parallax, no
+/// halo), far out it clears the coarse facets as it did at a fixed radius.
+#[derive(Component, Clone, Copy)]
+struct Grounded {
+    max: f32,
+}
+
+/// Keeps every `Grounded` overlay just over the ground the camera sees:
+/// enough lift to clear the facets and win the depth test, too little to
+/// show any parallax against the ground.
+fn ground_lift(cams: Query<&Transform, (With<WidgetCamera>, Without<Grounded>)>, mut q: Query<(&Grounded, &mut Transform)>) {
+    let Ok(cam) = cams.single() else { return };
+    let h = (cam.translation.length() - SURFACE).max(0.0);
+    for (g, mut tf) in &mut q {
+        let s = 1.0 + (h * GROUND_LIFT).clamp(1e-6, g.max - 1.0);
+        if (tf.scale.x - s).abs() > 1e-7 {
+            tf.scale = Vec3::splat(s);
+        }
+    }
+}
 
 fn shown(on: bool) -> Visibility {
     if on {
@@ -401,35 +465,39 @@ fn setup(
         .toggle("lp", "Lights", layers.lp)
         .toggle("air", "Aircraft", layers.air)
         .toggle("sats", "Orbits", layers.sats)
+        .toggle("drives", "Drives", layers.drives)
+        .toggle("daynight", "Day/Night", layers.daynight)
         .button("home", "Home");
     declare_settings(&mut ui, &options);
 
     // Empty layers until the service delivers: transparent palettes, zero indices
     let mut blank = |format: TextureFormat, bytes: Vec<u8>| images.add(texture(1, 1, bytes, format, false, false));
-    let (blank_rg, blank_r, blank_rgba) = (blank(TextureFormat::Rg8Unorm, vec![0, 0]), blank(TextureFormat::R8Unorm, vec![0]), blank(TextureFormat::Rgba8UnormSrgb, vec![0, 0, 0, 0]));
-    let rim = lin(palette.rim);
+    let (blank_rg, blank_r) = (blank(TextureFormat::Rg8Unorm, vec![0, 0]), blank(TextureFormat::R8Unorm, vec![0]));
+    let mut params = GlobeParams {
+        sun: sun_direction(unix_now()).extend(0.3),
+        extra: Vec4::new(if layers.daynight { 1.0 } else { 0.0 }, 0.0, 0.0, 0.0),
+        layers: Vec4::new(
+            if layers.weather { options.weather.opacity } else { 0.0 },
+            if layers.lp { options.lights.opacity } else { 0.0 },
+            options.weather.saturation,
+            options.lights.day,
+        ),
+        inset_wx: Vec4::ZERO,
+        inset_lp: Vec4::ZERO,
+        ..default()
+    };
+    inks(&mut params, &palette);
     let material = globe_mats.add(GlobeMaterial {
-        params: GlobeParams {
-            fill: Vec4::from_array(lin(palette.fill)),
-            rim: Vec4::new(rim[0], rim[1], rim[2], 0.07),
-            sun: Vec4::new(1.0, 0.0, 0.0, 0.3),
-            layers: Vec4::new(
-                if layers.weather { options.weather.opacity } else { 0.0 },
-                if layers.lp { options.lights.opacity } else { 0.0 },
-                options.weather.saturation,
-                options.lights.day,
-            ),
-            inset_wx: Vec4::ZERO,
-            inset_lp: Vec4::ZERO,
-        },
+        params,
         weather: blank_rg.clone(),
         lp: blank_r.clone(),
         weather_inset: blank_rg,
-        lp_inset: blank_r,
-        weather_lut: blank_rgba.clone(),
-        lp_lut: blank_rgba,
+        lp_inset: blank_r.clone(),
+        weather_lut: images.add(lut_image(palette.weather_lut.clone())),
+        lp_lut: images.add(lut_image(palette.lp_lut.clone())),
+        land: blank_r, // till the mask is built (`land_mask`)
     });
-    commands.spawn((Mesh3d(meshes.add(sphere::mesh(48))), MeshMaterial3d(material.clone()), Transform::from_scale(Vec3::splat(SURFACE))));
+    commands.spawn((Mesh3d(meshes.add(sphere::mesh(GLOBE_GRID))), MeshMaterial3d(material.clone()), Transform::from_scale(Vec3::splat(SURFACE))));
 
     // Every overlay is alpha blended without depth writes, so what is drawn
     // over what is the transparent sort order, and that ties between meshes
@@ -439,6 +507,7 @@ fn setup(
     let line_mat = |c: Color, bias: f32| StandardMaterial { base_color: c, unlit: true, alpha_mode: AlphaMode::Blend, cull_mode: None, depth_bias: bias, ..default() };
     let mut layer_mat = |bias: f32| std_mats.add(line_mat(Color::WHITE, bias)); // vertex-coloured layers
     let grid_mat = layer_mat(0.05);
+    let drive_mat = layer_mat(0.15);
     let marker_fill_mat = layer_mat(0.20);
     let marker_mat = layer_mat(0.21);
     let trail_mat = layer_mat(0.30);
@@ -451,21 +520,23 @@ fn setup(
     let region = std_mats.add(line_mat(palette.region, 0.10));
     let border = std_mats.add(line_mat(palette.border, 0.11));
     let coast = std_mats.add(line_mat(palette.coast, 0.12));
-    commands.spawn((Mesh3d(meshes.add(graticule(lin(palette.grid), options.graticule.step))), MeshMaterial3d(grid_mat), Layer::Graticule, shown(layers.graticule)));
+    commands.spawn((Mesh3d(meshes.add(graticule(lin(palette.grid), options.graticule.step))), MeshMaterial3d(grid_mat), Layer::Graticule, Grounded { max: R_GRID }, shown(layers.graticule)));
     commands.spawn((
         Mesh3d(meshes.add(outlines())),
         MeshMaterial3d(coast.clone()),
         LineLayer { kind: LineKind::Fallback, detail: 1 },
+        Grounded { max: R_OUTLINE },
         shown(layers.outlines),
     ));
     let air = meshes.add(Lines::default().mesh());
     commands.spawn((Mesh3d(air.clone()), MeshMaterial3d(air_mat), NoFrustumCulling, Layer::Air, AirMesh, shown(layers.air)));
     commands.spawn((Mesh3d(meshes.add(Shapes::default().mesh())), MeshMaterial3d(air_fill_mat), NoFrustumCulling, Layer::Air, AirFill, shown(layers.air)));
+    commands.spawn((Mesh3d(meshes.add(Lines::default().mesh())), MeshMaterial3d(drive_mat), NoFrustumCulling, Layer::Drives, DriveMesh, shown(layers.drives)));
     let home = meshes.add(Lines::default().mesh());
-    commands.spawn((Mesh3d(home.clone()), MeshMaterial3d(home_mat), NoFrustumCulling, Visibility::Hidden, HomeMarker));
+    commands.spawn((Mesh3d(home.clone()), MeshMaterial3d(home_mat), NoFrustumCulling, Visibility::Hidden, HomeMarker, Grounded { max: R_HOME }));
 
     // Names on the surface: a glyph atlas from the system font, one mesh of quads
-    let font = Atlas::system_font().or_else(|| fonts.get(&Handle::<Font>::default()).map(|f| f.data.to_vec()));
+    let font = theme::font_file(&palette.font).or_else(Atlas::system_font).or_else(|| fonts.get(&Handle::<Font>::default()).map(|f| f.data.to_vec()));
     labels.atlas = font.and_then(Atlas::new);
     if let Some(a) = labels.atlas.as_mut() {
         a.dirty = false; // uploaded right here
@@ -485,11 +556,11 @@ fn setup(
     let (label_text_mat, air_text_mat, sel_text_mat, sat_text_mat) = (text_mat(0.25), text_mat(0.36), text_mat(0.37), text_mat(0.56));
     let text_mats = vec![label_text_mat.clone(), air_text_mat.clone(), sel_text_mat.clone(), sat_text_mat.clone()];
     let label_mesh = meshes.add(TextMesh::default().mesh());
-    commands.spawn((Mesh3d(label_mesh.clone()), MeshMaterial3d(label_text_mat), NoFrustumCulling, LabelMesh));
+    commands.spawn((Mesh3d(label_mesh.clone()), MeshMaterial3d(label_text_mat), NoFrustumCulling, LabelMesh, Grounded { max: R_TEXT }));
     commands.spawn((Mesh3d(meshes.add(TextMesh::default().mesh())), MeshMaterial3d(air_text_mat), NoFrustumCulling, Layer::Air, AirText, shown(layers.air)));
     let markers = meshes.add(Lines::default().mesh());
-    commands.spawn((Mesh3d(markers.clone()), MeshMaterial3d(marker_mat), NoFrustumCulling, MarkerMesh));
-    commands.spawn((Mesh3d(meshes.add(Shapes::default().mesh())), MeshMaterial3d(marker_fill_mat), NoFrustumCulling, MarkerFill));
+    commands.spawn((Mesh3d(markers.clone()), MeshMaterial3d(marker_mat), NoFrustumCulling, MarkerMesh, Grounded { max: R_MARKER }));
+    commands.spawn((Mesh3d(meshes.add(Shapes::default().mesh())), MeshMaterial3d(marker_fill_mat), NoFrustumCulling, MarkerFill, Grounded { max: R_MARKER }));
     commands.spawn((Mesh3d(meshes.add(Lines::default().mesh())), MeshMaterial3d(trail_mat), NoFrustumCulling, TrailMesh));
     commands.spawn((Mesh3d(meshes.add(TextMesh::default().mesh())), MeshMaterial3d(sel_text_mat), NoFrustumCulling, SelText));
     commands.spawn((Mesh3d(meshes.add(Lines::default().mesh())), MeshMaterial3d(sat_mat), NoFrustumCulling, Layer::Sats, shown(layers.sats), SatMesh));
@@ -501,7 +572,7 @@ fn setup(
         Camera3d::default(),
         WidgetCamera,
         Camera { clear_color: ClearColorConfig::Custom(Color::NONE), ..default() },
-        Projection::from(PerspectiveProjection { fov: FOV, near: 0.01, ..default() }),
+        Projection::from(PerspectiveProjection { fov: FOV, near: 0.001, ..default() }), // street level with drives on is 0.006 up
         Tonemapping::None,
         DebandDither::Disabled,
         Msaa::Sample4,
@@ -519,14 +590,14 @@ fn graticule(color: [f32; 4], step: f32) -> Mesh {
     while lat < 89.999 {
         let c = if lat.abs() < 1e-3 { bright } else { color };
         let latr = lat.to_radians();
-        lines.path((0..=180).map(|i| sphere::latlon(latr, (i as f32 * 2.0).to_radians()) * R_GRID), c);
+        lines.ground_path(GLOBE_GRID, (0..=180).map(|i| sphere::latlon(latr, (i as f32 * 2.0).to_radians())), c);
         lat += step;
     }
     let mut lon: f32 = -180.0;
     while lon < 179.999 {
         let c = if lon.abs() < 1e-3 { bright } else { color };
         let lonr = lon.to_radians();
-        lines.path((0..=90).map(|i| sphere::latlon((i as f32 * 2.0 - 90.0).to_radians(), lonr) * R_GRID), c);
+        lines.ground_path(GLOBE_GRID, (0..=90).map(|i| sphere::latlon((i as f32 * 2.0 - 90.0).to_radians(), lonr)), c);
         lon += step;
     }
     lines.mesh()
@@ -551,7 +622,7 @@ fn outlines() -> Mesh {
     let mut positions = Vec::new();
     let mut indices = Vec::new();
     for f in &earth.feature {
-        sphere::surface_polyline(f.points.iter().map(|p| (p[1] as f32, p[0] as f32)), R_OUTLINE, &mut positions, &mut indices);
+        sphere::ground_polyline(GLOBE_GRID, f.points.iter().map(|p| (p[1] as f32, p[0] as f32)), &mut positions, &mut indices);
     }
     line_mesh(positions, indices)
 }
@@ -567,10 +638,11 @@ fn home_ring(lat: f32, lon: f32, color: [f32; 4]) -> Mesh {
     let (e, n) = sphere::frame(p);
     let mut lines = Lines::default();
     for radius in [0.012, 0.004] {
-        lines.path(
+        lines.ground_path(
+            GLOBE_GRID,
             (0..=32).map(|i| {
                 let a = i as f32 / 32.0 * std::f32::consts::TAU;
-                (p + (e * a.cos() + n * a.sin()) * radius).normalize() * R_HOME
+                p + (e * a.cos() + n * a.sin()) * radius
             }),
             color,
         );
@@ -594,7 +666,7 @@ fn receive(
     mut ui: ResMut<WidgetUi>,
     mut labels: ResMut<Labels>,
     mut sel: ResMut<Selection>,
-    mut sats: ResMut<Sats>,
+    (mut sats, mut drives): (ResMut<Sats>, ResMut<DriveData>), // a pair: a system takes at most 16 parameters
     options: Res<Options>,
     mut home: Query<&mut Visibility, With<HomeMarker>>,
     line_layers: Query<(Entity, &LineLayer)>,
@@ -637,8 +709,8 @@ fn receive(
                             m.lp_inset = img;
                             m.params.inset_lp = Vec4::from_array(window);
                         }
-                        Kind::WeatherLut => m.weather_lut = img,
-                        Kind::LpLut => m.lp_lut = img,
+                        // the palettes are the theme's, made here (theme.rs)
+                        Kind::WeatherLut | Kind::LpLut => {}
                     }
                 }
                 if kind == Kind::Weather && stamp > 0 {
@@ -676,6 +748,10 @@ fn receive(
                 sats.tracks.clear();
                 sats.track_set.clear();
             }
+            Msg::Drives(d) => {
+                drives.data = d.map(|d| *d);
+                drives.dirty = true;
+            }
             Msg::Vectors(v) => {
                 for (e, l) in &line_layers {
                     if l.kind == LineKind::Fallback {
@@ -700,6 +776,7 @@ fn receive(
                         Mesh3d(meshes.add(line_mesh(layer.positions, layer.indices))),
                         MeshMaterial3d(mat),
                         LineLayer { kind, detail },
+                        Grounded { max: R_OUTLINE },
                         NoFrustumCulling,
                         Visibility::Hidden,
                     ));
@@ -708,6 +785,92 @@ fn receive(
                 labels.dirty = true;
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------- theme
+
+/// A `theme` event from the card (BevyWidget.qml, on every wallpaper or
+/// theme change, debounced): the same keys as the options' theme part.
+/// Everything is recoloured in place: the material's uniforms and its
+/// palette images rewritten, the line materials' colours set, the meshes
+/// built from colours rebuilt as on any other change. Nothing is created
+/// or freed on the Qt side.
+#[allow(clippy::too_many_arguments)]
+fn retheme(
+    mut events: EventReader<WidgetEvent>,
+    mut state: ResMut<ThemeState>,
+    mut palette: ResMut<Palette>,
+    mut options: ResMut<Options>,
+    handles: Res<Handles>,
+    orbit: Res<Orbit>,
+    (mut globe_mats, mut std_mats, mut images, mut meshes): (ResMut<Assets<GlobeMaterial>>, ResMut<Assets<StandardMaterial>>, ResMut<Assets<Image>>, ResMut<Assets<Mesh>>),
+    (mut lab, mut air, mut sel, mut sats, mut drives): (ResMut<Labels>, ResMut<Air>, ResMut<Selection>, ResMut<Sats>, ResMut<DriveData>),
+    mut layer_q: Query<(&Layer, &mut Mesh3d)>,
+) {
+    // only the last one counts
+    let Some(json) = events.read().filter(|e| e.id == "theme").last().map(|e| e.value.clone()) else { return };
+    if json == state.json {
+        return;
+    }
+    state.json = json;
+    let t = theme::ThemeIn::parse(&state.json);
+    if t == state.current {
+        return;
+    }
+    options.theme = t.theme.clone();
+    let p = theme::palette(&t, &options.colors);
+    let font_changed = p.font != palette.font;
+    state.current = t;
+
+    if let Some(m) = globe_mats.get_mut(&handles.material) {
+        inks(&mut m.params, &p);
+        // fresh palette images, as the service's textures arrive (the old ones go with their handles)
+        m.weather_lut = images.add(lut_image(p.weather_lut.clone()));
+        m.lp_lut = images.add(lut_image(p.lp_lut.clone()));
+    }
+    for (h, c) in [(&handles.coast, p.coast), (&handles.border, p.border), (&handles.region, p.region)] {
+        if let Some(m) = std_mats.get_mut(h) {
+            m.base_color = c;
+        }
+    }
+    let grid = meshes.add(graticule(lin(p.grid), options.graticule.step));
+    for (layer, mut m) in &mut layer_q {
+        if *layer == Layer::Graticule {
+            m.0 = grid.clone();
+        }
+    }
+    if let Some((lat, lon)) = orbit.home {
+        meshes.insert(handles.home.id(), home_ring(lat, lon, lin(p.home)));
+    }
+    if font_changed {
+        if let Some(a) = theme::font_file(&p.font).and_then(Atlas::new) {
+            lab.atlas = Some(a); // dirty: `labels` uploads it into the text materials
+        }
+    }
+    // the rest is drawn from the palette whenever it is rebuilt
+    lab.dirty = true;
+    lab.last_set.clear();
+    air.dirty = true;
+    sel.text_dirty = true;
+    sel.trail_dirty = true;
+    let so = options.sats();
+    sats.styles = sats.list.iter().map(|s| so.style_for(&s.name, s.norad, &s.group, &options.theme)).collect();
+    sats.redraw = true;
+    drives.dirty = true;
+    *palette = p;
+}
+
+/// Puts the land mask into the material once its thread has built it.
+fn land_mask(handles: Res<Handles>, mut done: Local<bool>, mut images: ResMut<Assets<Image>>, mut mats: ResMut<Assets<GlobeMaterial>>) {
+    if *done {
+        return;
+    }
+    let Some(mask) = land::ready() else { return };
+    *done = true;
+    let img = images.add(texture(land::LAND_W, land::LAND_H, mask.to_vec(), TextureFormat::R8Unorm, true, true));
+    if let Some(m) = mats.get_mut(&handles.material) {
+        m.land = img;
     }
 }
 
@@ -724,9 +887,12 @@ fn declare_settings(ui: &mut WidgetUi, o: &Options) {
     ui.setting("Layers", Control::slider("weather.opacity", "Weather", 0.0, 1.0, 0.05, o.weather.opacity))
         .setting("Layers", Control::slider("lights.opacity", "Lights", 0.0, 1.0, 0.05, o.lights.opacity))
         .setting("Layers", Control::toggle("graticule.show", "Grid", o.graticule.show))
+        .setting("View", Control::slider("zoom_speed", "Zoom speed", 0.25, 2.0, 0.05, o.zoom_speed.unwrap_or(1.0)))
         .setting("Satellites", Control::multi("satellites.groups", "Groups", &groups, &so.groups))
         .setting("Satellites", Control::multi("satellites.track_groups", "Orbit lines", &groups, &so.track_groups))
         .setting("Aircraft", Control::slider("aircraft.min_altitude", "Hide below (ft)", 0.0, 10000.0, 500.0, o.aircraft.min_altitude))
+        .setting("Drives", Control::select("drives.range", "Range", &config::DRIVE_RANGES, &o.drives.range))
+        .setting("Drives", Control::toggle("drives.fade", "Fade older", o.drives.fade))
         .setting("Names", Control::select("labels.min_population", "Cities from", &pops, if pops.contains(&pop.as_str()) { &pop } else { "0" }))
         .setting("Names", Control::toggle("labels.airports", "Airports", o.labels.airports))
         .setting("", Control::button("settings.reset", "Reset to the preset"));
@@ -738,6 +904,7 @@ fn declare_settings(ui: &mut WidgetUi, o: &Options) {
 fn settings(
     mut events: EventReader<WidgetEvent>,
     preset: Res<PresetOptions>,
+    theme: Res<ThemeState>,
     handles: Res<Handles>,
     feed: Res<Feed>,
     palette: Res<Palette>,
@@ -746,6 +913,7 @@ fn settings(
     mut layers: ResMut<Layers>,
     mut sats: ResMut<Sats>,
     mut lab: ResMut<Labels>,
+    mut drives: ResMut<DriveData>,
     mut ui: ResMut<WidgetUi>,
     mut mats: ResMut<Assets<GlobeMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -755,10 +923,11 @@ fn settings(
     for e in events.read() {
         if e.id == "settings.reset" {
             *options = Options::parse(&preset.0);
-            changes.extend([Change::Layers, Change::Material, Change::Grid, Change::SatelliteSet, Change::Labels, Change::Aircraft]);
+            options.theme = theme.current.theme.clone(); // the theme as it is now, not as it was at the start
+            changes.extend([Change::Layers, Change::Material, Change::Grid, Change::SatelliteSet, Change::Labels, Change::Aircraft, Change::Drives]);
             declare_settings(&mut ui, &options);
         } else if let Some(c) = options.apply(&e.id, &e.value) {
-            if !matches!(e.id.as_str(), "weather" | "lp" | "air" | "sats") {
+            if !matches!(e.id.as_str(), "weather" | "lp" | "air" | "sats" | "drives" | "daynight") {
                 changes.push(c); // the pill toggles are handled in `controls`
             }
         }
@@ -770,11 +939,12 @@ fn settings(
     if has(Change::Layers) {
         let l = Layers::from_options(&options);
         *layers = l;
-        ui.toggle("weather", "Weather", l.weather).toggle("lp", "Lights", l.lp).toggle("air", "Aircraft", l.air).toggle("sats", "Orbits", l.sats);
+        ui.toggle("weather", "Weather", l.weather).toggle("lp", "Lights", l.lp).toggle("air", "Aircraft", l.air).toggle("sats", "Orbits", l.sats).toggle("drives", "Drives", l.drives).toggle("daynight", "Day/Night", l.daynight);
         for (layer, _, mut vis) in &mut layer_q {
             match layer {
                 Layer::Air => *vis = shown(l.air),
                 Layer::Sats => *vis = shown(l.sats),
+                Layer::Drives => *vis = shown(l.drives),
                 Layer::Graticule => {}
             }
         }
@@ -787,6 +957,7 @@ fn settings(
                 options.weather.saturation,
                 options.lights.day,
             );
+            m.params.extra.x = if layers.daynight { 1.0 } else { 0.0 };
         }
     }
     if has(Change::Grid) {
@@ -809,6 +980,10 @@ fn settings(
     }
     if has(Change::Labels) {
         lab.dirty = true;
+    }
+    if has(Change::Drives) || has(Change::Layers) {
+        feed.send(Cmd::Drives(options.drive_query()));
+        drives.dirty = true; // the fade at least; new drives follow when the range changed
     }
 }
 
@@ -879,6 +1054,24 @@ fn controls(
                     }
                 }
             }
+            "drives" => {
+                layers.drives = e.on();
+                for (l, mut v) in &mut visible {
+                    if *l == Layer::Drives {
+                        *v = shown(e.on());
+                    }
+                }
+                feed.send(Cmd::Drives(e.on().then(|| options.drive_range())));
+                if !e.on() {
+                    ui.remove("drive");
+                }
+            }
+            "daynight" => {
+                layers.daynight = e.on();
+                if let Some(m) = mats.get_mut(&handles.material) {
+                    m.params.extra.x = if layers.daynight { 1.0 } else { 0.0 };
+                }
+            }
             "follow" => {
                 if let Some(norad) = sel.sat {
                     cam_rig.mode = if e.on() { View::Chase { norad, target: None, standoff: 0.45 } } else { View::Orbit };
@@ -939,11 +1132,14 @@ struct Orbit {
     dragging: bool,
     /// a click (press and release without moving), in pixels, for `select`
     click: Option<Vec2>,
+    /// wheel zoom still to glide through, as the log of the height factor
+    /// (positive is in)
+    zoom: f32,
 }
 
 impl Default for Orbit {
     fn default() -> Self {
-        Orbit { lat: 20f32.to_radians(), lon: 0.0, dist: 4.0, last: None, touched: false, home: None, level: 0, press: None, dragging: false, click: None }
+        Orbit { lat: 20f32.to_radians(), lon: 0.0, dist: 4.0, last: None, touched: false, home: None, level: 0, press: None, dragging: false, click: None, zoom: 0.0 }
     }
 }
 
@@ -991,7 +1187,7 @@ fn zoom_for(dist: f32) -> f32 {
 /// hand-driven view continues from wherever a rig left the camera.
 fn sync_orbit(o: &mut Orbit, tf: &Transform) {
     let p = tf.translation;
-    let len = p.length().max(1.01);
+    let len = p.length().max(1.005);
     let d = p / len;
     o.dist = len;
     o.lat = d.y.clamp(-1.0, 1.0).asin();
@@ -1003,7 +1199,8 @@ fn sync_orbit(o: &mut Orbit, tf: &Transform) {
 /// the wheel zooms or, in a chase, changes the standoff; a press without a
 /// move becomes a click for `select`. Then the camera follows the rig.
 /// How far out the wheel goes: with satellites on, far enough to take in
-/// the geostationary belt; otherwise the globe stays the subject.
+/// the geostationary belt; otherwise the globe stays the subject. How far
+/// in: with drives on, down to a town's streets (about 40 km across).
 fn max_distance(layers: &Layers) -> f32 {
     if layers.sats {
         40.0
@@ -1012,8 +1209,41 @@ fn max_distance(layers: &Layers) -> f32 {
     }
 }
 
+fn min_distance(layers: &Layers) -> f32 {
+    if layers.drives {
+        1.006
+    } else {
+        1.06
+    }
+}
+
+/// The wheel works on the height above the ground, not the distance from the
+/// centre, so a notch is the same proportion of it anywhere: metres over a
+/// street, thousands of kilometres from orbit. This is the log of the height
+/// factor per notch at `zoom_speed` 1 (about a fifth).
+const ZOOM_STEP: f32 = 0.22;
+/// The most wheel zoom queued at once, in notches, so a hard flick or a
+/// trackpad burst can't carry the camera far past where it was aimed.
+const ZOOM_QUEUE: f32 = 4.0;
+/// How fast the queued zoom is used up, per second (most of it in ~0.15 s).
+const ZOOM_RATE: f32 = 14.0;
+
+/// A distance from the centre with its height above the ground scaled by
+/// `f`, kept within `near..far`.
+fn zoomed(dist: f32, f: f32, near: f32, far: f32) -> f32 {
+    1.0 + ((dist - 1.0) * f).clamp(near - 1.0, far - 1.0)
+}
+
+/// Central angle from the view's centre to the ground seen `theta` off the
+/// camera's axis from `dist`, or none past the limb.
+fn ground_angle(dist: f32, theta: f32) -> Option<f32> {
+    let s = dist * theta.sin();
+    (s.abs() < 1.0).then(|| s.asin() - theta)
+}
+
 fn camera(
     input: Res<WidgetInput>,
+    options: Res<Options>,
     time: Res<Time>,
     sats: Res<Sats>,
     layers: Res<Layers>,
@@ -1050,7 +1280,7 @@ fn camera(
                     cam_rig.mode = View::Orbit;
                     sync_orbit(&mut o, &tf);
                 }
-                let k = 1.25 * (o.dist - 1.0).max(0.05);
+                let k = 1.25 * (o.dist - 1.0).max(0.004);
                 o.lon -= dx * k * aspect;
                 o.lat = (o.lat + dy * k).clamp(-1.48, 1.48);
                 o.touched = true;
@@ -1068,15 +1298,57 @@ fn camera(
         o.dragging = false;
         o.last = None;
     }
+    // The wheel queues zoom (a notch is one step; trackpads send fractions)
+    // and each frame glides through part of it. Turning the wheel back drops
+    // what's left, and the queue is capped, so the zoom stops where aimed.
+    let step = ZOOM_STEP * options.zoom_speed.unwrap_or(1.0).clamp(0.1, 5.0);
     if input.scroll != 0.0 {
-        let f = 0.85f32.powf(input.scroll);
-        let far = max_distance(&layers);
-        match &mut cam_rig.mode {
-            View::Chase { standoff, .. } => *standoff = (*standoff * f).clamp(0.03, 12.0),
-            View::Focus { dist, .. } => *dist = (*dist * f).clamp(1.06, far),
-            View::Orbit => o.dist = (o.dist * f).clamp(1.06, far),
+        let add = input.scroll.clamp(-ZOOM_QUEUE, ZOOM_QUEUE) * step;
+        if add * o.zoom < 0.0 {
+            o.zoom = 0.0;
         }
+        o.zoom = (o.zoom + add).clamp(-ZOOM_QUEUE * step, ZOOM_QUEUE * step);
         o.touched = true;
+    }
+    if o.zoom != 0.0 {
+        // dt capped: the first frame after idling can be long
+        let mut d = o.zoom * (1.0 - (-ZOOM_RATE * dt.min(0.05)).exp());
+        if o.zoom.abs() < 1e-4 {
+            d = o.zoom;
+        }
+        o.zoom -= d;
+        let f = (-d).exp();
+        let (near, far) = (min_distance(&layers), max_distance(&layers));
+        let (old, new) = match &mut cam_rig.mode {
+            View::Chase { standoff, .. } => {
+                let old = *standoff;
+                *standoff = (old * f).clamp(0.03, 12.0);
+                (old, *standoff)
+            }
+            View::Focus { dist, .. } => {
+                let old = *dist;
+                *dist = zoomed(old, f, near, far);
+                (old, *dist)
+            }
+            View::Orbit => {
+                let old = o.dist;
+                o.dist = zoomed(old, f, near, far);
+                (old, o.dist)
+            }
+        };
+        if (new - old).abs() < 1e-7 {
+            o.zoom = 0.0; // at a limit
+        }
+        // Keep the ground under the pointer where it is, each axis on its own
+        if matches!(cam_rig.mode, View::Orbit) && !o.dragging && (0.0..1.0).contains(&input.x) && (0.0..1.0).contains(&input.y) {
+            let t = (FOV / 2.0).tan();
+            let tx = ((input.x - 0.5) * 2.0 * t * aspect).atan();
+            let ty = ((input.y - 0.5) * 2.0 * t).atan();
+            if let (Some(x0), Some(x1), Some(y0), Some(y1)) = (ground_angle(old, tx), ground_angle(new, tx), ground_angle(old, ty), ground_angle(new, ty)) {
+                o.lon += (x0 - x1) / o.lat.cos().max(0.2);
+                o.lat = (o.lat - (y0 - y1)).clamp(-1.48, 1.48);
+            }
+        }
     }
     match cam_rig.mode.clone() {
         View::Orbit => {
@@ -1304,12 +1576,15 @@ fn labels(
             let p = Vec3::from_array(d.pos);
             // shift in raster pixels: half the width plus the lead puts the name's left edge right of the ring
             let lead = if c.lead > 0.0 { (atlas.width(&label) / 2.0) + c.lead * RASTER_PX / c.size } else { 0.0 };
+            // on the facet under the name (the mesh is lifted by `Grounded`);
+            // the shadow is drawn first, at the same height
+            let gr = sphere::surface_radius(GLOBE_GRID, p);
             if pass == 0 {
                 let color = [shadow[0], shadow[1], shadow[2], shadow[3] * c.alpha];
-                tm.text(atlas, &label, p, k, R_TEXT - 0.0002, color, Vec2::new(lead + RASTER_PX * 0.06, -RASTER_PX * 0.06));
+                tm.text(atlas, &label, p, k, gr, color, Vec2::new(lead + RASTER_PX * 0.06, -RASTER_PX * 0.06));
             } else {
                 let base = lin(if d.kind == 4 { palette.airport } else { palette.text[d.kind.min(3) as usize] });
-                tm.text(atlas, &label, p, k, R_TEXT, [base[0], base[1], base[2], 0.95 * c.alpha], Vec2::new(lead, 0.0));
+                tm.text(atlas, &label, p, k, gr, [base[0], base[1], base[2], 0.95 * c.alpha], Vec2::new(lead, 0.0));
             }
         }
     }
@@ -1330,28 +1605,29 @@ fn labels(
         let p = Vec3::from_array(d.pos);
         let (e, n) = sphere::frame(p);
         let radius = c.ring * c.world_per_px;
+        let gr = sphere::surface_radius(GLOBE_GRID, p); // on the facet under it, lifted by `Grounded`; rims drawn first
         let rim_px = (0.16 * c.ring).clamp(0.8, 1.6) * display.scale;
         let rim = [outline[0], outline[1], outline[2], outline[3] * c.alpha];
         if d.kind == 4 {
             // airports: a disc with an airliner cut out of it once it is big enough
             let color = [airport_color[0], airport_color[1], airport_color[2], 0.95 * c.alpha];
-            sphere::glyph_rim(&mut fills, &disc, p, n, e, radius, rim_px / c.ring, R_MARKER - 0.0002, rim);
-            sphere::glyph(&mut fills, &disc, p, n, e, radius, R_MARKER, color);
+            sphere::glyph_rim(&mut fills, &disc, p, n, e, radius, rim_px / c.ring, gr, rim);
+            sphere::glyph(&mut fills, &disc, p, n, e, radius, gr, color);
             if c.ring >= 5.5 {
                 let (nose, wing) = ((n + e).normalize(), (e - n).normalize());
-                sphere::glyph(&mut fills, &sphere::AIRLINER, p, nose, wing, radius * 0.74, R_MARKER, rim);
+                sphere::glyph(&mut fills, &sphere::AIRLINER, p, nose, wing, radius * 0.74, gr, rim);
             }
             continue;
         }
         // cities: a filled dot; capitals ringed
         let color = [ring_color[0], ring_color[1], ring_color[2], 0.95 * c.alpha];
-        sphere::glyph_rim(&mut fills, &disc, p, n, e, radius, rim_px / c.ring, R_MARKER - 0.0002, rim);
-        sphere::glyph(&mut fills, &disc, p, n, e, radius, R_MARKER, color);
+        sphere::glyph_rim(&mut fills, &disc, p, n, e, radius, rim_px / c.ring, gr, rim);
+        sphere::glyph(&mut fills, &disc, p, n, e, radius, gr, color);
         if d.kind == 3 {
             let r2 = radius * 1.9;
             rings.path((0..=20).map(|i| {
                 let a = i as f32 / 20.0 * std::f32::consts::TAU;
-                (p + (e * a.cos() + n * a.sin()) * r2).normalize() * R_MARKER
+                (p + (e * a.cos() + n * a.sin()) * r2).normalize() * gr
             }), color);
         }
     }
@@ -1800,6 +2076,74 @@ fn satellites(
 
 // ---------------------------------------------------------------- sun
 
+// ---------------------------------------------------------------- drives
+
+/// The drives as one line mesh just above the coastlines, rebuilt when they
+/// or their look change: each in the drive colour, older ones fainter with
+/// `drives.fade` (by when it ended, across the range). The service sends
+/// the paths simplified for the range, so even all of them is a few tens of
+/// thousands of points.
+fn drives(
+    options: Res<Options>,
+    palette: Res<Palette>,
+    layers: Res<Layers>,
+    mut data: ResMut<DriveData>,
+    mut ui: ResMut<WidgetUi>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut q: Query<(&mut Mesh3d, &mut Transform), With<DriveMesh>>,
+    cams: Query<&Transform, (With<WidgetCamera>, Without<DriveMesh>)>,
+) {
+    // The mesh is on the globe's facets; it is scaled out by a share of the
+    // camera's height, so close in it lies on the ground (no parallax) and
+    // far out it clears the coarse chords as before.
+    if let Ok(cam) = cams.single() {
+        let h = (cam.translation.length() - SURFACE).max(0.0);
+        let s = 1.0 + (h * DRIVE_LIFT).clamp(1e-6, R_DRIVE - 1.0);
+        for (_, mut tf) in &mut q {
+            if (tf.scale.x - s).abs() > 1e-7 {
+                tf.scale = Vec3::splat(s);
+            }
+        }
+    }
+    if !data.dirty {
+        return;
+    }
+    data.dirty = false;
+    let mut lines = Lines::default();
+    if let Some(d) = &data.data {
+        // Pieces of at most ~5 km, each end on the facet under it, so no
+        // chord cuts through a facet edge by more than the lift.
+        const STEP: f32 = 0.0008;
+        let ground = |p: Vec3| p * sphere::surface_radius(GLOBE_GRID, p);
+        let c = lin(palette.drives);
+        let span = (d.now - d.from).max(1.0);
+        for (_, end, pts) in &d.drives {
+            let age = ((d.now - end) / span).clamp(0.0, 1.0) as f32;
+            let a = if options.drives.fade { 0.95 - 0.7 * age } else { 0.85 };
+            let mut path = Lines::default();
+            path.surface_path(pts.iter().copied(), 1.0, [0.0; 4]);
+            for pair in path.positions().chunks_exact(2) {
+                let (p, q) = (Vec3::from_array(pair[0]), Vec3::from_array(pair[1]));
+                let n = ((p.distance(q) / STEP).ceil() as usize).max(1);
+                lines.path((0..=n).map(|k| ground(p.lerp(q, k as f32 / n as f32).normalize())), [c[0], c[1], c[2], c[3] * a]);
+            }
+        }
+        if layers.drives {
+            let text = match (d.drives.len(), d.state.as_str()) {
+                (0, "idle" | "loading") => "\u{2026}".to_string(),
+                (0, "ok" | "updating") => "none".to_string(),
+                (0, state) => state.to_string(),
+                (n, _) => format!("{} \u{b7} {} mi", thousands(n), thousands(d.miles.round() as usize)),
+            };
+            ui.info("drive", "\u{f010b}", text); // nf-md-car
+        }
+    }
+    let mesh = meshes.add(lines.mesh());
+    for (mut m, _) in &mut q {
+        m.0 = mesh.clone();
+    }
+}
+
 fn unix_now() -> f64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
 }
@@ -1820,13 +2164,20 @@ fn sun_direction(unix: f64) -> Vec3 {
     sphere::latlon(dec as f32, (lon * rad) as f32)
 }
 
-fn sun(time: Res<Time>, handles: Res<Handles>, mut mats: ResMut<Assets<GlobeMaterial>>, mut next: Local<f32>) {
-    if time.elapsed_secs() < *next {
+/// Keeps the material's sun direction on the wall clock. Checked every frame
+/// (a few dozen flops) and written only when it has moved by more than a
+/// twentieth of a degree (about 12 s of the Earth's turn, a fraction of a
+/// pixel), so an idle globe stays idle. Not on Bevy's `Time`: virtual time
+/// advances at most 250 ms a frame and not at all while the dashboard is
+/// hidden, so a timer on it left the terminator hours behind after the
+/// dashboard had been closed.
+fn sun(handles: Res<Handles>, mut mats: ResMut<Assets<GlobeMaterial>>) {
+    let s = sun_direction(unix_now());
+    let Some(m) = mats.get(&handles.material) else { return };
+    if m.params.sun.truncate().dot(s) > 0.05f32.to_radians().cos() {
         return;
     }
-    *next = time.elapsed_secs() + 30.0;
     if let Some(m) = mats.get_mut(&handles.material) {
-        let s = sun_direction(unix_now());
         m.params.sun = Vec4::new(s.x, s.y, s.z, m.params.sun.w);
     }
 }

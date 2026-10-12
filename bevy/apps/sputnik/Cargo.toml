@@ -1,0 +1,16 @@
+[package]
+name = "sputnik"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+# The wallpaper's scene: shader, orbit, camera, text and clock
+sputnik_scene = { path = "../../../scripts/wallpaper/bins/sputnik/scene" }
+wgpu = "24"
+serde_json = "1"

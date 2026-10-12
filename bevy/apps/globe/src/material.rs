@@ -19,8 +19,17 @@ pub const GLOBE_SHADER: Handle<Shader> = weak_handle!("b6f0c3b2-5a1e-4d7c-9f0e-3
 #[derive(ShaderType, Debug, Clone, Copy, Default)]
 pub struct GlobeParams {
     pub fill: Vec4,
+    /// land ink (linear rgb), a = how much of it over the fill (0 = none)
+    pub land: Vec4,
     pub rim: Vec4,
     pub sun: Vec4,
+    /// the Day/Night layer: terminator line colour (a = opacity), warm tint on the
+    /// day side and cool tint on the night side of it (a = strength)
+    pub line: Vec4,
+    pub warm: Vec4,
+    pub cool: Vec4,
+    /// x = Day/Night layer on (1) or off (0)
+    pub extra: Vec4,
     /// x = weather opacity, y = light pollution opacity, z = weather saturation
     pub layers: Vec4,
     /// inset windows: x = west edge (radians), y = longitude span (radians),
@@ -54,6 +63,10 @@ pub struct GlobeMaterial {
     #[texture(11)]
     #[sampler(12)]
     pub lp_lut: Handle<Image>,
+    /// R8: land mask (255 on land); equirectangular
+    #[texture(13)]
+    #[sampler(14)]
+    pub land: Handle<Image>,
 }
 
 impl Material for GlobeMaterial {

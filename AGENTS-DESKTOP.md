@@ -11,7 +11,7 @@ Vic's live session: **TTY1 (loginctl session 2)**: zsh -> start-hyprland -> Hypr
 ## Dotfiles map
 Repo `/storage/git/dotfiles` (origin `git@github.com:gagehauptman/dotfiles.git`, branch main, often dirty/ahead: Vic's WIP; never reset/clean/push).
 `~/.config/{hypr,kitty,nvim,quickshell,scripts,wallpapers,zed}` are **plain symlinks** into the repo (no stow). So `~/.config/scripts/lock/` and `/storage/git/dotfiles/scripts/lock/` are the same directory, not two copies. Editing either edits the repo.
-Not in repo: `~/.config/nova-voice/env`, `hypr/perdevice.lua` (per-device, gitignored), `wallpapers/local.conf`, `quickshell/presets.local.json`.
+Not in repo (local overlay, list in `scripts/dotlocal.manifest`): `hypr/personal.lua` (shared: `DEVICE.module("nova")`), `hypr/perdevice.lua` (per-device), `~/.config/nova-voice/{env,speakers.json}`, `~/.config/tessie.key`, `wallpapers/local.conf`, `quickshell/presets.local.json`. Canonical copies: `~/.config/dotlocal/{shared,hosts/<uname -n>}/` (mode 700); `scripts/dotlocal.sh status|capture|apply|sync <host>` (`-n` = dry run). Edit a live overlay file, then `dotlocal.sh capture`; never commit them.
 
 ## Hyprland
 Config: `~/.config/hypr/hyprland.lua` (Lua). Per-device: `hypr/perdevice.lua` (template `perdevice.example.lua`); optional modules in `hypr/modules/` (`DEVICE.module("nova")`). Generic/per-device/personal split: repo README. Plugin: split-monitor-workspaces (`hypr/plugins/`, loaded via hyprpm). Monitors on desktop: **DP-4** Samsung S34CG50 3440x1440@100 left (workspaces 1-10), **HDMI-A-3** Samsung LS27R75 2560x1440@144 right (11-20; also the Sunshine/Moonlight stream).

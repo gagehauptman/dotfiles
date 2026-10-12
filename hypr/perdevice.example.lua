@@ -25,7 +25,8 @@ hl.monitor({
 -- set automatically when the amdgpu module is loaded; force it on or off here.
 -- DEVICE.amd_env = false
 
--- Optional modules from hypr/modules/ (off unless enabled here):
+-- Optional modules from hypr/modules/ (off unless enabled here or, for all of
+-- your machines, in personal.lua):
 --   nova  voice assistant (Super+T, Super+Shift+T) and chat panel (Super+A);
 --         needs ~/.config/nova-voice/env, see scripts/nova_voice.env.example
 --         and `nova_voice.sh setup`

@@ -1,0 +1,11 @@
+-- Personal settings shared by all of your own machines. Copy to
+-- personal.lua (gitignored) and keep it the same everywhere; what differs per
+-- machine (monitors, startup commands) goes in perdevice.lua, which is loaded
+-- after this file and can override it. scripts/dotlocal.sh keeps both in sync
+-- between machines (see README, "Local overlay").
+
+-- Optional modules from hypr/modules/:
+--   nova  voice assistant (Super+T, Super+Shift+T) and chat panel (Super+A);
+--         needs ~/.config/nova-voice/env, see scripts/nova_voice.env.example
+--         and `nova_voice.sh setup`
+-- DEVICE.module("nova")

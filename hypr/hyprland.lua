@@ -8,8 +8,9 @@ local mainMod = "SUPER"
 -- are enabled per device that way and are off otherwise.
 DEVICE = { mainMod = mainMod, startup = {}, monitor_priority = {} }
 
--- Optional modules: hypr/modules/<name>.lua, enabled from perdevice.lua with
--- DEVICE.module("nova"). A missing module is skipped with a log line.
+-- Optional modules: hypr/modules/<name>.lua, enabled from personal.lua or
+-- perdevice.lua with DEVICE.module("nova"). A missing module is skipped with a
+-- log line.
 function DEVICE.module(name)
     local path = os.getenv("HOME") .. "/.config/hypr/modules/" .. name .. ".lua"
     if io.open(path, "r") then dofile(path) else print("hyprland.lua: no module " .. path) end
@@ -160,6 +161,12 @@ hl.bind(mainMod .. " + mouse:272",    hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273",    hl.dsp.window.resize(), { mouse = true })
 
 local WORKSPACE_COUNT = 10
+
+-- Personal layer shared by all of one person's machines (gitignored; see
+-- personal.example.lua), e.g. DEVICE.module("nova"). Loaded before
+-- perdevice.lua so a machine can still override it.
+local personal = os.getenv("HOME") .. "/.config/hypr/personal.lua"
+if io.open(personal, "r") then dofile(personal) end
 
 -- Loaded before split-monitor-workspaces so DEVICE.monitor_priority is known
 -- by the time workspace ranges are handed out.

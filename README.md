@@ -7,7 +7,7 @@ wallpaper, and the scripts that hold it together.
 
 | Path | What it is |
 |---|---|
-| `hypr/` | Hyprland config (Lua), per-device template, optional modules (`hypr/modules/`) |
+| `hypr/` | Hyprland config (Lua), personal and per-device templates, optional modules (`hypr/modules/`) |
 | `quickshell/` | Bar, dashboard, launchers, power menu (QML). See [quickshell/README.md](quickshell/README.md) |
 | `bevy/` | Rust/Bevy widgets (globe, planet, wallpaper scenes) rendered inside Quickshell |
 | `wallpapers/` | One folder per wallpaper with its theme, lock screen layout and kitty overrides |
@@ -89,29 +89,35 @@ and falls back to plain workspaces 1-10 shared by all monitors (same keys).
 
 ## Generic, per-device and personal
 
-A fresh clone with no local files is the generic setup: bar, dashboard,
-launchers, wallpapers and themes, lock screen, screenshots. Machine-specific
-and personal parts live in local files that are gitignored, or switch on
-when their config file exists. Without those files the features are absent.
-No errors, empty widgets or dead keybinds.
+`main` is the generic setup, usable as is on anyone's machine: bar,
+dashboard, launchers, wallpapers and themes, lock screen, screenshots.
+Nothing personal or machine-specific is tracked. Those parts live in local
+files that are gitignored (or outside the repo), and the features they
+switch on are simply absent without them: no errors, empty widgets or dead
+keybinds.
 
-### Per-device (local files, gitignored)
+### Local overlay files
 
-| File | What it holds |
-|---|---|
-| `hypr/perdevice.lua` (from `hypr/perdevice.example.lua`) | Monitors, `DEVICE.monitor_priority`, extra startup commands (`DEVICE.startup`, e.g. Sunshine), optional modules (`DEVICE.module("nova")`), `DEVICE.amd_env` |
-| `quickshell/presets.local.json` | Dashboard preset overrides |
-| `wallpapers/local.conf` (from `local.conf.example`) | Extra/disabled wallpapers, the one picked at login |
-| `quickshell/secrets.env` | Optional OpenSky client id/secret for the globe's aircraft layer |
+| File | Scope | What it holds | Template |
+|---|---|---|---|
+| `hypr/personal.lua` | shared | Personal Hyprland layer, the same on all of your machines; mainly optional modules (`DEVICE.module("nova")`). Loaded before `perdevice.lua` | `hypr/personal.example.lua` |
+| `hypr/perdevice.lua` | host | Monitors, `DEVICE.monitor_priority`, extra startup commands (`DEVICE.startup`, e.g. Sunshine), `DEVICE.amd_env`, overrides | `hypr/perdevice.example.lua` |
+| `wallpapers/local.conf` | host | Extra/disabled wallpapers, the one picked at login | `wallpapers/local.conf.example` |
+| `quickshell/presets.local.json` | host | Dashboard preset overrides | see [quickshell/README.md](quickshell/README.md) |
+| `quickshell/secrets.env` | shared | Optional OpenSky client id/secret for the globe's aircraft layer | `OPENSKY_CLIENT_ID=` / `OPENSKY_CLIENT_SECRET=` lines |
+| `~/.config/nova-voice/env` | host | Voice assistant config (gateway, token, mic) | `scripts/nova_voice.env.example` |
+| `~/.config/nova-voice/speakers.json` | shared | Voice assistant speaker names | `nova_voice.sh setup` |
+| `~/.config/tessie.key` | shared | Tessie API key (Tesla) | the key on one line |
 
-The AMD driver env (`radeonsi`) is set only when the `amdgpu` kernel module is
-loaded (override with `DEVICE.amd_env`).
+The list lives in `scripts/dotlocal.manifest`. The AMD driver env
+(`radeonsi`) is set only when the `amdgpu` kernel module is loaded (override
+with `DEVICE.amd_env`).
 
-### Personal modules (off unless configured)
+### Enabling the personal modules
 
 | Module | Turned on by | Pieces |
 |---|---|---|
-| Nova voice assistant + chat panel | `~/.config/nova-voice/env` (`scripts/nova_voice.env.example`, `nova_voice.sh setup`); keybinds via `DEVICE.module("nova")` in `perdevice.lua` (`hypr/modules/nova.lua`: Super+T, Super+Shift+T, Super+A) | `quickshell/Nova*.qml`, `NovaQuiz.js`, `NovaLatex.js`, `VoiceBarWidget.qml`, `assets/nova-lynx/`, `scripts/nova_voice.{sh,py}`, `scripts/polls/agentpoll.sh`; speaker names in `~/.config/nova-voice/speakers.json`. Needs an [openclaw](https://openclaw.ai) gateway and the nova client (`NOVA_CLIENT`); details in [quickshell/README.md](quickshell/README.md) |
+| Nova voice assistant + chat panel | `~/.config/nova-voice/env` (`nova_voice.sh setup`), plus `DEVICE.module("nova")` in `hypr/personal.lua` (or `perdevice.lua` for one machine only) for the keybinds in `hypr/modules/nova.lua`: Super+T, Super+Shift+T, Super+A | `quickshell/Nova*.qml`, `NovaQuiz.js`, `NovaLatex.js`, `VoiceBarWidget.qml`, `assets/nova-lynx/`, `scripts/nova_voice.{sh,py}`, `scripts/polls/agentpoll.sh`. Needs an [openclaw](https://openclaw.ai) gateway and the nova client (`NOVA_CLIENT`); details in [quickshell/README.md](quickshell/README.md) |
 | Tesla (Tessie) | an API key in `~/.config/tessie.key` | Car row on the Services card (`scripts/polls/tessie*.sh`), drives on the globe (`scripts/globeserver.py`) |
 
 Without `nova-voice/env`, the chat panel's toggle and the voice indicator do
@@ -119,14 +125,34 @@ nothing. Without `tessie.key`, the Services card shows Tailscale only. Other
 optional pieces just stay idle when their app is missing: Tailscale, Cider
 (lyrics, the music card's Cider source), Sunshine.
 
-### What a machine needs
+### Keeping the overlay in sync (`scripts/dotlocal.sh`)
 
-- **A friend's machine:** nothing beyond the install steps. Optionally
-  `hypr/perdevice.lua` for monitors.
-- **Vic's machines:** `hypr/perdevice.lua` (monitors, Sunshine on the
-  desktop, the Nova binds), `~/.config/nova-voice/env` and `speakers.json`,
-  `~/.config/tessie.key`, plus `wallpapers/local.conf` /
-  `presets.local.json` where used. None of these are in the repo.
+The canonical copies of the overlay files sit in a store outside the repo,
+`~/.config/dotlocal/` (mode 700, never committed):
+
+```
+~/.config/dotlocal/
+  shared/<name>          same on all of your machines (personal.lua, keys, speakers.json)
+  hosts/<host>/<name>    one machine only, <host> = `uname -n` (perdevice.lua, nova-voice/env)
+```
+
+```bash
+dotlocal.sh status              # store vs live files on this machine
+dotlocal.sh capture             # live -> store, after editing a live file
+dotlocal.sh -n apply            # dry run: what store -> live would change (secrets are not printed)
+dotlocal.sh apply               # store -> live; replaced files are kept as <file>.bak-dotlocal-<time>
+dotlocal.sh -n sync vic-laptop  # dry run: exchange shared/ and hosts/vic-laptop/ with that machine
+dotlocal.sh sync vic-laptop     # newer copy of each file wins (rsync -u), no deletions
+ssh vic-laptop '~/.config/scripts/dotlocal.sh -n apply'   # then apply there
+```
+
+`push`/`pull`/`sync` only move store files; the other machine's live config
+changes only when `apply` runs there. A machine's own `hosts/<host>/` is
+never sent anywhere except to that machine.
+
+**A friend's machine:** nothing beyond the install steps; optionally
+`hypr/perdevice.lua` for monitors. **Vic's machines:** the store above;
+`dotlocal.sh apply` after cloning.
 
 ## Keybinds
 
@@ -149,4 +175,4 @@ optional pieces just stay idle when their app is missing: Tailscale, Cider
 | `Shift+Q` | Reload Hyprland |
 | `C` | Control center (notifications, quick settings) |
 | `Tab` / `Shift+Tab` | Next / previous dashboard tab |
-| `T` / `Shift+T`, `A` | Nova voice / cancel, Nova chat (only with `DEVICE.module("nova")`) |
+| `T` / `Shift+T`, `A` | Nova voice / cancel, Nova chat (only with `DEVICE.module("nova")` in `personal.lua`) |

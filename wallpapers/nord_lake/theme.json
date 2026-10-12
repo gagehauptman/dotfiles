@@ -1,0 +1,16 @@
+{
+  "name": "Nord Lake",
+  "stem": "nord_lake",
+  "dark": true,
+  "inherits": "catppuccin_frappe",
+  "_catppuccin": "frappe/sapphire",
+  "fonts": {
+    "display": "Quicksand"
+  },
+  "palette": {
+    "accent": "#85c1dc"
+  },
+  "extra": {
+    "accent2": "#babbf1"
+  }
+}

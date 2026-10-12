@@ -1,0 +1,3 @@
+# Live wallpaper: a scene of scripts/wallpaper/bins/spinning_globe (see
+# bins/sputnik); the selector lists this file and previews it with
+# bevy/apps/sputnik (same scene), which the lock screen also draws.

@@ -1,0 +1,70 @@
+# Flat Nord-blue lake under a pale blue sky, pine treelines left and right, misty hills behind; dark grass foreground.
+# Layout: Dark clock in the open sky, sinking behind the far treeline (sky mask); field low on the dark grass.
+
+[depth]
+background = "lock/bg-mask.png"
+
+[text]
+color = "#eceff4"
+accent = "#88c0d0"
+font_family = "Quicksand"
+font_weight = 500
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#c0161a22"
+
+[clock]
+font_family = "Quicksand"
+font_weight = 600
+letter_spacing = -2
+format = "HH:mm"
+font_style = "normal"
+color = "#2e3440"
+shadow_strength = 0
+font_size = "20%"
+halign = "center"
+depth = "far"
+valign = "top"
+position = "0%, -30%"
+
+[date]
+font_family = "Quicksand"
+font_weight = 700
+font_size = 14
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#3b4252"
+opacity = 0.95
+shadow_strength = 0
+halign = "center"
+below = ""
+above = "clock"
+gap = 26
+
+[greeting]
+show = true
+font_family = "Quicksand"
+font_weight = 500
+font_size = 17
+letter_spacing = 0
+text = "good {period}, {user}"
+font_style = "normal"
+uppercase = false
+color = "#d8dee9"
+opacity = 0.8
+shadow_strength = 1.2
+halign = "center"
+
+[input]
+size = [340, 58]
+rounding = 29
+inner_color = "#552e3440"
+outer_color = "#6688c0d0"
+highlight_color = "#1cffffff"
+accent_color = "#88c0d0"
+font_color = "#eceff4"
+halign = "center"
+valign = "bottom"
+position = "0%, 7%"

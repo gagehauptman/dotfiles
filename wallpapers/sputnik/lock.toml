@@ -1,0 +1,92 @@
+# Live (Bevy): Sputnik 1 in its real orbit over a turning Earth, Soviet space-poster style.
+# Layout: poster set: big clock up in the navy between the scene's readout
+# column and the beam, the date set to the clock's width under it; the sign-in
+# block on the readouts' left margin between readouts and slogan, under a red
+# rule like the slogan's. Printed like the scene's lettering: a red plate a
+# few px off register under the clock. Field states in the soviet palette.
+# Look: clock Oswald 500 21% (18% on HDMI-A-3), accent #f2643a.
+
+[text]
+color = "#f4e8d0"
+accent = "#f2643a"
+font_family = "Oswald"
+font_weight = 400
+shadow_passes = 2
+shadow_size = 3
+shadow_color = "#aa060a22"
+
+[clock]
+font_family = "Oswald"
+font_weight = 500
+letter_spacing = 4
+format = "HH:mm"
+font_style = "normal"
+color = "#f4e8d0"
+shadow_strength = 0.6
+ghost_color = "#b8db2b1a"
+ghost_offset = [7, 5]
+font_size = "21%"
+halign = "left"
+valign = "top"
+position = "560, -124"
+
+[date]
+font_family = "Oswald"
+font_weight = 500
+font_size = 20
+letter_spacing = 9
+uppercase = true
+format = "dddd · d MMMM yyyy"
+font_style = "normal"
+color = "#f2643a"
+opacity = 1
+shadow_strength = 0.6
+halign = "left"
+below = "clock"
+gap = 34
+
+[greeting]
+show = true
+font_family = "Oswald"
+font_weight = 500
+font_size = 18
+letter_spacing = 7
+text = "comrade {user}"
+font_style = "normal"
+uppercase = true
+color = "#ffc299"
+opacity = 1
+shadow_strength = 0.6
+halign = "left"
+above = "input"
+gap = 18
+rule_color = "#ed381a"
+rule_size = [170, 10]
+rule_gap = 22
+
+[input]
+size = [440, 70]
+rounding = 0
+inner_color = "#33f4e8d0"
+outer_color = "#99f4e8d0"
+outline_thickness = 2
+rule_fade = false
+highlight_color = "#10ffffff"
+accent_color = "#f2643a"
+check_color = "#f4cf86"
+fail_color = "#ff5a45"
+success_color = "#a9d69a"
+caps_color = "#ff8a4c"
+text_align = "left"
+uppercase = true
+placeholder_text = "password"
+placeholder_spacing = 7
+placeholder_opacity = 0.75
+halign = "left"
+valign = "top"
+position = "108, -712"
+
+# The 2560 screen is narrower: the satellite's forward antenna reaches further
+# left, so the clock steps down a size there.
+[monitor."HDMI-A-3".clock]
+font_size = "18%"

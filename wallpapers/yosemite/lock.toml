@@ -1,0 +1,73 @@
+# Low-poly Half Dome filling the centre and right in slate rock; peach dusk sky top left, mauve top right.
+# Layout: Dark hairline clock in the open peach sky top left, behind the dome's mask; field bottom right on the rock.
+# Look: clock Josefin Sans 300 22%, accent #f5a97f.
+
+[depth]
+foreground = "lock/fg-mask.png"
+
+[background]
+brightness = 0.95
+
+[text]
+color = "#3a2a35"
+accent = "#f5a97f"
+font_family = "Josefin Sans"
+font_weight = 300
+shadow_passes = 2
+shadow_size = 3
+shadow_color = "#77ffe2d2"
+
+[clock]
+font_family = "Josefin Sans"
+font_weight = 300
+letter_spacing = -3
+format = "HH:mm"
+font_style = "normal"
+color = "#3a2a35"
+shadow_strength = 0.9
+font_size = "22%"
+halign = "left"
+depth = "behind"
+valign = "top"
+position = "6%, -15%"
+
+[date]
+font_family = "Josefin Sans"
+font_weight = 600
+font_size = 14
+letter_spacing = 7
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#7a4a5a"
+opacity = 0.95
+shadow_strength = 0.9
+halign = "left"
+gap = 26
+
+[greeting]
+show = true
+font_family = "Josefin Sans"
+font_weight = 300
+font_size = 17
+letter_spacing = 1
+text = "good {period}, {user}"
+font_style = "italic"
+uppercase = false
+color = "#f4d5c6"
+opacity = 0.8
+shadow_strength = 1.4
+shadow_color = "#cc1e2030"
+halign = "right"
+
+[input]
+size = [340, 58]
+rounding = 29
+inner_color = "#5524273a"
+outer_color = "#66f4bba2"
+highlight_color = "#1cffffff"
+accent_color = "#f5a97f"
+font_color = "#f4d5c6"
+halign = "right"
+valign = "bottom"
+position = "-5%, 9%"

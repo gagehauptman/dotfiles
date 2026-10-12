@@ -1,0 +1,14 @@
+{
+  "name": "Sputnik 1",
+  "stem": "sputnik",
+  "live": true,
+  "dark": true,
+  "description": "Live (Bevy): Sputnik 1 in its real orbit round a turning Earth, Soviet space-poster style.",
+  "inherits": "soviet",
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Nord Lake",
+  "stem": "nord_lake",
+  "live": false,
+  "dark": true,
+  "description": "Flat Nord-blue lake under a pale blue sky, pine treelines left and right, misty hills behind; dark grass foreground.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

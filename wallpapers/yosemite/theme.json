@@ -1,0 +1,16 @@
+{
+  "name": "Half Dome Dusk",
+  "stem": "yosemite",
+  "dark": true,
+  "inherits": "catppuccin_macchiato",
+  "_catppuccin": "macchiato/peach",
+  "fonts": {
+    "display": "Josefin Sans"
+  },
+  "palette": {
+    "accent": "#f5a97f"
+  },
+  "extra": {
+    "accent2": "#c6a0f6"
+  }
+}

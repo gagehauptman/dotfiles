@@ -1,0 +1,14 @@
+{
+  "name": "Half Dome Dusk",
+  "stem": "yosemite",
+  "live": false,
+  "dark": true,
+  "description": "Low-poly Half Dome filling the centre and right in slate rock; peach dusk sky top left, mauve top right.",
+  "inherits": null,
+  "files": {
+    "theme": "theme.json",
+    "lock": "lock.toml",
+    "bar": "bar.json",
+    "kitty": "kitty.conf"
+  }
+}

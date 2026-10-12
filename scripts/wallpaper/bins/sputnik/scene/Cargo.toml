@@ -1,0 +1,13 @@
+# The Sputnik 1 wallpaper's scene (shader, orbit, camera, text), drawn by the
+# wallpaper renderer (scripts/wallpaper/bins/spinning_globe, which hosts every
+# warm scene). A Soviet space-poster look (after "Strana Oktyabrya - rodina
+# kosmonavtiki") on the real orbit of Sputnik 1.
+[package]
+name = "sputnik_scene"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }
+ab_glyph = { version = "0.2", features = ["variable-fonts"] }

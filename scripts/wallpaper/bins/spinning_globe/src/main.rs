@@ -37,6 +37,7 @@ use globe_scene::{build_continent_lines, build_points, bytemuck, Globals, LineIn
 // a redraw.
 mod free_return;
 mod shuttle;
+mod sputnik;
 
 // The globe rotates slowly, so 30 fps is plenty. Override with `--fps N` or
 // the GLOBE_FPS env var; 0 disables the cap (frame callbacks still pace us).
@@ -48,6 +49,7 @@ enum Scene {
     Globe,
     Shuttle,
     FreeReturn,
+    Sputnik,
 }
 
 impl Scene {
@@ -56,6 +58,7 @@ impl Scene {
             "spinning_globe" | "globe" => Some(Scene::Globe),
             "space_shuttle" | "shuttle" => Some(Scene::Shuttle),
             "free_return" => Some(Scene::FreeReturn),
+            "sputnik" => Some(Scene::Sputnik),
             _ => None,
         }
     }
@@ -262,6 +265,8 @@ struct GlobeSurface {
     shuttle: Option<shuttle::ShuttleSurface>,
     // Made the first time this output shows the free return
     free_return: Option<free_return::FreeReturnSurface>,
+    // Made the first time this output shows Sputnik
+    sputnik: Option<sputnik::SputnikSurface>,
     output: wl_output::WlOutput,
     layer_surface: LayerSurface,
     // Stretches the 1x1 hidden buffer over the whole output.
@@ -317,6 +322,7 @@ struct Gpu {
     point_count: u32,
     shuttle: shuttle::ShuttleGpu,
     free_return: free_return::FreeReturnGpu,
+    sputnik: sputnik::SputnikGpu,
     format: wgpu::TextureFormat,
     view_format: wgpu::TextureFormat,
     present_mode: wgpu::PresentMode,
@@ -496,6 +502,7 @@ impl Gpu {
 
         let shuttle = shuttle::ShuttleGpu::new(&device, view_format);
         let free_return = free_return::FreeReturnGpu::new(&device, view_format);
+        let sputnik = sputnik::SputnikGpu::new(&device, &queue, view_format);
 
         Ok(Gpu {
             device,
@@ -509,6 +516,7 @@ impl Gpu {
             point_count: points.len() as u32,
             shuttle,
             free_return,
+            sputnik,
             format,
             view_format,
             present_mode,
@@ -602,6 +610,7 @@ impl AppState {
             bind_group,
             shuttle: None,
             free_return: None,
+            sputnik: None,
             output,
             layer_surface,
             viewport,
@@ -735,6 +744,13 @@ impl AppState {
             let globals = shuttle_scene::Globals::at_secs(t, width, height);
             let target = s.shuttle.get_or_insert_with(|| gpu.shuttle.surface(&gpu.device));
             gpu.shuttle.encode(&gpu.device, &gpu.queue, &mut encoder, &view, target, &globals);
+        } else if visible && self.scene == Scene::Sputnik {
+            if let Some(target) = &mut s.shuttle {
+                target.release();
+            }
+            let t = self.frozen_time.unwrap_or_else(|| sputnik_scene::unix_secs(std::time::SystemTime::now()));
+            let target = s.sputnik.get_or_insert_with(|| gpu.sputnik.surface(&gpu.device));
+            gpu.sputnik.encode(&gpu.queue, &mut encoder, &view, target, t, width, height);
         } else if visible && self.scene == Scene::FreeReturn {
             if let Some(target) = &mut s.shuttle {
                 target.release();

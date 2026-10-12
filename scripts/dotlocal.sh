@@ -110,12 +110,19 @@ remote_name() {  # ssh alias -> that machine's uname -n
   ssh -o BatchMode=yes -o ConnectTimeout=8 "$1" uname -n || die "cannot reach $1 over ssh"
 }
 
+has_dir() {  # [host:]dir subdir
+  if [[ "$1" == *:* ]]; then ssh -o BatchMode=yes "${1%%:*}" "test -d '${1#*:}/$2'"
+  else [[ -d "$1/$2" ]]; fi
+}
+
 # rsync shared/ and hosts/<remote>/ in one direction; -u: never replace a newer file
 xfer() {  # from to remote_host_name
-  local opts=(-a -u -i --chmod=Du=rwx,Dgo=,Fgo=)
+  local opts=(-a -u -i --mkpath --chmod=Du=rwx,Dgo=,Fgo=) sub
   (( DRY )) && opts+=(-n)
-  rsync "${opts[@]}" "$1/shared/" "$2/shared/" | sed 's/^/  /'
-  rsync "${opts[@]}" --mkpath "$1/hosts/$3/" "$2/hosts/$3/" | sed 's/^/  /'
+  for sub in shared "hosts/$3"; do
+    if has_dir "$1" "$sub"; then rsync "${opts[@]}" "$1/$sub/" "$2/$sub/" | sed 's/^/  /'
+    else say "  ($1/$sub: nothing there yet)"; fi
+  done
 }
 
 cmd_push() {

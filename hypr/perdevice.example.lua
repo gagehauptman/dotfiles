@@ -21,7 +21,12 @@ hl.monitor({
 -- Commands to run at start on this machine only, e.g. a game-streaming host
 -- table.insert(DEVICE.startup, "systemctl --user start sunshine.service")
 
--- Voice assistant (off unless bound here; needs ~/.config/nova-voice/env,
--- see scripts/nova_voice.env.example and `nova_voice.sh setup`)
--- hl.bind(DEVICE.mainMod .. " + T",         hl.dsp.exec_cmd("~/.config/scripts/nova_voice.sh toggle"))
--- hl.bind(DEVICE.mainMod .. " + SHIFT + T", hl.dsp.exec_cmd("~/.config/scripts/nova_voice.sh cancel"))
+-- AMD driver env (LIBVA_DRIVER_NAME / __GLX_VENDOR_LIBRARY_NAME = radeonsi) is
+-- set automatically when the amdgpu module is loaded; force it on or off here.
+-- DEVICE.amd_env = false
+
+-- Optional modules from hypr/modules/ (off unless enabled here):
+--   nova  voice assistant (Super+T, Super+Shift+T) and chat panel (Super+A);
+--         needs ~/.config/nova-voice/env, see scripts/nova_voice.env.example
+--         and `nova_voice.sh setup`
+-- DEVICE.module("nova")

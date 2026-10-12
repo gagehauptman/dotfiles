@@ -8,6 +8,13 @@ local mainMod = "SUPER"
 -- are enabled per device that way and are off otherwise.
 DEVICE = { mainMod = mainMod, startup = {}, monitor_priority = {} }
 
+-- Optional modules: hypr/modules/<name>.lua, enabled from perdevice.lua with
+-- DEVICE.module("nova"). A missing module is skipped with a log line.
+function DEVICE.module(name)
+    local path = os.getenv("HOME") .. "/.config/hypr/modules/" .. name .. ".lua"
+    if io.open(path, "r") then dofile(path) else print("hyprland.lua: no module " .. path) end
+end
+
 hl.config({
     general = {
         gaps_in     = 5,
@@ -86,9 +93,7 @@ end)
 
 hl.env("GTK_THEME",                "Material-DeepOcean-Borderless")
 hl.env("MOZ_ENABLE_WAYLAND",       "1")
-hl.env("LIBVA_DRIVER_NAME",        "radeonsi")
 hl.env("XDG_SESSION_TYPE",         "wayland")
-hl.env("__GLX_VENDOR_LIBRARY_NAME","radeonsi")
 hl.env("GDK_BACKEND",              "wayland,x11")
 hl.env("QT_QPA_PLATFORM",          "wayland;xcb")
 
@@ -101,10 +106,11 @@ hl.bind(mainMod .. " + B",            hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + D",            hl.dsp.exec_cmd("discord"))
 hl.bind(mainMod .. " + F",            hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 hl.bind(mainMod .. " + SHIFT + F",    hl.dsp.window.fullscreen({ mode = "maximized" }))
-hl.bind(mainMod .. " + Q",            hl.dsp.exec_cmd("~/.config/scripts/bar_toggle.sh"))
+-- scripts/bar_toggle.sh went in "clean up scripts", so this bind did nothing; back on once it returns
+-- hl.bind(mainMod .. " + Q",            hl.dsp.exec_cmd("~/.config/scripts/bar_toggle.sh"))
 hl.bind(mainMod .. " + SHIFT + Q",    hl.dsp.exec_cmd("hyprctl reload"))
 hl.bind(mainMod .. " + SHIFT + E",    hl.dsp.exit())
-hl.bind(mainMod .. " + L",            hl.dsp.exec_cmd("/home/v1k/.config/scripts/lock/lock.sh"))
+hl.bind(mainMod .. " + L",            hl.dsp.exec_cmd("~/.config/scripts/lock/lock.sh"))
 
 hl.bind(mainMod .. " + code:60",      hl.dsp.exec_cmd("playerctl --player spotifyd,%any next"))
 hl.bind(mainMod .. " + code:59",      hl.dsp.exec_cmd("playerctl --player spotifyd,%any previous"))
@@ -124,8 +130,8 @@ hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_S
 
 hl.bind("Print",                      hl.dsp.exec_cmd("~/.config/scripts/hyprland_capture_full.sh"))
 hl.bind(mainMod .. " + Print",        hl.dsp.exec_cmd("~/.config/scripts/hyprland_capture_partial.sh"))
-hl.bind("SHIFT + Print",              hl.dsp.exec_cmd("bash -c 'pgrep -x wf-recorder && bash /storage/git/dotfiles/scripts/hyprland_record_stop.sh || bash /storage/git/dotfiles/scripts/hyprland_record_full.sh'"))
-hl.bind(mainMod .. " + SHIFT + Print",hl.dsp.exec_cmd("bash -c 'pgrep -x wf-recorder && bash /storage/git/dotfiles/scripts/hyprland_record_stop.sh || bash /storage/git/dotfiles/scripts/hyprland_record_region.sh'"))
+hl.bind("SHIFT + Print",              hl.dsp.exec_cmd("bash -c 'pgrep -x wf-recorder && bash ~/.config/scripts/hyprland_record_stop.sh || bash ~/.config/scripts/hyprland_record_full.sh'"))
+hl.bind(mainMod .. " + SHIFT + Print",hl.dsp.exec_cmd("bash -c 'pgrep -x wf-recorder && bash ~/.config/scripts/hyprland_record_stop.sh || bash ~/.config/scripts/hyprland_record_region.sh'"))
 
 hl.bind(mainMod .. " + left",         hl.dsp.focus({ direction = "left"  }))
 hl.bind(mainMod .. " + right",        hl.dsp.focus({ direction = "right" }))
@@ -160,27 +166,47 @@ local WORKSPACE_COUNT = 10
 local perdevice = os.getenv("HOME") .. "/.config/hypr/perdevice.lua"
 if io.open(perdevice, "r") then dofile(perdevice) end
 
+-- AMD (radeonsi) VA-API/GLX driver names: set when the amdgpu kernel module is
+-- loaded, unless perdevice.lua says otherwise with DEVICE.amd_env = true/false.
+local amd_env = DEVICE.amd_env
+if amd_env == nil then amd_env = io.open("/sys/module/amdgpu/initstate", "r") ~= nil end
+if amd_env then
+    hl.env("LIBVA_DRIVER_NAME",         "radeonsi")
+    hl.env("__GLX_VENDOR_LIBRARY_NAME", "radeonsi")
+end
+
 package.path = package.path .. ";./?.lua;./?/init.lua"
-local smw = require("plugins.split-monitor-workspaces")
+local has_smw, smw = pcall(require, "plugins.split-monitor-workspaces")
 
-smw.setup({
-    workspace_count = WORKSPACE_COUNT,
-    keep_focused = true,
-    enable_persistent_workspaces = true,
-    -- Without this the workspace ranges are handed out in the order monitors
-    -- *connect*, so whichever screen wakes first steals workspaces 1-10 from
-    -- the monitor that owned them the night before.
-    monitor_priority = DEVICE.monitor_priority,
-})
+if has_smw then
+    smw.setup({
+        workspace_count = WORKSPACE_COUNT,
+        keep_focused = true,
+        enable_persistent_workspaces = true,
+        -- Without this the workspace ranges are handed out in the order monitors
+        -- *connect*, so whichever screen wakes first steals workspaces 1-10 from
+        -- the monitor that owned them the night before.
+        monitor_priority = DEVICE.monitor_priority,
+    })
+else
+    -- Plugin not cloned into hypr/plugins/ (see README): plain global workspaces 1-10
+    print("hyprland.lua: split-monitor-workspaces not found, using plain workspaces")
+end
 
-for i = 1, smw.get_amount_of_workspaces() do
+for i = 1, has_smw and smw.get_amount_of_workspaces() or WORKSPACE_COUNT do
     local ws = tostring(i)
     local key = ws == "10" and "0" or ws -- workspace 10 on SUPER + 0
-    -- Switch to / silently move the active window to the Nth workspace on the focused monitor
-    hl.bind(mainMod .. " + " .. key,            smw.workspace(ws))
-    hl.bind(mainMod .. " + SHIFT + " .. key,    smw.move_to_workspace_silent(ws))
-    -- Move the active window to the Nth workspace and follow it there
-    hl.bind("ALT + " .. key,                    smw.move_to_workspace(ws))
+    if has_smw then
+        -- Switch to / silently move the active window to the Nth workspace on the focused monitor
+        hl.bind(mainMod .. " + " .. key,            smw.workspace(ws))
+        hl.bind(mainMod .. " + SHIFT + " .. key,    smw.move_to_workspace_silent(ws))
+        -- Move the active window to the Nth workspace and follow it there
+        hl.bind("ALT + " .. key,                    smw.move_to_workspace(ws))
+    else
+        hl.bind(mainMod .. " + " .. key,            hl.dsp.focus({ workspace = ws }))
+        hl.bind(mainMod .. " + SHIFT + " .. key,    hl.dsp.window.move({ workspace = ws, follow = false }))
+        hl.bind("ALT + " .. key,                    hl.dsp.window.move({ workspace = ws }))
+    end
 end
 
 -- Surviving the monitors being switched off ---------------------------------

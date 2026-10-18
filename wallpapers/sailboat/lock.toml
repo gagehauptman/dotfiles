@@ -1,0 +1,68 @@
+# Live (Bevy): a sloop alone off Daytona under the real sky and weather.
+# Layout: the horizon sits 58% down and the boat right of centre, so the clock
+# rides high in the open sky on the left, the sign-in block low on the water.
+# Look: clock Space Grotesk 600 17%, accent #f5c08a (sunlit cloud tops).
+
+[text]
+color = "#f4efe6"
+accent = "#f5c08a"
+font_family = "Space Grotesk"
+font_weight = 500
+shadow_passes = 2
+shadow_size = 4
+shadow_color = "#a0061018"
+
+[clock]
+font_family = "Space Grotesk"
+font_weight = 600
+letter_spacing = -2
+format = "HH:mm"
+font_style = "normal"
+color = "#f4efe6"
+shadow_strength = 1.2
+font_size = "17%"
+halign = "left"
+valign = "top"
+position = "6%, -9%"
+
+[date]
+font_family = "Space Grotesk"
+font_weight = 600
+font_size = 15
+letter_spacing = 6
+uppercase = true
+format = "dddd, MMMM d"
+font_style = "normal"
+color = "#f5c08a"
+opacity = 1
+shadow_strength = 1.2
+halign = "left"
+below = "clock"
+gap = 18
+
+[greeting]
+show = true
+font_family = "Space Grotesk"
+font_weight = 500
+font_size = 15
+letter_spacing = 1
+text = "fair winds, {user}"
+font_style = "normal"
+uppercase = false
+color = "#f4efe6"
+opacity = 0.75
+shadow_strength = 1.2
+halign = "left"
+above = "input"
+gap = 16
+
+[input]
+size = [340, 56]
+rounding = 28
+inner_color = "#5508131c"
+outer_color = "#667dc4e4"
+highlight_color = "#20f5c08a"
+accent_color = "#f5c08a"
+halign = "left"
+valign = "bottom"
+position = "6%, 9%"

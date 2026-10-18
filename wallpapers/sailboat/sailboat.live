@@ -1,0 +1,6 @@
+# Live wallpaper: a scene of scripts/wallpaper/bins/spinning_globe (see
+# bins/sailboat); the selector lists this file and previews it with
+# bevy/apps/sailboat (same scene), which the lock screen also draws.
+# A sloop alone off Daytona Beach: the real sun, moon and stars for the time of
+# day there, and the real wind, clouds, rain, thunder and sea (Open-Meteo, cached
+# in ~/.cache/sailboat/weather.env, refreshed every 10 minutes).

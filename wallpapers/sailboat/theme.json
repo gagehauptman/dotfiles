@@ -1,0 +1,73 @@
+{
+  "name": "Lone Sloop",
+  "stem": "sailboat",
+  "dark": true,
+  "inherits": null,
+  "_": "Derived from the sailboat scene (scene/src/lib.rs palette() keys + the shot palette): deep-sea navy-teal from the water colours and the night sky, sail cream text, sunlit cloud-top peach accent, sea-glass second accent; hues are the scene's dawn/dusk/day sky tones lifted to >= 4.5:1 on background/panel/inset. Time-of-day variants (hand-switch): theme sailboat_dawn|sailboat_day|sailboat_sunset|sailboat_night.",
+  "fonts": {
+    "ui": "Noto Sans",
+    "mono": "JetBrainsMono Nerd Font",
+    "display": "Space Grotesk"
+  },
+  "style": {
+    "radius": 1,
+    "border": 1
+  },
+  "palette": {
+    "red": "#ec8a78",
+    "orange": "#f7a468",
+    "yellow": "#f6d28f",
+    "green": "#9cd6ae",
+    "teal": "#7fd0c4",
+    "cyan": "#8fd6ea",
+    "blue": "#86b4e6",
+    "indigo": "#8ea2e0",
+    "violet": "#b3a2e2",
+    "lavender": "#c4c1ee",
+    "pink": "#eba6bd",
+    "background": "#0c1b28",
+    "panel": "#09151f",
+    "panelDeep": "#050e16",
+    "inset": "#16303f",
+    "border": "#2d4b5d",
+    "textPrimary": "#f2ede3",
+    "textSecondary": "#b8ccd8",
+    "textMuted": "#7f98a8",
+    "accent": "#f5c08a",
+    "error": "#ec8a78",
+    "success": "#9cd6ae",
+    "warning": "#f6d28f",
+    "onAccent": "#0c1b28"
+  },
+  "extra": {
+    "accent2": "#7dc4e4",
+    "nvim": {
+      "rosewater": "#f4d5c8",
+      "flamingo": "#efb1a0",
+      "pink": "#eba6bd",
+      "mauve": "#b3a2e2",
+      "red": "#ec8a78",
+      "maroon": "#e0a090",
+      "peach": "#f7a468",
+      "yellow": "#f6d28f",
+      "green": "#9cd6ae",
+      "teal": "#7fd0c4",
+      "sky": "#8fd6ea",
+      "sapphire": "#7dc4e4",
+      "blue": "#86b4e6",
+      "lavender": "#c4c1ee",
+      "text": "#f2ede3",
+      "subtext1": "#d6d4cf",
+      "subtext0": "#b8ccd8",
+      "overlay2": "#9fb4c2",
+      "overlay1": "#8199a8",
+      "overlay0": "#647c8c",
+      "surface2": "#3a5a6e",
+      "surface1": "#2d4b5d",
+      "surface0": "#16303f",
+      "base": "#0c1b28",
+      "mantle": "#09151f",
+      "crust": "#050e16"
+    }
+  }
+}

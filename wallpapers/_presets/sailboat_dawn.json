@@ -1,0 +1,48 @@
+{
+  "name": "Lone Sloop, dawn",
+  "stem": "sailboat_dawn",
+  "dark": true,
+  "inherits": "sailboat",
+  "_": "Hand-switch variant of the Lone Sloop theme for the sailboat scene at dawn (theme sailboat_dawn); lasts until the next wallpaper change.",
+  "palette": {
+    "background": "#1a1a2e",
+    "panel": "#14142a",
+    "panelDeep": "#0e0e20",
+    "inset": "#2a2a44",
+    "border": "#4a4666",
+    "textMuted": "#8f8fb0",
+    "accent": "#f0a590",
+    "onAccent": "#1a1a2e"
+  },
+  "extra": {
+    "accent2": "#b79ad8",
+    "nvim": {
+      "rosewater": "#f4d5c8",
+      "flamingo": "#efb1a0",
+      "pink": "#eba6bd",
+      "mauve": "#b3a2e2",
+      "red": "#ec8a78",
+      "maroon": "#e0a090",
+      "peach": "#f7a468",
+      "yellow": "#f6d28f",
+      "green": "#9cd6ae",
+      "teal": "#7fd0c4",
+      "sky": "#8fd6ea",
+      "sapphire": "#7dc4e4",
+      "blue": "#86b4e6",
+      "lavender": "#c4c1ee",
+      "text": "#f2ede3",
+      "subtext1": "#d6d4cf",
+      "subtext0": "#b8ccd8",
+      "overlay2": "#9fb4c2",
+      "overlay1": "#8199a8",
+      "overlay0": "#647c8c",
+      "surface2": "#3a5a6e",
+      "surface1": "#4a4666",
+      "surface0": "#2a2a44",
+      "base": "#1a1a2e",
+      "mantle": "#14142a",
+      "crust": "#0e0e20"
+    }
+  }
+}

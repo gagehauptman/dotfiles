@@ -295,6 +295,7 @@ dependencies = [
  "pollster",
  "ron",
  "rustix 1.1.5",
+ "sailboat_scene",
  "serde",
  "shuttle_scene",
  "smithay-client-toolkit",
@@ -671,6 +672,13 @@ dependencies = [
  "libc",
  "linux-raw-sys 0.12.1",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "sailboat_scene"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]

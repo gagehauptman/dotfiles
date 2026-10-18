@@ -1,0 +1,49 @@
+{
+  "name": "Lone Sloop, day",
+  "stem": "sailboat_day",
+  "dark": true,
+  "inherits": "sailboat",
+  "_": "Hand-switch variant of the Lone Sloop theme for the sailboat scene at day (theme sailboat_day); lasts until the next wallpaper change.",
+  "palette": {
+    "background": "#10283c",
+    "panel": "#0b1f31",
+    "panelDeep": "#071624",
+    "inset": "#1c3d56",
+    "border": "#38607c",
+    "textSecondary": "#c3d6e2",
+    "textMuted": "#89a6ba",
+    "accent": "#ffd28c",
+    "onAccent": "#10283c"
+  },
+  "extra": {
+    "accent2": "#8fd6ea",
+    "nvim": {
+      "rosewater": "#f4d5c8",
+      "flamingo": "#efb1a0",
+      "pink": "#eba6bd",
+      "mauve": "#b3a2e2",
+      "red": "#ec8a78",
+      "maroon": "#e0a090",
+      "peach": "#f7a468",
+      "yellow": "#f6d28f",
+      "green": "#9cd6ae",
+      "teal": "#7fd0c4",
+      "sky": "#8fd6ea",
+      "sapphire": "#7dc4e4",
+      "blue": "#86b4e6",
+      "lavender": "#c4c1ee",
+      "text": "#f2ede3",
+      "subtext1": "#d6d4cf",
+      "subtext0": "#c3d6e2",
+      "overlay2": "#9fb4c2",
+      "overlay1": "#8199a8",
+      "overlay0": "#647c8c",
+      "surface2": "#3a5a6e",
+      "surface1": "#38607c",
+      "surface0": "#1c3d56",
+      "base": "#10283c",
+      "mantle": "#0b1f31",
+      "crust": "#071624"
+    }
+  }
+}

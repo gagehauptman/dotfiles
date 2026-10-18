@@ -36,6 +36,7 @@ use globe_scene::{build_continent_lines, build_points, bytemuck, Globals, LineIn
 // bins/free_return), on the same layers, so switching between them is only
 // a redraw.
 mod free_return;
+mod sailboat;
 mod shuttle;
 mod sputnik;
 
@@ -50,6 +51,7 @@ enum Scene {
     Shuttle,
     FreeReturn,
     Sputnik,
+    Sailboat,
 }
 
 impl Scene {
@@ -59,6 +61,7 @@ impl Scene {
             "space_shuttle" | "shuttle" => Some(Scene::Shuttle),
             "free_return" => Some(Scene::FreeReturn),
             "sputnik" => Some(Scene::Sputnik),
+            "sailboat" => Some(Scene::Sailboat),
             _ => None,
         }
     }
@@ -267,6 +270,8 @@ struct GlobeSurface {
     free_return: Option<free_return::FreeReturnSurface>,
     // Made the first time this output shows Sputnik
     sputnik: Option<sputnik::SputnikSurface>,
+    // Made the first time this output shows the sailboat
+    sailboat: Option<sailboat::SailboatSurface>,
     output: wl_output::WlOutput,
     layer_surface: LayerSurface,
     // Stretches the 1x1 hidden buffer over the whole output.
@@ -323,6 +328,7 @@ struct Gpu {
     shuttle: shuttle::ShuttleGpu,
     free_return: free_return::FreeReturnGpu,
     sputnik: sputnik::SputnikGpu,
+    sailboat: sailboat::SailboatGpu,
     format: wgpu::TextureFormat,
     view_format: wgpu::TextureFormat,
     present_mode: wgpu::PresentMode,
@@ -503,6 +509,7 @@ impl Gpu {
         let shuttle = shuttle::ShuttleGpu::new(&device, view_format);
         let free_return = free_return::FreeReturnGpu::new(&device, view_format);
         let sputnik = sputnik::SputnikGpu::new(&device, &queue, view_format);
+        let sailboat = sailboat::SailboatGpu::new(&device, view_format);
 
         Ok(Gpu {
             device,
@@ -517,6 +524,7 @@ impl Gpu {
             shuttle,
             free_return,
             sputnik,
+            sailboat,
             format,
             view_format,
             present_mode,
@@ -611,6 +619,7 @@ impl AppState {
             shuttle: None,
             free_return: None,
             sputnik: None,
+            sailboat: None,
             output,
             layer_surface,
             viewport,
@@ -751,6 +760,13 @@ impl AppState {
             let t = self.frozen_time.unwrap_or_else(|| sputnik_scene::unix_secs(std::time::SystemTime::now()));
             let target = s.sputnik.get_or_insert_with(|| gpu.sputnik.surface(&gpu.device));
             gpu.sputnik.encode(&gpu.queue, &mut encoder, &view, target, t, width, height);
+        } else if visible && self.scene == Scene::Sailboat {
+            if let Some(target) = &mut s.shuttle {
+                target.release();
+            }
+            let t = self.frozen_time.unwrap_or_else(|| sailboat_scene::unix_secs(std::time::SystemTime::now()));
+            let target = s.sailboat.get_or_insert_with(|| gpu.sailboat.surface(&gpu.device));
+            gpu.sailboat.encode(&gpu.device, &gpu.queue, &mut encoder, &view, target, t, width, height);
         } else if visible && self.scene == Scene::FreeReturn {
             if let Some(target) = &mut s.shuttle {
                 target.release();

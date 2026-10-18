@@ -1,0 +1,12 @@
+# The sailboat wallpaper's scene (shader, boat mesh, real sky and weather),
+# drawn by the wallpaper renderer (scripts/wallpaper/bins/spinning_globe,
+# which hosts every warm scene) and by bevy/apps/sailboat (selector preview,
+# lock screen). No GPU API here.
+[package]
+name = "sailboat_scene"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }

@@ -1,0 +1,48 @@
+{
+  "name": "Lone Sloop, night",
+  "stem": "sailboat_night",
+  "dark": true,
+  "inherits": "sailboat",
+  "_": "Hand-switch variant of the Lone Sloop theme for the sailboat scene at night (theme sailboat_night); lasts until the next wallpaper change.",
+  "palette": {
+    "background": "#080f1b",
+    "panel": "#050b15",
+    "panelDeep": "#02060d",
+    "inset": "#121f33",
+    "border": "#263a56",
+    "textMuted": "#7a8fb0",
+    "accent": "#c7d6f0",
+    "onAccent": "#080f1b"
+  },
+  "extra": {
+    "accent2": "#7fa6e0",
+    "nvim": {
+      "rosewater": "#f4d5c8",
+      "flamingo": "#efb1a0",
+      "pink": "#eba6bd",
+      "mauve": "#b3a2e2",
+      "red": "#ec8a78",
+      "maroon": "#e0a090",
+      "peach": "#f7a468",
+      "yellow": "#f6d28f",
+      "green": "#9cd6ae",
+      "teal": "#7fd0c4",
+      "sky": "#8fd6ea",
+      "sapphire": "#7dc4e4",
+      "blue": "#86b4e6",
+      "lavender": "#c4c1ee",
+      "text": "#f2ede3",
+      "subtext1": "#d6d4cf",
+      "subtext0": "#b8ccd8",
+      "overlay2": "#9fb4c2",
+      "overlay1": "#8199a8",
+      "overlay0": "#647c8c",
+      "surface2": "#3a5a6e",
+      "surface1": "#263a56",
+      "surface0": "#121f33",
+      "base": "#080f1b",
+      "mantle": "#050b15",
+      "crust": "#02060d"
+    }
+  }
+}

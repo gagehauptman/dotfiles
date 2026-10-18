@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import tomllib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -37,6 +38,7 @@ SAVE_FILE = CONFIG / "scripts/wallpaper/wpsave.txt"
 # wallpaper_select.sh --warm keeps screen-sized copies of every still here.
 SCALED = RUNTIME / "wallpaper_select/scaled"
 # Frames of live scenes the lock grabbed, shown while the scene starts (kept across reboots).
+POSTER_MAX_AGE = 20 * 60   # s: older posters are grabbed again on the next lock
 POSTERS = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "lockscreen/poster"
 
 ELEMENTS = ("clock", "date", "greeting", "input")
@@ -177,6 +179,23 @@ def bevy_app(stem):
     return None
 
 
+def versioned(lib):
+    """`lib` under a name that changes with every build (a hard link next to it).
+    A process keeps the first copy of a library it loaded for its whole life
+    (dlopen by path), so the resident lock would keep drawing an old scene after
+    a rebuild; a new path loads the new build. The last few versions are kept."""
+    try:
+        ver = lib.with_name(f"{lib.stem}.{int(lib.stat().st_mtime)}{lib.suffix}")
+        if not ver.exists():
+            os.link(lib, ver)
+        for old in sorted(lib.parent.glob(f"{lib.stem}.[0-9]*{lib.suffix}"))[:-3]:
+            old.unlink(missing_ok=True)      # safe while mapped: nothing is overwritten
+        return ver
+    except OSError as e:
+        log(f"versioned copy of {lib} failed ({e}); using it as is")
+        return lib
+
+
 def background(wall, mon, meta):
     """{"kind": "live"|"still"|"color", ...} for one monitor. "own": the still is
     the wallpaper itself (so its depth masks fit it)."""
@@ -203,12 +222,14 @@ def background(wall, mon, meta):
             # cap is set above the rate so it never skips a vblank; the swap chain
             # paces the frames.
             fps = float(bgm.get("live_fps", 0)) or REFRESH.get(name, 60.0)
-            out = {"kind": "live", "library": str(lib),
+            out = {"kind": "live", "library": str(versioned(lib)),
                    "options": {"output": [w, h], "fps": round(fps * 2, 1)}}
             # A frame of the scene, shown at once while the scene starts. The lock
             # grabs one (`poster_out`) when there is none or the app is newer.
             poster = POSTERS / f"{wall.stem}-{w}x{h}.png"
-            if poster.is_file() and poster.stat().st_mtime >= lib.stat().st_mtime:
+            # (a scene that follows the sky also needs a recent one, else it shows
+            # last night's frame while it starts or in a preview)
+            if poster.is_file() and poster.stat().st_mtime >= lib.stat().st_mtime and time.time() - poster.stat().st_mtime < POSTER_MAX_AGE:
                 out["poster"] = str(poster)
             else:
                 POSTERS.mkdir(parents=True, exist_ok=True)

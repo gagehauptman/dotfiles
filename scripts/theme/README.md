@@ -128,5 +128,9 @@ which stay shared). Of the Bevy widgets, the globe is themed (see The globe); th
 `theme soviet` (the Soviet-poster preset, `_presets/soviet.json`, which the Sputnik wallpaper
 inherits), `theme catppuccin` (Mocha; also `macchiato`, `frappe`, `latte`), `theme wallpaper` (back to
 the saved wallpaper's own), or any stem. It lasts until the next wallpaper change.
+The Lone Sloop wallpaper's palette is derived from its scene (deep-sea navy, sail cream,
+sunlit-cloud peach); `theme sailboat_dawn|sailboat_day|sailboat_sunset|sailboat_night`
+(`_presets/sailboat_*.json`, each inheriting `wallpapers/sailboat/theme.json`) swap the
+backgrounds and accents to that time of day by hand. Nothing switches them by itself.
 A theme may carry Catppuccin colour overrides for Neovim in `extra.nvim` (as `soviet.json` does);
 `nvim/lua/plugins/init.lua` reads them from `current.json` when Neovim starts.

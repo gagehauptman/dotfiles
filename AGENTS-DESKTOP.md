@@ -30,7 +30,7 @@ Perf pass 2026-10-10 (Nova): every `PollProcess` with the same command is shared
 ## Wallpapers
 Each wallpaper lives in `wallpapers/<stem>/` (image or `<stem>.live`, plus `theme.json`, `bar.json`, `kitty.conf`, `lock.toml`, `meta.json`). Picking one re-themes Quickshell, kitty, Hyprland borders, Zed, Firefox and the lock screen.
 - Switch: `~/.config/scripts/wallpaper/wallpaper_select.sh [--preview] <path>`; GUI selector = Super+W. List: `scripts/wallpaper/list.sh`. Saved choice: `scripts/wallpaper/wpsave.txt`; login applies via `scripts/init/wallpaper.sh`. Per-device: `wallpapers/local.conf`.
-- Live scenes: wgpu/Bevy host binary named `layer_shell_bevy` (`scripts/wallpaper/bins/spinning_globe/target/release/`), scenes via `--scene <stem>` (globe, space_shuttle, free_return, sputnik...), kept warm and shown/hidden via a FIFO. Bevy widget apps are in `bevy/apps/`.
+- Live scenes: wgpu/Bevy host binary named `layer_shell_bevy` (`scripts/wallpaper/bins/spinning_globe/target/release/`), scenes via `--scene <stem>` (globe, space_shuttle, free_return, sputnik, sailboat...), kept warm and shown/hidden via a FIFO. Bevy widget apps are in `bevy/apps/`.
 - The `starbase` scene was deleted on 2026-10-09 at Vic's request (no wallpaper dir, no bin). Do not rebuild it unless asked.
 
 ## Lock screen

@@ -27,6 +27,14 @@ gets a widget type of its own in `DashboardConfig.qml` (`globe` does, with
   L1-L5, the zero-velocity curves through them, and an Apollo 8-style free
   return integrated in the restricted three-body problem at startup, flown
   on a 15 minute wall-clock loop). Also a scene of the globe's renderer.
+- `sailboat`: the live preview (and the lock screen's scene) of the Lone Sloop
+  wallpaper, built from its `sailboat_scene` crate in
+  `scripts/wallpaper/bins/sailboat/scene` (a painted sloop under the real sun,
+  moon and stars for Daytona, in the real Open-Meteo weather and sea). Same
+  passes as the wallpaper's own scene of the globe's renderer, on Bevy 0.16 /
+  wgpu 24; rebuild it after a scene change (`cargo build --release -p sailboat`,
+  then `bevy/build.sh`, or copy `target/release/libsailboat.so` into
+  `~/.config/quickshell/modules/Bevy/apps/sailboat/` by rename).
 - `globe`: weather, light pollution and live aircraft on a cube-sphere with
   Natural Earth coastlines, borders, names and cities by zoom level, fed by
   `scripts/globeserver.py`. Its labels are quads on the sphere from a glyph

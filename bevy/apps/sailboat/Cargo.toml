@@ -1,0 +1,16 @@
+[package]
+name = "sailboat"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bevy = { workspace = true }
+quickshell-bevy = { workspace = true }
+# The wallpaper's scene: shader, boat, sky, weather and clock
+sailboat_scene = { path = "../../../scripts/wallpaper/bins/sailboat/scene" }
+wgpu = "24"
+serde_json = "1"

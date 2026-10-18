@@ -2,7 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "themes"
-import "NovaLatex.js" as Latex
+import "NovaMd.js" as Md
+import "NovaHl.js" as Hl
 import "NovaQuiz.js" as QuizFmt
 
 // Nova chat panel (SUPER+A): type or talk to Nova from the bar, voice and text in one log.
@@ -197,21 +198,24 @@ Item {
     return n > 0 && messages.get(n - 1).role === "nova" && messages.get(n - 1).pending ? n - 1 : -1
   }
 
-  // ---- assistant replies: strip voice-only markers, collect MEDIA: lines, fetch those files from vic-server
-  // Voice markers ([quiet] [listen] [end]) and bracketed stage directions ("[laughs]") never show; markdown links
-  // "[text](url)" and task boxes "[x]" are kept. MEDIA:<path> lines become inline images (the path lives on the
-  // gateway host, so the file is scp'd once into mediaDir; a path that exists locally is used as is).
-  // LaTeX ($..$, \(..\), $$..$$, \[..\]) is pulled out first so the bracket cleanup can't eat it, then put back
-  // as rich-text math (NovaLatex.js); a lone "$5" stays prose.
+  // ---- assistant replies: NovaMd.js renders them (markdown, fenced code, LaTeX, voice-marker cleanup; see its header)
+  // into NovaMdView blocks. MEDIA:<path> lines become inline images (the path lives on the gateway host, so the file
+  // is scp'd once into mediaDir; a path that exists locally is used as is).
   readonly property string mediaDir: (Quickshell.env("XDG_CACHE_HOME") || (root.home + "/.cache")) + "/nova-chat-media"
   readonly property string mediaHost: Quickshell.env("NOVA_GATEWAY_SSH") || "vic-server"
-  function cleanText(s) {
-    let ex = Latex.extract(s)
-    return Latex.restore(ex.text.replace(/^[ \t]*MEDIA:.*$/gm, "")
-            .replace(/\[(?:quiet|listen|end)\]|\[\s*lang(?:uage)?\s*[:=][^\]\n]{0,16}\]/gi, "")
-            .replace(/\[[^\[\]\n`]*\](?![(\[:])/g, m => /^\[[ xX]\]$/.test(m) ? m : "")
-            .replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim(), ex.math)
+  // colours for the rendered HTML, from the live theme; settled 250 ms after a wallpaper change so the fade doesn't
+  // re-render every reply per frame. Inline code, links and quote text are fitted to 4.5:1 (Hl.fit keeps the hue) on
+  // what they sit on: the inset chip, the panel.
+  property var mdColors: mdColorsNow()
+  function mdColorsNow() {
+    let c = Theme.colors, h = x => "" + x, bg = Hl.blend(c.panel, c.panel, 1)
+    return { text: h(c.textSecondary), strong: h(c.textPrimary), muted: Hl.fit(c.textMuted, bg, 4.5), code: Hl.fit(c.orange, c.inset, 4.5),
+             codeBg: h(c.inset), link: Hl.fit(c.blue, bg, 4.5), border: h(c.border), th: h(c.inset), quote: h(c.violet) }
   }
+  readonly property string mdKey: "" + Theme.colors.textSecondary + Theme.colors.textPrimary + Theme.colors.textMuted + Theme.colors.orange
+                                  + Theme.colors.inset + Theme.colors.blue + Theme.colors.border + Theme.colors.violet + Theme.colors.panel
+  onMdKeyChanged: mdTimer.restart()
+  Timer { id: mdTimer; interval: 250; onTriggered: chat.mdColors = chat.mdColorsNow() }
   function mediaPaths(s) {
     let out = []
     let re = /^[ \t]*MEDIA:[ \t]*(\S.*?)[ \t]*$/gm, m
@@ -436,19 +440,23 @@ Item {
         messages.remove(i)                 // gateway's silent-turn token streamed in: nothing to show
         break
       }
+      // ev.reply is the bridge's speech-flattened text (no code blocks): keep the markdown that streamed in (Md.finalText)
       if (i >= 0) {
-        if (ev.reply) messages.setProperty(i, "text", ev.reply)
+        let fin = Md.finalText(messages.get(i).text, ev)
+        messages.setProperty(i, "text", fin.text)
         messages.setProperty(i, "pending", false)
-        messages.setProperty(i, "spoken", (typeof ev.spoken === "number") ? ev.spoken : -1)
-      } else if (ev.reply) {
-        messages.append({ role: "nova", text: ev.reply, speaker: "", pending: false, hl: -1, spoken: -1, imgs: "" })
+        messages.setProperty(i, "spoken", fin.spoken)
+      } else if (ev.reply || ev.md) {
+        let fin = Md.finalText("", ev)
+        messages.append({ role: "nova", text: fin.text, speaker: "", pending: false, hl: -1, spoken: -1, imgs: "" })
       }
       break
     }
-    case "report":                       // a background agent finished (nova-inbox.service)
-      messages.append({ role: "nova", text: ev.text, speaker: "", pending: false, hl: -1,
-                        spoken: (typeof ev.spoken === "number") ? ev.spoken : -1, imgs: "" })
+    case "report": {                     // a background agent finished (nova-inbox.service)
+      let fin = Md.finalText("", ev)      // ev.md: the report's markdown (newer bridge); ev.text is flattened for speech
+      messages.append({ role: "nova", text: fin.text, speaker: "", pending: false, hl: -1, spoken: fin.spoken, imgs: "" })
       break
+    }
     case "lang":                         // Nova's [lang:xx] marker, or the server dropping a refused language
       applyLang((ev.lang || "auto").toLowerCase(), ev.by || "nova")
       if (ev.error)
@@ -849,16 +857,18 @@ Item {
       // the reply being read aloud is gone: it can't be done inside markdown.)
       // ```quiz blocks render as NovaQuiz below the text (wherever they sit, usually after [quiet]); never as text
       readonly property var quizzes: row.md && row.text.indexOf("quiz") >= 0 ? QuizFmt.find(row.text) : []
-      readonly property int cut: (row.md && row.spoken >= 0 && row.spoken < row.text.length) ? QuizFmt.safeCut(row.text, row.spoken) : -1
-      readonly property string mainText: row.md ? chat.cleanText(QuizFmt.strip(row.cut >= 0 ? row.text.slice(0, row.cut) : row.text)) : row.text
-      readonly property string dimText: row.cut >= 0 ? chat.cleanText(QuizFmt.strip(row.text.slice(row.cut))) : ""
+      // the cut never splits a quiz block or a fenced code block
+      readonly property int cut: (row.md && row.spoken >= 0 && row.spoken < row.text.length) ? Md.safeCut(row.text, QuizFmt.safeCut(row.text, row.spoken)) : -1
+      readonly property string mainRaw: row.md ? QuizFmt.strip(row.cut >= 0 ? row.text.slice(0, row.cut) : row.text) : ""
+      readonly property string dimRaw: row.cut >= 0 ? QuizFmt.strip(row.text.slice(row.cut)) : ""
+      readonly property var mainR: row.md ? Md.render(row.mainRaw, { c: chat.mdColors, px: metrics.fontNormal, pending: row.pending && row.dimRaw.trim() === "" })
+                                          : ({ blocks: [], plain: "", wide: false })
+      readonly property var dimR: row.dimRaw !== "" ? Md.render(row.dimRaw, { c: chat.mdColors, px: metrics.fontNormal, pending: row.pending })
+                                                    : ({ blocks: [], plain: "", wide: false })
       function plainRich() {
         let e = row.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
         return e + (row.pending ? " ▍" : "")
       }
-      // QML's TextEdit can't recolor links (the default is dark blue); a styled span inside the link text does
-      function linked(t) { return t.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, '[<span style="color:' + Theme.colors.blue + '">$1</span>]($2)') }
-      function mdText() { return linked(row.mainText) + (row.pending && row.dimText === "" ? " ▍" : "") }
       readonly property var pics: {
         let l = row.imgs ? row.imgs.split("\n") : []
         if (row.md) for (let p of chat.mediaPaths(row.text)) l.push(p)
@@ -931,15 +941,15 @@ Item {
         font.pixelSize: metrics.fontTiny
         font.family: Theme.fonts.mono
       }
-      // math is inline HTML: measure its visible text, not the tags
-      TextMetrics { id: tm; font: body.font; text: row.md ? (row.mainText + row.dimText).replace(/<\/?(?:sup|sub|i|b|br)>/g, "").replace(/&#[0-9]+;/g, "x") : row.text }
+      // short one-paragraph replies get a bubble that fits them; anything with structure takes the full width
+      TextMetrics { id: tm; font: body.font; text: row.md ? row.mainR.plain + row.dimR.plain + (row.dimR.blocks.length ? "xx" : "") + (row.pending ? "xx" : "") : row.text }
       Rectangle {
         id: bubble
-        visible: row.md ? (row.mainText !== "" || row.dimText !== "" || row.pending || row.quizzes.length > 0) : row.text !== ""
+        visible: row.md ? (row.mainR.blocks.length > 0 || row.dimR.blocks.length > 0 || row.pending || row.quizzes.length > 0) : row.text !== ""
         y: (who.visible ? who.height : 0) + (picRow.visible && !row.md ? picRow.height + row.gap : 0)
         anchors.right: row.mine ? parent.right : undefined
         anchors.left: row.mine ? undefined : parent.left
-        width: row.md && (row.mainText.indexOf("\n") >= 0 || row.quizzes.length > 0) ? row.maxW : Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
+        width: row.md && (row.mainR.wide || row.dimR.wide || row.quizzes.length > 0) ? row.maxW : Math.min(tm.advanceWidth + metrics.s(24), row.maxW)
         height: bodyCol.implicitHeight + metrics.s(14)
         radius: metrics.radiusNormal
         color: row.role === "error" ? Qt.rgba(Theme.colors.red.r, Theme.colors.red.g, Theme.colors.red.b, 0.15)
@@ -952,37 +962,36 @@ Item {
           y: metrics.s(7)
           width: parent.width - metrics.s(24)
           spacing: metrics.s(4)
+          // your turns and errors: plain text
           TextEdit {
             id: body
-            visible: row.md ? (row.mainText !== "" || (row.pending && row.dimText === "")) : true
+            visible: !row.md
             width: parent.width
-            text: row.md ? row.mdText() : row.plainRich()
+            text: row.md ? "" : row.plainRich()
             readOnly: true
             selectByMouse: true
             wrapMode: TextEdit.Wrap
-            textFormat: row.md ? TextEdit.MarkdownText : TextEdit.RichText
+            textFormat: TextEdit.RichText
             color: row.role === "error" ? Theme.colors.red : row.mine ? Theme.colors.textPrimary : Theme.colors.textSecondary
             selectionColor: Theme.colors.blue
             font.pixelSize: metrics.fontNormal
             font.family: Theme.fonts.mono
-            palette.link: Theme.colors.blue
-            onLinkActivated: link => Qt.openUrlExternally(link)
-            HoverHandler { cursorShape: body.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
           }
-          TextEdit {
-            visible: row.dimText !== ""
+          // Nova: what was read aloud, then (dimmed, behind a muted-speaker glyph) what only landed here
+          NovaMdView {
+            visible: row.md && (row.mainR.blocks.length > 0 || (row.pending && row.dimRaw.trim() === ""))
             width: parent.width
-            text: "󰖁 " + row.dimText + (row.pending ? " ▍" : "")
-            readOnly: true
-            selectByMouse: true
-            wrapMode: TextEdit.Wrap
-            textFormat: TextEdit.MarkdownText
-            palette.link: Theme.colors.blue
-            color: Theme.colors.textMuted
-            selectionColor: Theme.colors.blue
-            font.pixelSize: metrics.fontNormal
-            font.family: Theme.fonts.mono
-            onLinkActivated: link => Qt.openUrlExternally(link)
+            blocks: row.mainR.blocks
+            pending: row.pending && row.dimRaw.trim() === ""
+          }
+          NovaMdView {
+            visible: row.dimR.blocks.length > 0
+            width: parent.width
+            blocks: row.dimR.blocks
+            pending: row.pending
+            lead: "󰖁 "
+            textColor: Theme.colors.textMuted
+            opacity: 0.85
           }
           Repeater {
             model: row.quizzes
